@@ -1,0 +1,243 @@
+{% extends "base.html" %}
+
+{% block title %}New Project - Asset Monitor{% endblock %}
+
+{% block content %}
+<div class="project-new">
+    <div class="page-header">
+        <h2>Create New Project</h2>
+    </div>
+
+    <div class="section">
+        <form id="projectForm" onsubmit="createProject(event)">
+            <!-- Basic Info -->
+            <div class="form-group">
+                <label for="name">Project Name *</label>
+                <input type="text" id="name" name="name" class="form-control" required
+                       placeholder="e.g., My Company Main">
+            </div>
+
+            <div class="form-group">
+                <label for="description">Description</label>
+                <textarea id="description" name="description" class="form-control"
+                          placeholder="Optional project description"></textarea>
+            </div>
+
+            <!-- Domains -->
+            <div class="form-group">
+                <label for="domains">Domains *</label>
+                <textarea id="domains" name="domains" class="form-control" required
+                          placeholder="Enter domains (one per line)&#10;example.com&#10;example.org"></textarea>
+                <small class="text-muted">One domain per line</small>
+            </div>
+
+            <!-- Tool Configuration -->
+            <h3 style="margin-top: 2rem;">Scan Configuration</h3>
+
+            <div class="form-group">
+                <label>
+                    <input type="checkbox" name="subdomain_enabled" checked>
+                    Enable Subdomain Discovery
+                </label>
+                <div style="margin-left: 1.5rem; margin-top: 0.5rem;">
+                    <label><input type="checkbox" name="source_subfinder" checked> subfinder</label>
+                    <label style="margin-left: 1rem;"><input type="checkbox" name="source_assetfinder" checked> assetfinder</label>
+                    <label style="margin-left: 1rem;"><input type="checkbox" name="source_crtsh" checked> crt.sh</label>
+                </div>
+            </div>
+
+            <div class="form-group">
+                <label>
+                    <input type="checkbox" name="dns_enabled" checked>
+                    Enable DNS Monitoring
+                </label>
+            </div>
+
+            <div class="form-group">
+                <label>
+                    <input type="checkbox" name="http_enabled" checked>
+                    Enable HTTP Probing
+                </label>
+            </div>
+
+            <div class="form-group">
+                <label>
+                    <input type="checkbox" name="shodan_enabled">
+                    Enable Shodan Scanning
+                </label>
+                <small class="text-muted">Requires Shodan API key</small>
+            </div>
+
+            <div class="form-group">
+                <label>
+                    <input type="checkbox" name="endpoints_enabled">
+                    Enable Endpoint Discovery (Weekly Scan Only)
+                </label>
+            </div>
+
+            <!-- Notification Configuration -->
+            <h3 style="margin-top: 2rem;">Notifications (Optional)</h3>
+
+            <div class="form-group">
+                <label for="slack_webhook">Slack Webhook URL</label>
+                <input type="url" id="slack_webhook" name="slack_webhook" class="form-control"
+                       placeholder="https://hooks.slack.com/services/...">
+            </div>
+
+            <div class="form-group">
+                <label for="discord_webhook">Discord Webhook URL</label>
+                <input type="url" id="discord_webhook" name="discord_webhook" class="form-control"
+                       placeholder="https://discord.com/api/webhooks/...">
+            </div>
+
+            <div class="form-group">
+                <label for="telegram_token">Telegram Bot Token</label>
+                <input type="text" id="telegram_token" name="telegram_token" class="form-control"
+                       placeholder="123456:ABC-DEF1234ghIkl-zyx57W2v1u123ew11">
+            </div>
+
+            <div class="form-group">
+                <label for="telegram_chat">Telegram Chat ID</label>
+                <input type="text" id="telegram_chat" name="telegram_chat" class="form-control"
+                       placeholder="123456789">
+            </div>
+
+            <div class="form-group">
+                <label for="min_severity">Minimum Severity for Notifications</label>
+                <select id="min_severity" name="min_severity" class="form-control">
+                    <option value="info">Info (all events)</option>
+                    <option value="low">Low</option>
+                    <option value="medium" selected>Medium</option>
+                    <option value="high">High</option>
+                    <option value="critical">Critical</option>
+                </select>
+            </div>
+
+            <!-- Submit -->
+            <div style="margin-top: 2rem;">
+                <button type="submit" class="btn btn-primary">
+                    <i class="fas fa-plus"></i> Create Project
+                </button>
+                <a href="/" class="btn btn-secondary" style="margin-left: 0.5rem;">
+                    <i class="fas fa-times"></i> Cancel
+                </a>
+            </div>
+        </form>
+    </div>
+</div>
+{% endblock %}
+
+{% block extra_js %}
+<script>
+function createProject(event) {
+    event.preventDefault();
+
+    const form = event.target;
+    const formData = new FormData(form);
+
+    // Parse domains
+    const domainsText = formData.get('domains');
+    const domains = domainsText.split('\n')
+        .map(d => d.trim())
+        .filter(d => d.length > 0);
+
+    // Build subdomain sources
+    const subdomainSources = [];
+    if (formData.get('source_subfinder')) subdomainSources.push('subfinder');
+    if (formData.get('source_assetfinder')) subdomainSources.push('assetfinder');
+    if (formData.get('source_crtsh')) subdomainSources.push('crtsh');
+
+    // Build config
+    const config = {
+        enabled_tools: {
+            subdomains: {
+                enabled: formData.get('subdomain_enabled') === 'on',
+                sources: subdomainSources
+            },
+            dns: {
+                enabled: formData.get('dns_enabled') === 'on'
+            },
+            http: {
+                enabled: formData.get('http_enabled') === 'on',
+                threads: 50
+            },
+            shodan: {
+                enabled: formData.get('shodan_enabled') === 'on'
+            },
+            endpoints: {
+                enabled: formData.get('endpoints_enabled') === 'on',
+                sources: ['waybackurls', 'gau'],
+                weekly_only: true
+            }
+        }
+    };
+
+    // Build notification config
+    const notificationConfig = {};
+
+    const slackWebhook = formData.get('slack_webhook');
+    if (slackWebhook) {
+        notificationConfig.slack = {
+            enabled: true,
+            webhook_url: slackWebhook,
+            min_severity: formData.get('min_severity')
+        };
+    }
+
+    const discordWebhook = formData.get('discord_webhook');
+    if (discordWebhook) {
+        notificationConfig.discord = {
+            enabled: true,
+            webhook_url: discordWebhook,
+            min_severity: formData.get('min_severity')
+        };
+    }
+
+    const telegramToken = formData.get('telegram_token');
+    const telegramChat = formData.get('telegram_chat');
+    if (telegramToken && telegramChat) {
+        notificationConfig.telegram = {
+            enabled: true,
+            bot_token: telegramToken,
+            chat_id: telegramChat,
+            min_severity: formData.get('min_severity')
+        };
+    }
+
+    // Build request
+    const data = {
+        name: formData.get('name'),
+        description: formData.get('description') || null,
+        domains: domains,
+        config: config,
+        notification_config: Object.keys(notificationConfig).length > 0 ? notificationConfig : null
+    };
+
+    // Submit
+    showToast('Creating project...', 'info');
+
+    fetch('/api/projects', {
+        method: 'POST',
+        headers: {'Content-Type': 'application/json'},
+        body: JSON.stringify(data)
+    })
+    .then(res => {
+        if (!res.ok) {
+            return res.json().then(err => { throw err; });
+        }
+        return res.json();
+    })
+    .then(project => {
+        showToast('Project created successfully!', 'success');
+        setTimeout(() => {
+            window.location.href = '/projects/' + project.id;
+        }, 1000);
+    })
+    .catch(err => {
+        console.error('Error:', err);
+        const message = err.detail || err.message || 'Failed to create project';
+        showToast(message, 'error');
+    });
+}
+</script>
+{% endblock %}

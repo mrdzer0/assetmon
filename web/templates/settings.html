@@ -1,0 +1,242 @@
+{% extends "base.html" %}
+
+{% block title %}Settings - Asset Monitor{% endblock %}
+
+{% block content %}
+<div class="settings-page">
+    <div class="page-header">
+        <h2>Application Settings</h2>
+    </div>
+
+    <div class="section">
+        <h3>Database Configuration</h3>
+        <div class="setting-item">
+            <label>Database URL</label>
+            <input type="text" class="form-control" value="{{ settings.database_url }}" readonly>
+        </div>
+    </div>
+
+    <div class="section">
+        <h3>API Keys</h3>
+        <div class="setting-item">
+            <label>Shodan API Key</label>
+            <input type="password" class="form-control"
+                   value="{{ settings.shodan_api_key if settings.shodan_api_key else '' }}"
+                   readonly>
+            <small class="text-muted">
+                {% if settings.shodan_api_key %}
+                <i class="fas fa-check-circle" style="color: green;"></i> Configured
+                {% else %}
+                <i class="fas fa-times-circle" style="color: red;"></i> Not configured
+                {% endif %}
+            </small>
+        </div>
+    </div>
+
+    <div class="section">
+        <h3>Notification Settings</h3>
+
+        <div class="setting-item">
+            <label>Slack Webhook URL</label>
+            <input type="password" class="form-control"
+                   value="{{ settings.slack_webhook_url if settings.slack_webhook_url else '' }}"
+                   readonly>
+            <small class="text-muted">
+                {% if settings.slack_webhook_url %}
+                <i class="fas fa-check-circle" style="color: green;"></i> Configured
+                {% else %}
+                <i class="fas fa-times-circle" style="color: red;"></i> Not configured
+                {% endif %}
+            </small>
+        </div>
+
+        <div class="setting-item">
+            <label>Discord Webhook URL</label>
+            <input type="password" class="form-control"
+                   value="{{ settings.discord_webhook_url if settings.discord_webhook_url else '' }}"
+                   readonly>
+            <small class="text-muted">
+                {% if settings.discord_webhook_url %}
+                <i class="fas fa-check-circle" style="color: green;"></i> Configured
+                {% else %}
+                <i class="fas fa-times-circle" style="color: red;"></i> Not configured
+                {% endif %}
+            </small>
+        </div>
+
+        <div class="setting-item">
+            <label>Telegram Bot Token</label>
+            <input type="password" class="form-control"
+                   value="{{ settings.telegram_bot_token if settings.telegram_bot_token else '' }}"
+                   readonly>
+            <small class="text-muted">
+                {% if settings.telegram_bot_token %}
+                <i class="fas fa-check-circle" style="color: green;"></i> Configured
+                {% else %}
+                <i class="fas fa-times-circle" style="color: red;"></i> Not configured
+                {% endif %}
+            </small>
+        </div>
+
+        <div class="setting-item">
+            <label>Telegram Chat ID</label>
+            <input type="text" class="form-control"
+                   value="{{ settings.telegram_chat_id if settings.telegram_chat_id else '' }}"
+                   readonly>
+        </div>
+    </div>
+
+    <div class="section">
+        <h3>Scan Configuration</h3>
+
+        <div class="setting-item">
+            <label>Scan Threads</label>
+            <input type="number" class="form-control" value="{{ settings.scan_threads }}" readonly>
+        </div>
+
+        <div class="setting-item">
+            <label>DNS Rate Limit</label>
+            <input type="number" class="form-control" value="{{ settings.dns_rate_limit }}" readonly>
+        </div>
+
+        <div class="setting-item">
+            <label>HTTP Timeout (seconds)</label>
+            <input type="number" class="form-control" value="{{ settings.http_timeout }}" readonly>
+        </div>
+
+        <div class="setting-item">
+            <label>HTTP Threads</label>
+            <input type="number" class="form-control" value="{{ settings.http_threads }}" readonly>
+        </div>
+
+        <div class="setting-item">
+            <label>Tool Timeout (seconds)</label>
+            <input type="number" class="form-control" value="{{ settings.tool_timeout }}" readonly>
+        </div>
+
+        <div class="setting-item">
+            <label>Scan Timeout (seconds)</label>
+            <input type="number" class="form-control" value="{{ settings.scan_timeout }}" readonly>
+        </div>
+    </div>
+
+    <div class="section">
+        <h3>Tool Paths</h3>
+
+        <div class="setting-item">
+            <label>Subfinder Path</label>
+            <input type="text" class="form-control" value="{{ settings.subfinder_path }}" readonly>
+        </div>
+
+        <div class="setting-item">
+            <label>Assetfinder Path</label>
+            <input type="text" class="form-control" value="{{ settings.assetfinder_path }}" readonly>
+        </div>
+
+        <div class="setting-item">
+            <label>DNSx Path</label>
+            <input type="text" class="form-control" value="{{ settings.dnsx_path }}" readonly>
+        </div>
+
+        <div class="setting-item">
+            <label>HTTPx Path</label>
+            <input type="text" class="form-control" value="{{ settings.httpx_path }}" readonly>
+        </div>
+
+        <div class="setting-item">
+            <label>GAU Path</label>
+            <input type="text" class="form-control" value="{{ settings.gau_path }}" readonly>
+        </div>
+
+        <div class="setting-item">
+            <label>Katana Path</label>
+            <input type="text" class="form-control" value="{{ settings.katana_path }}" readonly>
+        </div>
+
+        <div class="setting-item">
+            <label>Waybackurls Path</label>
+            <input type="text" class="form-control" value="{{ settings.waybackurls_path }}" readonly>
+        </div>
+    </div>
+
+    <div class="section">
+        <h3>Logging</h3>
+
+        <div class="setting-item">
+            <label>Log Level</label>
+            <input type="text" class="form-control" value="{{ settings.log_level }}" readonly>
+        </div>
+
+        <div class="setting-item">
+            <label>Log File</label>
+            <input type="text" class="form-control" value="{{ settings.log_file }}" readonly>
+        </div>
+    </div>
+
+    <div class="section">
+        <div class="alert alert-info">
+            <i class="fas fa-info-circle"></i>
+            <strong>Note:</strong> Settings are loaded from the <code>.env</code> file and environment variables.
+            To modify these settings, edit the <code>.env</code> file and restart the application.
+        </div>
+    </div>
+</div>
+
+<style>
+.settings-page .section {
+    background: white;
+    border-radius: 8px;
+    padding: 1.5rem;
+    margin-bottom: 1.5rem;
+    box-shadow: 0 1px 3px rgba(0, 0, 0, 0.1);
+}
+
+.settings-page .section h3 {
+    margin-top: 0;
+    margin-bottom: 1.5rem;
+    color: #333;
+    border-bottom: 2px solid #007bff;
+    padding-bottom: 0.5rem;
+}
+
+.setting-item {
+    margin-bottom: 1.5rem;
+}
+
+.setting-item:last-child {
+    margin-bottom: 0;
+}
+
+.setting-item label {
+    display: block;
+    font-weight: 500;
+    margin-bottom: 0.5rem;
+    color: #555;
+}
+
+.setting-item input[readonly] {
+    background-color: #f8f9fa;
+    cursor: not-allowed;
+}
+
+.setting-item small {
+    display: block;
+    margin-top: 0.5rem;
+}
+
+.alert-info {
+    background-color: #e7f3ff;
+    border: 1px solid #b3d9ff;
+    border-radius: 4px;
+    padding: 1rem;
+    color: #004085;
+}
+
+.alert-info code {
+    background-color: #d1ecf1;
+    padding: 0.2rem 0.4rem;
+    border-radius: 3px;
+    font-size: 0.9em;
+}
+</style>
+{% endblock %}

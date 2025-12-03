@@ -1,0 +1,74 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>{% block title %}Asset Monitor{% endblock %}</title>
+    <link rel="stylesheet" href="/static/css/style.css">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    {% block extra_css %}{% endblock %}
+</head>
+<body>
+    <div class="app-container">
+        <!-- Sidebar -->
+        <aside class="sidebar">
+            <div class="sidebar-header">
+                <h1><i class="fas fa-shield-alt"></i> Asset Monitor</h1>
+            </div>
+            <nav class="sidebar-nav">
+                <a href="/" class="nav-item {% if request.url.path == '/' %}active{% endif %}">
+                    <i class="fas fa-dashboard"></i> Dashboard
+                </a>
+                <a href="/events" class="nav-item {% if '/events' in request.url.path %}active{% endif %}">
+                    <i class="fas fa-bell"></i> Events
+                </a>
+                <a href="/schedules" class="nav-item {% if '/schedules' in request.url.path %}active{% endif %}">
+                    <i class="fas fa-calendar-alt"></i> Schedules
+                </a>
+                <a href="/projects/new" class="nav-item">
+                    <i class="fas fa-plus"></i> New Project
+                </a>
+                <a href="/settings" class="nav-item {% if '/settings' in request.url.path %}active{% endif %}">
+                    <i class="fas fa-cog"></i> Settings
+                </a>
+            </nav>
+            <div class="sidebar-footer">
+                <div class="user-info" style="padding: 0.75rem; background: rgba(255,255,255,0.05); border-radius: 8px; margin-bottom: 0.5rem;">
+                    <div style="display: flex; align-items: center; gap: 0.5rem; margin-bottom: 0.5rem;">
+                        <i class="fas fa-user-circle" style="font-size: 1.5rem; color: #667eea;"></i>
+                        <div style="flex: 1; overflow: hidden;">
+                            <div style="font-weight: 600; font-size: 0.875rem; white-space: nowrap; overflow: hidden; text-overflow: ellipsis;">
+                                {{ current_user.full_name or current_user.username }}
+                            </div>
+                            <div style="font-size: 0.75rem; color: rgba(255,255,255,0.6);">
+                                {% if current_user.is_superuser %}
+                                <i class="fas fa-crown"></i> Admin
+                                {% else %}
+                                User
+                                {% endif %}
+                            </div>
+                        </div>
+                    </div>
+                    <a href="/logout" style="display: block; padding: 0.5rem; background: rgba(220,38,38,0.2); color: #fca5a5; text-align: center; border-radius: 4px; text-decoration: none; font-size: 0.875rem; transition: all 0.2s;">
+                        <i class="fas fa-sign-out-alt"></i> Logout
+                    </a>
+                </div>
+                <small>v0.1.0</small>
+            </div>
+        </aside>
+
+        <!-- Main content -->
+        <main class="main-content">
+            <div class="content-wrapper">
+                {% block content %}{% endblock %}
+            </div>
+        </main>
+    </div>
+
+    <!-- Toast notifications -->
+    <div id="toast-container"></div>
+
+    <script src="/static/js/main.js"></script>
+    {% block extra_js %}{% endblock %}
+</body>
+</html>

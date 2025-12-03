@@ -1,0 +1,947 @@
+{% extends "base.html" %}
+
+{% block title %}Events - Asset Monitor{% endblock %}
+
+{% block content %}
+<div class="events-page">
+    <div class="page-header">
+        <h2>Events</h2>
+        <div class="header-actions">
+            <button class="btn btn-secondary" onclick="refreshEvents()">
+                <i class="fas fa-refresh"></i> Refresh
+            </button>
+        </div>
+    </div>
+
+    <!-- Quick Stats -->
+    <div class="section">
+        <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)); gap: 1rem; margin-bottom: 1rem;">
+            <div style="background: #f8f9fa; padding: 1rem; border-radius: 4px; border-left: 4px solid #dc3545;">
+                <div style="font-size: 24px; font-weight: bold; color: #dc3545;">
+                    {% set vuln_count = namespace(value=0) %}
+                    {% for event in events %}
+                        {% if event.type.value == 'vulnerability_found' %}
+                            {% set vuln_count.value = vuln_count.value + 1 %}
+                        {% endif %}
+                    {% endfor %}
+                    {{ vuln_count.value }}
+                </div>
+                <div style="color: #6c757d;">Vulnerabilities Found</div>
+            </div>
+            <div style="background: #f8f9fa; padding: 1rem; border-radius: 4px; border-left: 4px solid #fd7e14;">
+                <div style="font-size: 24px; font-weight: bold; color: #fd7e14;">
+                    {% set port_count = namespace(value=0) %}
+                    {% for event in events %}
+                        {% if event.type.value == 'port_new' %}
+                            {% set port_count.value = port_count.value + 1 %}
+                        {% endif %}
+                    {% endfor %}
+                    {{ port_count.value }}
+                </div>
+                <div style="color: #6c757d;">New Open Ports</div>
+            </div>
+            <div style="background: #f8f9fa; padding: 1rem; border-radius: 4px; border-left: 4px solid #0056b3;">
+                <div style="font-size: 24px; font-weight: bold; color: #0056b3;">
+                    {% set dns_count = namespace(value=0) %}
+                    {% for event in events %}
+                        {% if event.type.value == 'dns_changed' %}
+                            {% set dns_count.value = dns_count.value + 1 %}
+                        {% endif %}
+                    {% endfor %}
+                    {{ dns_count.value }}
+                </div>
+                <div style="color: #6c757d;">DNS Changes</div>
+            </div>
+            <div style="background: #f8f9fa; padding: 1rem; border-radius: 4px; border-left: 4px solid #28a745;">
+                <div style="font-size: 24px; font-weight: bold; color: #28a745;">
+                    {{ events|length }}
+                </div>
+                <div style="color: #6c757d;">Total Events</div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Filters -->
+    <div class="section">
+        <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)); gap: 1rem; margin-bottom: 1rem;">
+            <!-- Search Box -->
+            <input type="text" id="search-filter" class="form-control" placeholder="🔍 Search host, IP, subdomain..." oninput="applyFilters()">
+
+            <!-- Project Filter -->
+            <select id="project-filter" class="form-control" onchange="applyFilters()">
+                <option value="">All Projects</option>
+                {% for project in projects %}
+                <option value="{{ project.id }}">{{ project.name }}</option>
+                {% endfor %}
+            </select>
+
+            <!-- Severity Filter -->
+            <select id="severity-filter" class="form-control" onchange="applyFilters()">
+                <option value="">All Severities</option>
+                <option value="critical">Critical</option>
+                <option value="high">High</option>
+                <option value="medium">Medium</option>
+                <option value="low">Low</option>
+                <option value="info">Info</option>
+            </select>
+
+            <!-- Event Type Filter -->
+            <select id="type-filter" class="form-control" onchange="applyFilters()">
+                <option value="">All Event Types</option>
+                <option value="port_new">🔓 New Open Ports</option>
+                <option value="vulnerability_found">🐛 Vulnerabilities</option>
+                <option value="dns_changed">📡 DNS Changes</option>
+                <option value="http_status_changed">🌐 HTTP Status</option>
+                <option value="http_content_changed">📄 Content Changes</option>
+                <option value="subdomain_new">➕ New Subdomains</option>
+                <option value="subdomain_removed">➖ Removed Subdomains</option>
+                <option value="takeover_suspected">⚠️ Takeover Suspected</option>
+                <option value="endpoint_new">🔗 New Endpoints</option>
+            </select>
+
+            <!-- Acknowledge Status Filter -->
+            <select id="ack-filter" class="form-control" onchange="applyFilters()">
+                <option value="">All Status</option>
+                <option value="unacknowledged">Unacknowledged</option>
+                <option value="acknowledged">Acknowledged</option>
+            </select>
+
+            <!-- Sort Order -->
+            <select id="sort-filter" class="form-control" onchange="applyFilters()">
+                <option value="desc">Newest First</option>
+                <option value="asc">Oldest First</option>
+            </select>
+        </div>
+
+        <div style="display: flex; gap: 1rem; align-items: center; margin-bottom: 1rem;">
+            <button class="btn btn-secondary" onclick="resetFilters()">
+                <i class="fas fa-redo"></i> Reset All Filters
+            </button>
+
+            <div style="margin-left: auto; color: #6c757d; font-weight: 500;">
+                <span id="event-count"></span>
+            </div>
+        </div>
+
+        <!-- Pagination Controls -->
+        <div style="display: flex; justify-content: space-between; align-items: center; padding: 0.5rem 0;">
+            <div>
+                <label>Show
+                    <select id="page-size" class="form-control" style="display: inline-block; width: auto;" onchange="changePageSize()">
+                        <option value="25">25</option>
+                        <option value="50" selected>50</option>
+                        <option value="100">100</option>
+                        <option value="200">200</option>
+                    </select>
+                    events per page
+                </label>
+            </div>
+            <div id="pagination-controls" style="display: flex; gap: 0.5rem; align-items: center;">
+                <!-- Pagination buttons will be inserted here -->
+            </div>
+        </div>
+    </div>
+
+    <!-- Events table -->
+    <div class="section">
+        <div class="table-responsive">
+            <table class="table">
+                <thead>
+                    <tr>
+                        <th>Severity</th>
+                        <th>Type</th>
+                        <th>Summary</th>
+                        <th>Project</th>
+                        <th>Time</th>
+                        <th>Actions</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    {% for event in events %}
+                    <tr id="event-{{ event.id }}" data-project-id="{{ event.project_id }}">
+                        <td>
+                            <span class="badge badge-{{ event.severity.value }}">
+                                {{ event.severity.value }}
+                            </span>
+                        </td>
+                        <td><code>{{ event.type.value }}</code></td>
+                        <td>{{ event.summary }}</td>
+                        <td>{{ project_map.get(event.project_id, 'Project ' ~ event.project_id) }}</td>
+                        <td>{{ event.created_at.strftime('%Y-%m-%d %H:%M') }}</td>
+                        <td>
+                            {% if event.details %}
+                            <button class="btn btn-sm btn-primary" onclick="showEventDetail({{ event.id }})">
+                                <i class="fas fa-info-circle"></i> Detail
+                            </button>
+                            {% endif %}
+                            {% if not event.acknowledged %}
+                            <button class="btn btn-sm btn-success" onclick="acknowledgeEvent({{ event.id }})">
+                                <i class="fas fa-check"></i>
+                            </button>
+                            {% else %}
+                            <span class="badge badge-success">Acknowledged</span>
+                            {% endif %}
+                        </td>
+                    </tr>
+                    <tr id="event-detail-{{ event.id }}" style="display: none;">
+                        <td colspan="6">
+                            <div class="event-detail-box">
+                                <h4><i class="fas fa-info-circle"></i> Event Details</h4>
+                                <div id="event-detail-content-{{ event.id }}">
+                                    <!-- Detail will be loaded here -->
+                                </div>
+                            </div>
+                        </td>
+                    </tr>
+                    {% endfor %}
+                </tbody>
+            </table>
+        </div>
+    </div>
+</div>
+
+<style>
+.event-detail-box {
+    background: #f8f9fa;
+    border-left: 4px solid #007bff;
+    padding: 1.5rem;
+    margin: 1rem 0;
+}
+
+.event-detail-box h4 {
+    margin-top: 0;
+    color: #007bff;
+}
+
+.detail-comparison {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 1rem;
+    margin-top: 1rem;
+}
+
+.detail-column {
+    background: white;
+    border: 1px solid #dee2e6;
+    border-radius: 4px;
+    padding: 1rem;
+}
+
+.detail-column h5 {
+    margin-top: 0;
+    padding-bottom: 0.5rem;
+    border-bottom: 2px solid #dee2e6;
+}
+
+.detail-column.old-value h5 {
+    color: #dc3545;
+}
+
+.detail-column.new-value h5 {
+    color: #28a745;
+}
+
+.detail-list {
+    list-style: none;
+    padding: 0;
+    margin: 0.5rem 0;
+}
+
+.detail-list li {
+    padding: 0.25rem 0;
+    font-family: monospace;
+}
+
+.detail-added {
+    color: #28a745;
+    font-weight: bold;
+}
+
+.detail-removed {
+    color: #dc3545;
+    font-weight: bold;
+}
+
+.detail-info {
+    background: #e7f3ff;
+    padding: 0.75rem;
+    border-radius: 4px;
+    margin-top: 1rem;
+}
+
+.detail-info strong {
+    color: #0056b3;
+}
+</style>
+
+<script>
+// Pagination state
+let currentPage = 1;
+let pageSize = 50;
+
+function showEventDetail(eventId) {
+    const detailRow = document.getElementById(`event-detail-${eventId}`);
+    const contentDiv = document.getElementById(`event-detail-content-${eventId}`);
+
+    // Toggle visibility
+    if (detailRow.style.display === 'none') {
+        // Load event details via API
+        fetch(`/api/events/${eventId}`)
+            .then(res => res.json())
+            .then(event => {
+                contentDiv.innerHTML = formatEventDetails(event);
+                detailRow.style.display = 'table-row';
+            })
+            .catch(err => {
+                contentDiv.innerHTML = '<p class="text-danger">Failed to load event details</p>';
+                detailRow.style.display = 'table-row';
+            });
+    } else {
+        detailRow.style.display = 'none';
+    }
+}
+
+function formatEventDetails(event) {
+    if (!event.details) {
+        return '<p>No additional details available</p>';
+    }
+
+    const details = event.details;
+    let html = '';
+
+    // DNS A Record Changes
+    if (details.change_type === 'a_record') {
+        html += '<div class="detail-comparison">';
+
+        // Old IPs
+        html += '<div class="detail-column old-value">';
+        html += '<h5><i class="fas fa-clock"></i> Previous A Records</h5>';
+        if (details.old_ips && details.old_ips.length > 0) {
+            html += '<ul class="detail-list">';
+            details.old_ips.forEach(ip => {
+                html += `<li><code>${ip}</code></li>`;
+            });
+            html += '</ul>';
+        } else {
+            html += '<p class="text-muted">No records</p>';
+        }
+        html += '</div>';
+
+        // New IPs
+        html += '<div class="detail-column new-value">';
+        html += '<h5><i class="fas fa-check-circle"></i> Current A Records</h5>';
+        if (details.new_ips && details.new_ips.length > 0) {
+            html += '<ul class="detail-list">';
+            details.new_ips.forEach(ip => {
+                html += `<li><code>${ip}</code></li>`;
+            });
+            html += '</ul>';
+        } else {
+            html += '<p class="text-muted">No records</p>';
+        }
+        html += '</div>';
+
+        html += '</div>';
+
+        // Summary of changes
+        html += '<div class="detail-info">';
+        if (details.added_ips && details.added_ips.length > 0) {
+            html += '<p class="detail-added"><i class="fas fa-plus-circle"></i> Added IPs: ' + details.added_ips.join(', ') + '</p>';
+        }
+        if (details.removed_ips && details.removed_ips.length > 0) {
+            html += '<p class="detail-removed"><i class="fas fa-minus-circle"></i> Removed IPs: ' + details.removed_ips.join(', ') + '</p>';
+        }
+        html += '</div>';
+    }
+
+    // DNS CNAME Changes
+    else if (details.change_type === 'cname') {
+        html += '<div class="detail-comparison">';
+
+        // Old CNAMEs
+        html += '<div class="detail-column old-value">';
+        html += '<h5><i class="fas fa-clock"></i> Previous CNAME Records</h5>';
+        if (details.old_cnames && details.old_cnames.length > 0) {
+            html += '<ul class="detail-list">';
+            details.old_cnames.forEach(cname => {
+                html += `<li><code>${cname}</code></li>`;
+            });
+            html += '</ul>';
+        } else {
+            html += '<p class="text-muted">No records</p>';
+        }
+        html += '</div>';
+
+        // New CNAMEs
+        html += '<div class="detail-column new-value">';
+        html += '<h5><i class="fas fa-check-circle"></i> Current CNAME Records</h5>';
+        if (details.new_cnames && details.new_cnames.length > 0) {
+            html += '<ul class="detail-list">';
+            details.new_cnames.forEach(cname => {
+                html += `<li><code>${cname}</code></li>`;
+            });
+            html += '</ul>';
+        } else {
+            html += '<p class="text-muted">No records</p>';
+        }
+        html += '</div>';
+
+        html += '</div>';
+
+        // Summary of changes
+        html += '<div class="detail-info">';
+        if (details.added_cnames && details.added_cnames.length > 0) {
+            html += '<p class="detail-added"><i class="fas fa-plus-circle"></i> Added CNAMEs: ' + details.added_cnames.join(', ') + '</p>';
+        }
+        if (details.removed_cnames && details.removed_cnames.length > 0) {
+            html += '<p class="detail-removed"><i class="fas fa-minus-circle"></i> Removed CNAMEs: ' + details.removed_cnames.join(', ') + '</p>';
+        }
+        html += '</div>';
+    }
+
+    // HTTP Status Changes
+    else if (details.old_status !== undefined && details.new_status !== undefined) {
+        html += '<div class="detail-comparison">';
+
+        html += '<div class="detail-column old-value">';
+        html += '<h5><i class="fas fa-clock"></i> Previous Status</h5>';
+        html += `<p><code>${details.old_status}</code></p>`;
+        html += '</div>';
+
+        html += '<div class="detail-column new-value">';
+        html += '<h5><i class="fas fa-check-circle"></i> Current Status</h5>';
+        html += `<p><code>${details.new_status}</code></p>`;
+        html += '</div>';
+
+        html += '</div>';
+    }
+
+    // HTTP Title Changes
+    else if (details.old_title !== undefined && details.new_title !== undefined) {
+        html += '<div class="detail-comparison">';
+
+        html += '<div class="detail-column old-value">';
+        html += '<h5><i class="fas fa-clock"></i> Previous Title</h5>';
+        html += `<p>${details.old_title || '(empty)'}</p>`;
+        html += '</div>';
+
+        html += '<div class="detail-column new-value">';
+        html += '<h5><i class="fas fa-check-circle"></i> Current Title</h5>';
+        html += `<p>${details.new_title || '(empty)'}</p>`;
+        html += '</div>';
+
+        html += '</div>';
+    }
+
+    // New Port Detected (Shodan) - has hostnames field
+    else if (details.port !== undefined && details.ip && details.hostnames !== undefined) {
+        html += '<div class="detail-info">';
+        html += '<h5><i class="fas fa-network-wired"></i> New Port Discovered</h5>';
+        html += `<p><strong>IP Address:</strong> <code>${details.ip}</code></p>`;
+        html += `<p><strong>Port:</strong> <code>${details.port}</code></p>`;
+
+        if (details.subdomains && details.subdomains.length > 0) {
+            html += `<p><strong>Related Subdomains:</strong></p>`;
+            html += '<ul class="detail-list">';
+            details.subdomains.forEach(subdomain => {
+                html += `<li><code>${subdomain}</code></li>`;
+            });
+            html += '</ul>';
+        }
+
+        if (details.hostnames && details.hostnames.length > 0) {
+            html += `<p><strong>Shodan Hostnames:</strong> ${details.hostnames.map(h => `<code>${h}</code>`).join(', ')}</p>`;
+        }
+        html += '</div>';
+    }
+
+    // Port Removed (Shodan) - no hostnames field
+    else if (details.port !== undefined && details.ip && details.hostnames === undefined && !details.cve) {
+        html += '<div class="detail-info" style="border-left: 4px solid #6c757d;">';
+        html += '<h5 style="color: #6c757d;"><i class="fas fa-times-circle"></i> Port Closed</h5>';
+        html += `<p><strong>IP Address:</strong> <code>${details.ip}</code></p>`;
+        html += `<p><strong>Port:</strong> <code>${details.port}</code></p>`;
+
+        if (details.subdomains && details.subdomains.length > 0) {
+            html += `<p><strong>Related Subdomains:</strong></p>`;
+            html += '<ul class="detail-list">';
+            details.subdomains.forEach(subdomain => {
+                html += `<li><code>${subdomain}</code></li>`;
+            });
+            html += '</ul>';
+        }
+        html += '</div>';
+    }
+
+    // Vulnerability Found (Shodan)
+    else if (details.cve !== undefined && details.ip) {
+        html += '<div class="detail-info" style="border-left: 4px solid #dc3545;">';
+        html += '<h5 style="color: #dc3545;"><i class="fas fa-bug"></i> Vulnerability Details</h5>';
+        html += `<p><strong>CVE ID:</strong> <code>${details.cve}</code></p>`;
+        html += `<p><strong>IP Address:</strong> <code>${details.ip}</code></p>`;
+
+        if (details.subdomains && details.subdomains.length > 0) {
+            html += `<p><strong>Affected Subdomains:</strong></p>`;
+            html += '<ul class="detail-list">';
+            details.subdomains.forEach(subdomain => {
+                html += `<li><code>${subdomain}</code></li>`;
+            });
+            html += '</ul>';
+        }
+
+        if (details.hostnames && details.hostnames.length > 0) {
+            html += `<p><strong>Shodan Hostnames:</strong> ${details.hostnames.map(h => `<code>${h}</code>`).join(', ')}</p>`;
+        }
+
+        html += `<p style="margin-top: 1rem;"><a href="https://nvd.nist.gov/vuln/detail/${details.cve}" target="_blank" class="btn btn-sm btn-danger">`;
+        html += '<i class="fas fa-external-link-alt"></i> View on NVD</a></p>';
+        html += '</div>';
+    }
+
+    // Sensitive Accessible Endpoint Events
+    else if (details.change_type === 'sensitive_accessible') {
+        html += '<div class="detail-info" style="border-left: 4px solid #dc3545;">';
+        html += '<h5 style="color: #dc3545;"><i class="fas fa-exclamation-triangle"></i> Sensitive Endpoint Accessible</h5>';
+        html += `<p><strong>URL:</strong><br><code style="word-break: break-all;">${details.url}</code></p>`;
+
+        if (details.status_code) {
+            html += `<p><strong>Status Code:</strong> <span class="badge badge-success">${details.status_code}</span></p>`;
+        }
+
+        if (details.title) {
+            html += `<p><strong>Page Title:</strong> ${details.title}</p>`;
+        }
+
+        // Display categories
+        if (details.categories && details.categories.length > 0) {
+            html += '<p><strong>Detected Categories:</strong></p>';
+            html += '<div style="display: flex; flex-wrap: wrap; gap: 0.5rem; margin-bottom: 1rem;">';
+            details.categories.forEach(cat => {
+                html += `<span class="badge" style="background-color: ${cat.color}; color: white;">`;
+                html += `<i class="fas ${cat.icon}"></i> ${cat.name} - ${cat.description}`;
+                html += '</span>';
+            });
+            html += '</div>';
+        }
+
+        // Display matched keywords
+        if (details.matched_keywords && details.matched_keywords.length > 0) {
+            html += '<p><strong>Matched Keywords:</strong></p>';
+            html += '<div style="display: flex; flex-wrap: wrap; gap: 0.25rem; margin-bottom: 1rem;">';
+            details.matched_keywords.forEach(keyword => {
+                html += `<span class="badge badge-warning">${keyword}</span>`;
+            });
+            html += '</div>';
+        }
+
+        // Display matched extensions
+        if (details.matched_extensions && details.matched_extensions.length > 0) {
+            html += '<p><strong>Matched Extensions:</strong></p>';
+            html += '<div style="display: flex; flex-wrap: wrap; gap: 0.25rem; margin-bottom: 1rem;">';
+            details.matched_extensions.forEach(ext => {
+                html += `<span class="badge badge-danger">${ext}</span>`;
+            });
+            html += '</div>';
+        }
+
+        // Severity warning
+        const severityColor = details.severity === 'high' ? '#dc3545' : (details.severity === 'medium' ? '#ffc107' : '#17a2b8');
+        html += `<p><strong>Severity:</strong> <span style="color: ${severityColor}; font-weight: bold;">${(details.severity || 'medium').toUpperCase()}</span></p>`;
+
+        html += '<div style="background: #fff3cd; padding: 0.75rem; border-radius: 4px; margin-top: 1rem;">';
+        html += '<strong>⚠️ Security Note:</strong> This endpoint contains sensitive patterns and is publicly accessible (HTTP 200). ';
+        html += 'Please verify:';
+        html += '<ul style="margin: 0.5rem 0 0 1.5rem;">';
+        html += '<li>Is authentication required?</li>';
+        html += '<li>Should this endpoint be publicly accessible?</li>';
+        html += '<li>Are there any exposed sensitive files or configurations?</li>';
+        html += '</ul>';
+        html += '</div>';
+
+        html += '<div style="margin-top: 1rem;">';
+        html += `<a href="${details.url}" target="_blank" class="btn btn-sm btn-primary">`;
+        html += '<i class="fas fa-external-link-alt"></i> Open URL</a>';
+        html += '</div>';
+
+        html += '</div>';
+    }
+
+    // JS File Events
+    else if (details.file_type === 'javascript' || details.url) {
+        const changeType = details.change_type || 'unknown';
+
+        if (changeType === 'new') {
+            html += '<div class="detail-info" style="border-left: 4px solid #17a2b8;">';
+            html += '<h5 style="color: #17a2b8;"><i class="fas fa-file-code"></i> New JavaScript File</h5>';
+            html += `<p><strong>URL:</strong><br><code style="word-break: break-all;">${details.url}</code></p>`;
+
+            if (details.status) {
+                const statusColor = details.status === 'active' ? '#28a745' : '#dc3545';
+                html += `<p><strong>Status:</strong> <span style="color: ${statusColor};">${details.status.toUpperCase()}</span></p>`;
+            }
+
+            if (details.is_active !== undefined) {
+                html += `<p><strong>Accessible:</strong> ${details.is_active ? '✅ Yes (HTTP 200)' : '❌ No'}</p>`;
+            }
+
+            html += '</div>';
+
+        } else if (changeType === 'removed') {
+            html += '<div class="detail-info" style="border-left: 4px solid #6c757d;">';
+            html += '<h5 style="color: #6c757d;"><i class="fas fa-trash"></i> JavaScript File Removed</h5>';
+            html += `<p><strong>URL:</strong><br><code style="word-break: break-all;">${details.url}</code></p>`;
+            html += '<p style="color: #6c757d;"><em>This file is no longer available or was not found in latest scan.</em></p>';
+            html += '</div>';
+
+        } else if (changeType === 'status_changed') {
+            html += '<div class="detail-info" style="border-left: 4px solid #ffc107;">';
+            html += '<h5 style="color: #ffc107;"><i class="fas fa-exchange-alt"></i> Status Changed</h5>';
+            html += `<p><strong>URL:</strong><br><code style="word-break: break-all;">${details.url}</code></p>`;
+
+            // Status comparison
+            html += '<div class="detail-comparison">';
+
+            html += '<div class="detail-column old-value">';
+            html += '<h5><i class="fas fa-clock"></i> Previous Status</h5>';
+            const oldStatusColor = details.old_status === 'active' ? '#28a745' : '#dc3545';
+            html += `<p style="color: ${oldStatusColor}; font-size: 1.2rem; font-weight: bold;">${details.old_status.toUpperCase()}</p>`;
+
+            if (details.old_analysis && details.old_analysis.status_code) {
+                html += `<p><small>HTTP ${details.old_analysis.status_code}</small></p>`;
+            }
+            html += '</div>';
+
+            html += '<div class="detail-column new-value">';
+            html += '<h5><i class="fas fa-check-circle"></i> Current Status</h5>';
+            const newStatusColor = details.new_status === 'active' ? '#28a745' : '#dc3545';
+            html += `<p style="color: ${newStatusColor}; font-size: 1.2rem; font-weight: bold;">${details.new_status.toUpperCase()}</p>`;
+
+            if (details.new_analysis && details.new_analysis.status_code) {
+                html += `<p><small>HTTP ${details.new_analysis.status_code}</small></p>`;
+            }
+            html += '</div>';
+
+            html += '</div>';
+
+            if (details.new_status === 'inactive') {
+                html += '<div style="background: #fff3cd; padding: 0.75rem; border-radius: 4px; margin-top: 1rem;">';
+                html += '<strong>⚠️ Note:</strong> File is no longer accessible. It may have been removed, renamed, or the server is down.';
+                html += '</div>';
+            }
+
+            html += '</div>';
+        }
+
+        // Secret detection info
+        if (details.secrets_found && details.secrets_found.length > 0) {
+            html += '<div style="margin-top: 1rem; background: #f8d7da; border-left: 4px solid #dc3545; padding: 1rem;">';
+            html += '<h5 style="color: #dc3545; margin-top: 0;"><i class="fas fa-key"></i> Secrets Detected</h5>';
+
+            html += '<table class="table" style="margin-top: 0.5rem; background: white;">';
+            html += '<thead><tr><th>Type</th><th>Count</th></tr></thead><tbody>';
+
+            details.secrets_found.forEach(secret => {
+                html += `<tr><td><code>${secret.type.replace(/_/g, ' ').toUpperCase()}</code></td><td><strong>${secret.count}</strong></td></tr>`;
+            });
+
+            html += '</tbody></table>';
+
+            if (details.risk_level) {
+                const riskColor = details.risk_level === 'high' ? '#dc3545' : (details.risk_level === 'medium' ? '#ffc107' : '#17a2b8');
+                html += `<p><strong>Risk Level:</strong> <span style="color: ${riskColor}; font-weight: bold;">${details.risk_level.toUpperCase()}</span></p>`;
+            }
+
+            html += '<p style="margin-top: 1rem;"><strong>⚠️ CRITICAL:</strong> This file contains exposed secrets. Immediate action required:</p>';
+            html += '<ul style="margin: 0.5rem 0 0 1.5rem;">';
+            html += '<li>Rotate all exposed credentials immediately</li>';
+            html += '<li>Remove secrets from the file</li>';
+            html += '<li>Use environment variables or secret management</li>';
+            html += '</ul>';
+            html += '</div>';
+        }
+
+        if (details.suspicious_keywords && details.suspicious_keywords.length > 0) {
+            html += '<div style="margin-top: 1rem;">';
+            html += '<p><strong>Suspicious Keywords:</strong></p>';
+            html += '<div style="display: flex; flex-wrap: wrap; gap: 0.25rem;">';
+            details.suspicious_keywords.forEach(keyword => {
+                html += `<span class="badge badge-warning">${keyword}</span>`;
+            });
+            html += '</div>';
+            html += '</div>';
+        }
+
+        // Action button
+        html += '<div style="margin-top: 1rem;">';
+        html += `<a href="${details.url}" target="_blank" class="btn btn-sm btn-primary">`;
+        html += '<i class="fas fa-external-link-alt"></i> Open File</a>';
+        html += '</div>';
+    }
+
+    // Generic details view
+    else {
+        html += '<div class="detail-info">';
+        html += '<pre>' + JSON.stringify(details, null, 2) + '</pre>';
+        html += '</div>';
+    }
+
+    // Show subdomain/URL if available
+    if (details.subdomain || details.url) {
+        html += '<div style="margin-top: 1rem;">';
+        html += '<strong><i class="fas fa-globe"></i> Target:</strong> ';
+        html += `<code>${details.subdomain || details.url}</code>`;
+        html += '</div>';
+    }
+
+    return html;
+}
+
+function applyFilters() {
+    const searchFilter = document.getElementById('search-filter').value.toLowerCase();
+    const projectFilter = document.getElementById('project-filter').value;
+    const severityFilter = document.getElementById('severity-filter').value;
+    const typeFilter = document.getElementById('type-filter').value;
+    const ackFilter = document.getElementById('ack-filter').value;
+    const sortFilter = document.getElementById('sort-filter').value;
+
+    // Get all event rows
+    const tbody = document.querySelector('tbody');
+    const rows = Array.from(tbody.querySelectorAll('tr')).filter(row =>
+        row.id.startsWith('event-') && !row.id.includes('event-detail-')
+    );
+
+    let filteredRows = [];
+
+    // Filter rows
+    rows.forEach(row => {
+        const severity = row.querySelector('.badge').textContent.trim().toLowerCase();
+        const type = row.querySelector('code').textContent.trim();
+        const summary = row.querySelector('td:nth-child(3)').textContent.toLowerCase();
+        const projectId = row.dataset.projectId;
+        const ackCell = row.querySelector('td:nth-child(6)');
+        const isAcknowledged = ackCell.textContent.includes('Acknowledged');
+
+        let show = true;
+
+        // Search filter (search in summary which contains host, IP, subdomain info)
+        if (searchFilter && !summary.includes(searchFilter)) {
+            show = false;
+        }
+
+        // Project filter (now comparing project IDs)
+        if (projectFilter && projectId !== projectFilter) {
+            show = false;
+        }
+
+        // Severity filter
+        if (severityFilter && severity !== severityFilter) {
+            show = false;
+        }
+
+        // Type filter
+        if (typeFilter && type !== typeFilter) {
+            show = false;
+        }
+
+        // Acknowledge status filter
+        if (ackFilter === 'acknowledged' && !isAcknowledged) {
+            show = false;
+        } else if (ackFilter === 'unacknowledged' && isAcknowledged) {
+            show = false;
+        }
+
+        if (show) {
+            filteredRows.push(row);
+        }
+    });
+
+    // Sort filtered rows
+    const detailRows = {};
+
+    // Store detail rows temporarily
+    filteredRows.forEach(row => {
+        const eventId = row.id.replace('event-', '');
+        const detailRow = document.getElementById('event-detail-' + eventId);
+        if (detailRow) {
+            detailRows[eventId] = detailRow;
+        }
+    });
+
+    // Sort by time (using row index as proxy for time order)
+    if (sortFilter === 'asc') {
+        filteredRows.sort((a, b) => {
+            const indexA = parseInt(a.dataset.originalIndex || Array.from(rows).indexOf(a));
+            const indexB = parseInt(b.dataset.originalIndex || Array.from(rows).indexOf(b));
+            return indexA - indexB;
+        });
+    } else {
+        filteredRows.sort((a, b) => {
+            const indexA = parseInt(a.dataset.originalIndex || Array.from(rows).indexOf(a));
+            const indexB = parseInt(b.dataset.originalIndex || Array.from(rows).indexOf(b));
+            return indexB - indexA;
+        });
+    }
+
+    // Calculate pagination
+    const totalFiltered = filteredRows.length;
+    const totalPages = Math.ceil(totalFiltered / pageSize);
+
+    // Ensure current page is valid
+    if (currentPage > totalPages && totalPages > 0) {
+        currentPage = totalPages;
+    }
+    if (currentPage < 1) {
+        currentPage = 1;
+    }
+
+    const startIndex = (currentPage - 1) * pageSize;
+    const endIndex = startIndex + pageSize;
+    const pageRows = filteredRows.slice(startIndex, endIndex);
+
+    // Hide all rows first
+    rows.forEach(row => {
+        row.style.display = 'none';
+        const detailRow = document.getElementById('event-detail-' + row.id.replace('event-', ''));
+        if (detailRow) {
+            detailRow.style.display = 'none';
+        }
+    });
+
+    // Show only current page rows
+    pageRows.forEach((row, index) => {
+        if (!row.dataset.originalIndex) {
+            row.dataset.originalIndex = Array.from(rows).indexOf(row);
+        }
+
+        const eventId = row.id.replace('event-', '');
+        const detailRow = detailRows[eventId];
+
+        // Show row
+        row.style.display = '';
+
+        // Reorder in DOM
+        tbody.appendChild(row);
+        if (detailRow) {
+            tbody.appendChild(detailRow);
+        }
+    });
+
+    // Update count
+    if (totalFiltered === rows.length) {
+        document.getElementById('event-count').textContent = `Showing ${totalFiltered} events`;
+    } else {
+        document.getElementById('event-count').textContent = `Showing ${totalFiltered} of ${rows.length} events`;
+    }
+
+    // Render pagination controls
+    renderPagination(totalFiltered, totalPages);
+}
+
+function renderPagination(totalItems, totalPages) {
+    const paginationControls = document.getElementById('pagination-controls');
+
+    if (totalPages <= 1) {
+        paginationControls.innerHTML = '';
+        return;
+    }
+
+    let html = '';
+
+    // Previous button
+    html += `<button class="btn btn-sm btn-secondary" onclick="changePage(${currentPage - 1})" ${currentPage === 1 ? 'disabled' : ''}>
+                <i class="fas fa-chevron-left"></i> Prev
+             </button>`;
+
+    // Page numbers
+    const maxButtons = 5;
+    let startPage = Math.max(1, currentPage - Math.floor(maxButtons / 2));
+    let endPage = Math.min(totalPages, startPage + maxButtons - 1);
+
+    // Adjust start if we're near the end
+    if (endPage - startPage < maxButtons - 1) {
+        startPage = Math.max(1, endPage - maxButtons + 1);
+    }
+
+    // First page
+    if (startPage > 1) {
+        html += `<button class="btn btn-sm btn-secondary" onclick="changePage(1)">1</button>`;
+        if (startPage > 2) {
+            html += `<span style="padding: 0 0.5rem;">...</span>`;
+        }
+    }
+
+    // Page number buttons
+    for (let i = startPage; i <= endPage; i++) {
+        const active = i === currentPage ? 'btn-primary' : 'btn-secondary';
+        html += `<button class="btn btn-sm ${active}" onclick="changePage(${i})">${i}</button>`;
+    }
+
+    // Last page
+    if (endPage < totalPages) {
+        if (endPage < totalPages - 1) {
+            html += `<span style="padding: 0 0.5rem;">...</span>`;
+        }
+        html += `<button class="btn btn-sm btn-secondary" onclick="changePage(${totalPages})">${totalPages}</button>`;
+    }
+
+    // Next button
+    html += `<button class="btn btn-sm btn-secondary" onclick="changePage(${currentPage + 1})" ${currentPage === totalPages ? 'disabled' : ''}>
+                Next <i class="fas fa-chevron-right"></i>
+             </button>`;
+
+    // Page info
+    const startItem = (currentPage - 1) * pageSize + 1;
+    const endItem = Math.min(currentPage * pageSize, totalItems);
+    html += `<span style="margin-left: 1rem; color: #6c757d;">
+                Page ${currentPage} of ${totalPages} (${startItem}-${endItem} of ${totalItems})
+             </span>`;
+
+    paginationControls.innerHTML = html;
+}
+
+function changePage(page) {
+    currentPage = page;
+    applyFilters();
+    // Scroll to top of table
+    document.querySelector('.table-responsive').scrollIntoView({ behavior: 'smooth', block: 'start' });
+}
+
+function changePageSize() {
+    pageSize = parseInt(document.getElementById('page-size').value);
+    currentPage = 1; // Reset to first page
+    applyFilters();
+}
+
+function resetFilters() {
+    document.getElementById('search-filter').value = '';
+    document.getElementById('project-filter').value = '';
+    document.getElementById('severity-filter').value = '';
+    document.getElementById('type-filter').value = '';
+    document.getElementById('ack-filter').value = '';
+    document.getElementById('sort-filter').value = 'desc';
+    currentPage = 1; // Reset to first page
+    applyFilters();
+}
+
+function acknowledgeEvent(eventId) {
+    fetch(`/api/events/${eventId}`, {
+        method: 'PATCH',
+        headers: {'Content-Type': 'application/json'},
+        body: JSON.stringify({acknowledged: true, acknowledged_by: 'user'})
+    })
+    .then(() => {
+        showToast('Event acknowledged', 'success');
+        location.reload();
+    });
+}
+
+function refreshEvents() {
+    location.reload();
+}
+
+// Initialize count on page load
+document.addEventListener('DOMContentLoaded', () => {
+    applyFilters();
+});
+</script>
+{% endblock %}

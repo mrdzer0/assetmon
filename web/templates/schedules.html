@@ -1,0 +1,419 @@
+{% extends "base.html" %}
+
+{% block title %}Scheduled Jobs - Asset Monitor{% endblock %}
+
+{% block content %}
+<div class="schedules-page">
+    <div class="page-header">
+        <h2>Scheduled Scan Jobs</h2>
+        <div class="header-actions">
+            <button class="btn btn-secondary" onclick="refreshPage()">
+                <i class="fas fa-refresh"></i> Refresh
+            </button>
+        </div>
+    </div>
+
+    <!-- Summary Stats -->
+    <div class="section">
+        <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)); gap: 1rem; margin-bottom: 1rem;">
+            <div style="background: #f8f9fa; padding: 1rem; border-radius: 4px; border-left: 4px solid #007bff;">
+                <div style="font-size: 24px; font-weight: bold; color: #007bff;">
+                    {{ jobs|length }}
+                </div>
+                <div style="color: #6c757d;">Total Active Jobs</div>
+            </div>
+            <div style="background: #f8f9fa; padding: 1rem; border-radius: 4px; border-left: 4px solid #28a745;">
+                <div style="font-size: 24px; font-weight: bold; color: #28a745;">
+                    {% set normal_count = jobs|selectattr('scan_mode', 'defined')|selectattr('scan_mode', 'equalto', 'normal')|list|length %}
+                    {{ normal_count }}
+                </div>
+                <div style="color: #6c757d;">Normal Scans</div>
+            </div>
+            <div style="background: #f8f9fa; padding: 1rem; border-radius: 4px; border-left: 4px solid #ffc107;">
+                <div style="font-size: 24px; font-weight: bold; color: #ffc107;">
+                    {% set weekly_count = jobs|selectattr('scan_mode', 'defined')|selectattr('scan_mode', 'equalto', 'weekly')|list|length %}
+                    {{ weekly_count }}
+                </div>
+                <div style="color: #6c757d;">Weekly Scans</div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Jobs List -->
+    <div class="section">
+        {% if jobs|length == 0 %}
+        <div class="alert alert-info">
+            <i class="fas fa-info-circle"></i>
+            <strong>No scheduled jobs found.</strong> Create a project and configure scan schedules to see jobs here.
+        </div>
+        {% else %}
+        <div class="jobs-grid">
+            {% for job in jobs %}
+            <div class="job-card">
+                <div class="job-header">
+                    <div class="job-title">
+                        <i class="fas fa-clock"></i>
+                        {% if job.project is defined %}
+                        <strong>{{ job.project.name }}</strong>
+                        {% else %}
+                        <strong>{{ job.name }}</strong>
+                        {% endif %}
+                    </div>
+                    <div class="job-badge">
+                        {% if job.scan_mode == 'weekly' %}
+                        <span class="badge badge-warning">Weekly</span>
+                        {% else %}
+                        <span class="badge badge-success">Normal</span>
+                        {% endif %}
+                    </div>
+                </div>
+
+                <div class="job-body">
+                    <!-- Job ID -->
+                    <div class="job-info-row">
+                        <span class="info-label"><i class="fas fa-tag"></i> Job ID:</span>
+                        <span class="info-value"><code>{{ job.id }}</code></span>
+                    </div>
+
+                    <!-- Next Run -->
+                    <div class="job-info-row">
+                        <span class="info-label"><i class="fas fa-calendar-alt"></i> Next Run:</span>
+                        <span class="info-value">
+                            {% if job.next_run %}
+                            <strong style="color: #28a745;">{{ job.next_run.strftime('%Y-%m-%d %H:%M:%S') }}</strong>
+                            {% else %}
+                            <span class="text-muted">Not scheduled</span>
+                            {% endif %}
+                        </span>
+                    </div>
+
+                    <!-- Schedule (Cron) -->
+                    <div class="job-info-row">
+                        <span class="info-label"><i class="fas fa-cog"></i> Schedule:</span>
+                        <span class="info-value"><code>{{ job.trigger }}</code></span>
+                    </div>
+
+                    {% if job.project is defined %}
+                    <!-- Project Info -->
+                    <div class="job-info-row">
+                        <span class="info-label"><i class="fas fa-project-diagram"></i> Project:</span>
+                        <span class="info-value">
+                            <a href="/projects/{{ job.project_id }}" style="color: #007bff; text-decoration: none;">
+                                {{ job.project.name }}
+                            </a>
+                        </span>
+                    </div>
+
+                    <!-- Domains -->
+                    <div class="job-info-row">
+                        <span class="info-label"><i class="fas fa-globe"></i> Domains:</span>
+                        <span class="info-value">
+                            {% if job.project.domains %}
+                            <div style="margin-top: 0.25rem;">
+                                {% for domain in job.project.domains[:3] %}
+                                <code style="display: inline-block; margin: 2px;">{{ domain.name if domain.name is defined else domain }}</code>
+                                {% endfor %}
+                                {% if job.project.domains|length > 3 %}
+                                <span style="color: #6c757d;">+{{ job.project.domains|length - 3 }} more</span>
+                                {% endif %}
+                            </div>
+                            {% else %}
+                            <span class="text-muted">No domains</span>
+                            {% endif %}
+                        </span>
+                    </div>
+
+                    <!-- Scan Configuration -->
+                    {% if job.scan_config is defined %}
+                    <div class="job-info-row" style="margin-top: 0.5rem;">
+                        <span class="info-label"><i class="fas fa-list-check"></i> Scan Tools:</span>
+                        <span class="info-value">
+                            <div class="tools-badges">
+                                {% if job.scan_config.subdomains %}
+                                <span class="tool-badge enabled"><i class="fas fa-check"></i> Subdomains</span>
+                                {% else %}
+                                <span class="tool-badge disabled"><i class="fas fa-times"></i> Subdomains</span>
+                                {% endif %}
+
+                                {% if job.scan_config.dns %}
+                                <span class="tool-badge enabled"><i class="fas fa-check"></i> DNS</span>
+                                {% else %}
+                                <span class="tool-badge disabled"><i class="fas fa-times"></i> DNS</span>
+                                {% endif %}
+
+                                {% if job.scan_config.http %}
+                                <span class="tool-badge enabled"><i class="fas fa-check"></i> HTTP</span>
+                                {% else %}
+                                <span class="tool-badge disabled"><i class="fas fa-times"></i> HTTP</span>
+                                {% endif %}
+
+                                {% if job.scan_config.shodan %}
+                                <span class="tool-badge enabled"><i class="fas fa-check"></i> Shodan</span>
+                                {% else %}
+                                <span class="tool-badge disabled"><i class="fas fa-times"></i> Shodan</span>
+                                {% endif %}
+
+                                {% if job.scan_config.endpoints %}
+                                <span class="tool-badge enabled"><i class="fas fa-check"></i> Endpoints</span>
+                                {% else %}
+                                <span class="tool-badge disabled"><i class="fas fa-times"></i> Endpoints</span>
+                                {% endif %}
+                            </div>
+                        </span>
+                    </div>
+                    {% endif %}
+
+                    <!-- Last Scan -->
+                    {% if job.project is defined and job.project.last_scan_at %}
+                    <div class="job-info-row" style="margin-top: 0.5rem;">
+                        <span class="info-label"><i class="fas fa-history"></i> Last Scan:</span>
+                        <span class="info-value">{{ job.project.last_scan_at.strftime('%Y-%m-%d %H:%M:%S') }}</span>
+                    </div>
+                    {% endif %}
+                    {% endif %}
+                </div>
+
+                <div class="job-footer">
+                    {% if job.project_id is defined %}
+                    <a href="/projects/{{ job.project_id }}" class="btn btn-sm btn-primary">
+                        <i class="fas fa-eye"></i> View Project
+                    </a>
+                    <a href="/projects/{{ job.project_id }}/edit" class="btn btn-sm btn-secondary">
+                        <i class="fas fa-edit"></i> Edit Schedule
+                    </a>
+                    {% endif %}
+                </div>
+            </div>
+            {% endfor %}
+        </div>
+        {% endif %}
+    </div>
+
+    <!-- Cron Expression Guide -->
+    <div class="section">
+        <h3>Cron Expression Guide</h3>
+        <p>Scheduled jobs use cron expressions with the following format:</p>
+        <div class="cron-guide">
+            <code>minute hour day month day_of_week</code>
+        </div>
+        <table class="table" style="margin-top: 1rem;">
+            <thead>
+                <tr>
+                    <th>Field</th>
+                    <th>Allowed Values</th>
+                    <th>Special Characters</th>
+                </tr>
+            </thead>
+            <tbody>
+                <tr>
+                    <td>minute</td>
+                    <td>0-59</td>
+                    <td>* , - /</td>
+                </tr>
+                <tr>
+                    <td>hour</td>
+                    <td>0-23</td>
+                    <td>* , - /</td>
+                </tr>
+                <tr>
+                    <td>day</td>
+                    <td>1-31</td>
+                    <td>* , - /</td>
+                </tr>
+                <tr>
+                    <td>month</td>
+                    <td>1-12</td>
+                    <td>* , - /</td>
+                </tr>
+                <tr>
+                    <td>day_of_week</td>
+                    <td>0-6 (0=Sunday)</td>
+                    <td>* , - /</td>
+                </tr>
+            </tbody>
+        </table>
+
+        <h4 style="margin-top: 1rem;">Examples:</h4>
+        <ul>
+            <li><code>0 2 * * *</code> - Daily at 2:00 AM</li>
+            <li><code>0 */6 * * *</code> - Every 6 hours</li>
+            <li><code>0 3 * * 0</code> - Every Sunday at 3:00 AM</li>
+            <li><code>30 1 * * 1-5</code> - Every weekday at 1:30 AM</li>
+            <li><code>0 0 1 * *</code> - First day of every month at midnight</li>
+        </ul>
+    </div>
+</div>
+
+<style>
+.schedules-page .section {
+    background: white;
+    border-radius: 8px;
+    padding: 1.5rem;
+    margin-bottom: 1.5rem;
+    box-shadow: 0 1px 3px rgba(0, 0, 0, 0.1);
+}
+
+.schedules-page .section h3 {
+    margin-top: 0;
+    margin-bottom: 1rem;
+    color: #333;
+    border-bottom: 2px solid #007bff;
+    padding-bottom: 0.5rem;
+}
+
+.jobs-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fill, minmax(450px, 1fr));
+    gap: 1.5rem;
+}
+
+.job-card {
+    background: #f8f9fa;
+    border: 1px solid #dee2e6;
+    border-radius: 8px;
+    overflow: hidden;
+    transition: box-shadow 0.2s;
+}
+
+.job-card:hover {
+    box-shadow: 0 4px 12px rgba(0, 0, 0, 0.15);
+}
+
+.job-header {
+    background: linear-gradient(135deg, #007bff 0%, #0056b3 100%);
+    color: white;
+    padding: 1rem;
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+}
+
+.job-title {
+    font-size: 1.1rem;
+}
+
+.job-title i {
+    margin-right: 0.5rem;
+}
+
+.job-badge .badge {
+    font-size: 0.85rem;
+    padding: 0.35rem 0.6rem;
+}
+
+.job-body {
+    padding: 1rem;
+}
+
+.job-info-row {
+    display: flex;
+    justify-content: space-between;
+    padding: 0.5rem 0;
+    border-bottom: 1px solid #dee2e6;
+}
+
+.job-info-row:last-child {
+    border-bottom: none;
+}
+
+.info-label {
+    font-weight: 500;
+    color: #6c757d;
+    flex-shrink: 0;
+    margin-right: 1rem;
+}
+
+.info-label i {
+    margin-right: 0.25rem;
+    width: 16px;
+    text-align: center;
+}
+
+.info-value {
+    text-align: right;
+    flex-grow: 1;
+}
+
+.tools-badges {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 0.25rem;
+    justify-content: flex-end;
+    margin-top: 0.25rem;
+}
+
+.tool-badge {
+    display: inline-block;
+    padding: 0.25rem 0.5rem;
+    border-radius: 4px;
+    font-size: 0.75rem;
+    font-weight: 500;
+}
+
+.tool-badge.enabled {
+    background-color: #d4edda;
+    color: #155724;
+    border: 1px solid #c3e6cb;
+}
+
+.tool-badge.disabled {
+    background-color: #f8d7da;
+    color: #721c24;
+    border: 1px solid #f5c6cb;
+}
+
+.tool-badge i {
+    margin-right: 0.25rem;
+}
+
+.job-footer {
+    padding: 1rem;
+    background: white;
+    border-top: 1px solid #dee2e6;
+    display: flex;
+    gap: 0.5rem;
+}
+
+.alert-info {
+    background-color: #e7f3ff;
+    border: 1px solid #b3d9ff;
+    border-radius: 4px;
+    padding: 1rem;
+    color: #004085;
+}
+
+.cron-guide {
+    background: #f8f9fa;
+    padding: 1rem;
+    border-left: 4px solid #007bff;
+    border-radius: 4px;
+    font-family: monospace;
+    font-size: 1.1rem;
+}
+
+@media (max-width: 768px) {
+    .jobs-grid {
+        grid-template-columns: 1fr;
+    }
+
+    .job-info-row {
+        flex-direction: column;
+        gap: 0.25rem;
+    }
+
+    .info-value {
+        text-align: left;
+    }
+
+    .tools-badges {
+        justify-content: flex-start;
+    }
+}
+</style>
+
+<script>
+function refreshPage() {
+    location.reload();
+}
+</script>
+{% endblock %}

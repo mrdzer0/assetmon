@@ -1,0 +1,294 @@
+{% extends "base.html" %}
+
+{% block title %}Edit Project - {{ project.name }}{% endblock %}
+
+{% block content %}
+<div class="project-edit">
+    <div class="page-header">
+        <h2>Edit Project: {{ project.name }}</h2>
+    </div>
+
+    <div class="section">
+        <form id="projectForm" onsubmit="updateProject(event)">
+            <!-- Basic Info -->
+            <div class="form-group">
+                <label for="name">Project Name *</label>
+                <input type="text" id="name" name="name" class="form-control" required
+                       value="{{ project.name }}"
+                       placeholder="e.g., My Company Main">
+            </div>
+
+            <div class="form-group">
+                <label for="description">Description</label>
+                <textarea id="description" name="description" class="form-control"
+                          placeholder="Optional project description">{{ project.description or '' }}</textarea>
+            </div>
+
+            <!-- Domains -->
+            <div class="form-group">
+                <label for="domains">Domains *</label>
+                <textarea id="domains" name="domains" class="form-control" required
+                          placeholder="Enter domains (one per line)&#10;example.com&#10;example.org">{% if project.domains %}{% for domain in project.domains %}{% if domain.name is defined %}{{ domain.name }}{% else %}{{ domain }}{% endif %}
+{% endfor %}{% endif %}</textarea>
+                <small class="text-muted">One domain per line</small>
+            </div>
+
+            <!-- Tool Configuration -->
+            <h3 style="margin-top: 2rem;">Scan Configuration</h3>
+
+            {% set config = project.config or {} %}
+            {% set enabled_tools = config.get('enabled_tools', {}) %}
+            {% set subdomains_config = enabled_tools.get('subdomains', {}) %}
+            {% set dns_config = enabled_tools.get('dns', {}) %}
+            {% set http_config = enabled_tools.get('http', {}) %}
+            {% set shodan_config = enabled_tools.get('shodan', {}) %}
+            {% set endpoints_config = enabled_tools.get('endpoints', {}) %}
+            {% set subdomain_sources = subdomains_config.get('sources', ['subfinder', 'assetfinder', 'crtsh']) %}
+
+            <div class="form-group">
+                <label>
+                    <input type="checkbox" name="subdomain_enabled"
+                           {% if subdomains_config.get('enabled', True) %}checked{% endif %}>
+                    Enable Subdomain Discovery
+                </label>
+                <div style="margin-left: 1.5rem; margin-top: 0.5rem;">
+                    <label>
+                        <input type="checkbox" name="source_subfinder"
+                               {% if 'subfinder' in subdomain_sources %}checked{% endif %}>
+                        subfinder
+                    </label>
+                    <label style="margin-left: 1rem;">
+                        <input type="checkbox" name="source_assetfinder"
+                               {% if 'assetfinder' in subdomain_sources %}checked{% endif %}>
+                        assetfinder
+                    </label>
+                    <label style="margin-left: 1rem;">
+                        <input type="checkbox" name="source_crtsh"
+                               {% if 'crtsh' in subdomain_sources %}checked{% endif %}>
+                        crt.sh
+                    </label>
+                </div>
+            </div>
+
+            <div class="form-group">
+                <label>
+                    <input type="checkbox" name="dns_enabled"
+                           {% if dns_config.get('enabled', True) %}checked{% endif %}>
+                    Enable DNS Monitoring
+                </label>
+            </div>
+
+            <div class="form-group">
+                <label>
+                    <input type="checkbox" name="http_enabled"
+                           {% if http_config.get('enabled', True) %}checked{% endif %}>
+                    Enable HTTP Probing
+                </label>
+            </div>
+
+            <div class="form-group">
+                <label>
+                    <input type="checkbox" name="shodan_enabled"
+                           {% if shodan_config.get('enabled', False) %}checked{% endif %}>
+                    Enable Shodan Scanning
+                </label>
+                <small class="text-muted">Requires Shodan API key</small>
+            </div>
+
+            <div class="form-group">
+                <label>
+                    <input type="checkbox" name="endpoints_enabled"
+                           {% if endpoints_config.get('enabled', False) %}checked{% endif %}>
+                    Enable Endpoint Discovery (Weekly Scan Only)
+                </label>
+            </div>
+
+            <!-- Notification Configuration -->
+            <h3 style="margin-top: 2rem;">Notifications (Optional)</h3>
+
+            {% set notification_config = project.notification_config or {} %}
+            {% set slack_config = notification_config.get('slack', {}) %}
+            {% set discord_config = notification_config.get('discord', {}) %}
+            {% set telegram_config = notification_config.get('telegram', {}) %}
+            {% set min_severity = slack_config.get('min_severity') or discord_config.get('min_severity') or telegram_config.get('min_severity') or 'medium' %}
+
+            <div class="form-group">
+                <label for="slack_webhook">Slack Webhook URL</label>
+                <input type="url" id="slack_webhook" name="slack_webhook" class="form-control"
+                       value="{{ slack_config.get('webhook_url', '') }}"
+                       placeholder="https://hooks.slack.com/services/...">
+            </div>
+
+            <div class="form-group">
+                <label for="discord_webhook">Discord Webhook URL</label>
+                <input type="url" id="discord_webhook" name="discord_webhook" class="form-control"
+                       value="{{ discord_config.get('webhook_url', '') }}"
+                       placeholder="https://discord.com/api/webhooks/...">
+            </div>
+
+            <div class="form-group">
+                <label for="telegram_token">Telegram Bot Token</label>
+                <input type="text" id="telegram_token" name="telegram_token" class="form-control"
+                       value="{{ telegram_config.get('bot_token', '') }}"
+                       placeholder="123456:ABC-DEF1234ghIkl-zyx57W2v1u123ew11">
+            </div>
+
+            <div class="form-group">
+                <label for="telegram_chat">Telegram Chat ID</label>
+                <input type="text" id="telegram_chat" name="telegram_chat" class="form-control"
+                       value="{{ telegram_config.get('chat_id', '') }}"
+                       placeholder="123456789">
+            </div>
+
+            <div class="form-group">
+                <label for="min_severity">Minimum Severity for Notifications</label>
+                <select id="min_severity" name="min_severity" class="form-control">
+                    <option value="info" {% if min_severity == 'info' %}selected{% endif %}>Info (all events)</option>
+                    <option value="low" {% if min_severity == 'low' %}selected{% endif %}>Low</option>
+                    <option value="medium" {% if min_severity == 'medium' %}selected{% endif %}>Medium</option>
+                    <option value="high" {% if min_severity == 'high' %}selected{% endif %}>High</option>
+                    <option value="critical" {% if min_severity == 'critical' %}selected{% endif %}>Critical</option>
+                </select>
+            </div>
+
+            <!-- Project Status -->
+            <h3 style="margin-top: 2rem;">Project Status</h3>
+
+            <div class="form-group">
+                <label>
+                    <input type="checkbox" name="is_active"
+                           {% if project.is_active %}checked{% endif %}>
+                    Project is Active
+                </label>
+                <small class="text-muted">Inactive projects will not be scanned</small>
+            </div>
+
+            <!-- Submit -->
+            <div style="margin-top: 2rem;">
+                <button type="submit" class="btn btn-primary">
+                    <i class="fas fa-save"></i> Save Changes
+                </button>
+                <a href="/projects/{{ project.id }}" class="btn btn-secondary" style="margin-left: 0.5rem;">
+                    <i class="fas fa-times"></i> Cancel
+                </a>
+            </div>
+        </form>
+    </div>
+</div>
+{% endblock %}
+
+{% block extra_js %}
+<script>
+function updateProject(event) {
+    event.preventDefault();
+
+    const form = event.target;
+    const formData = new FormData(form);
+
+    // Parse domains
+    const domainsText = formData.get('domains');
+    const domains = domainsText.split('\n')
+        .map(d => d.trim())
+        .filter(d => d.length > 0);
+
+    // Build subdomain sources
+    const subdomainSources = [];
+    if (formData.get('source_subfinder')) subdomainSources.push('subfinder');
+    if (formData.get('source_assetfinder')) subdomainSources.push('assetfinder');
+    if (formData.get('source_crtsh')) subdomainSources.push('crtsh');
+
+    // Build config
+    const config = {
+        enabled_tools: {
+            subdomains: {
+                enabled: formData.get('subdomain_enabled') === 'on',
+                sources: subdomainSources
+            },
+            dns: {
+                enabled: formData.get('dns_enabled') === 'on'
+            },
+            http: {
+                enabled: formData.get('http_enabled') === 'on',
+                threads: 50
+            },
+            shodan: {
+                enabled: formData.get('shodan_enabled') === 'on'
+            },
+            endpoints: {
+                enabled: formData.get('endpoints_enabled') === 'on',
+                sources: ['waybackurls', 'gau'],
+                weekly_only: true
+            }
+        }
+    };
+
+    // Build notification config
+    const notificationConfig = {};
+
+    const slackWebhook = formData.get('slack_webhook');
+    if (slackWebhook) {
+        notificationConfig.slack = {
+            enabled: true,
+            webhook_url: slackWebhook,
+            min_severity: formData.get('min_severity')
+        };
+    }
+
+    const discordWebhook = formData.get('discord_webhook');
+    if (discordWebhook) {
+        notificationConfig.discord = {
+            enabled: true,
+            webhook_url: discordWebhook,
+            min_severity: formData.get('min_severity')
+        };
+    }
+
+    const telegramToken = formData.get('telegram_token');
+    const telegramChat = formData.get('telegram_chat');
+    if (telegramToken && telegramChat) {
+        notificationConfig.telegram = {
+            enabled: true,
+            bot_token: telegramToken,
+            chat_id: telegramChat,
+            min_severity: formData.get('min_severity')
+        };
+    }
+
+    // Build request
+    const data = {
+        name: formData.get('name'),
+        description: formData.get('description') || null,
+        domains: domains,
+        config: config,
+        notification_config: Object.keys(notificationConfig).length > 0 ? notificationConfig : null,
+        is_active: formData.get('is_active') === 'on'
+    };
+
+    // Submit
+    showToast('Updating project...', 'info');
+
+    fetch('/api/projects/{{ project.id }}', {
+        method: 'PUT',
+        headers: {'Content-Type': 'application/json'},
+        body: JSON.stringify(data)
+    })
+    .then(res => {
+        if (!res.ok) {
+            return res.json().then(err => { throw err; });
+        }
+        return res.json();
+    })
+    .then(project => {
+        showToast('Project updated successfully!', 'success');
+        setTimeout(() => {
+            window.location.href = '/projects/' + project.id;
+        }, 1000);
+    })
+    .catch(err => {
+        console.error('Error:', err);
+        const message = err.detail || err.message || 'Failed to update project';
+        showToast(message, 'error');
+    });
+}
+</script>
+{% endblock %}

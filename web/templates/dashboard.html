@@ -1,0 +1,189 @@
+{% extends "base.html" %}
+
+{% block title %}Dashboard - Asset Monitor{% endblock %}
+
+{% block content %}
+<div class="dashboard">
+    <div class="page-header">
+        <h2>Dashboard</h2>
+        <div class="header-actions">
+            <button class="btn btn-secondary" onclick="refreshStats()">
+                <i class="fas fa-refresh"></i> Refresh
+            </button>
+        </div>
+    </div>
+
+    <!-- Stats cards -->
+    <div class="stats-grid">
+        <div class="stat-card">
+            <div class="stat-icon" style="background: #3b82f6;">
+                <i class="fas fa-project-diagram"></i>
+            </div>
+            <div class="stat-content">
+                <h3>{{ total_projects }}</h3>
+                <p>Active Projects</p>
+            </div>
+        </div>
+
+        <div class="stat-card">
+            <div class="stat-icon" style="background: #10b981;">
+                <i class="fas fa-bell"></i>
+            </div>
+            <div class="stat-content">
+                <h3>{{ total_events_today }}</h3>
+                <p>Events Today</p>
+            </div>
+        </div>
+
+        <div class="stat-card">
+            <div class="stat-icon" style="background: #ef4444;">
+                <i class="fas fa-exclamation-triangle"></i>
+            </div>
+            <div class="stat-content">
+                <h3>{{ high_severity_events }}</h3>
+                <p>High Severity</p>
+            </div>
+        </div>
+
+        <div class="stat-card">
+            <div class="stat-icon" style="background: #8b5cf6;">
+                <i class="fas fa-clock"></i>
+            </div>
+            <div class="stat-content">
+                <h3 id="last-scan-time">-</h3>
+                <p>Last Scan</p>
+            </div>
+        </div>
+    </div>
+
+    <!-- Projects list -->
+    <div class="section">
+        <div class="section-header">
+            <h3>Projects</h3>
+            <a href="/projects/new" class="btn btn-primary">
+                <i class="fas fa-plus"></i> New Project
+            </a>
+        </div>
+
+        <div class="projects-grid">
+            {% for project in projects %}
+            <div class="project-card" onclick="window.location.href='/projects/{{ project.id }}'">
+                <div class="project-header">
+                    <h4>{{ project.name }}</h4>
+                    <span class="badge badge-success">Active</span>
+                </div>
+                <p class="project-description">{{ project.description or 'No description' }}</p>
+                <div class="project-stats">
+                    <div class="stat-item">
+                        <i class="fas fa-globe"></i>
+                        <span>{{ project.domains|length }} domains</span>
+                    </div>
+                    <div class="stat-item">
+                        <i class="fas fa-clock"></i>
+                        <span>
+                            {% if project.last_scan_at %}
+                                {{ project.last_scan_at.strftime('%Y-%m-%d %H:%M') }}
+                            {% else %}
+                                Never scanned
+                            {% endif %}
+                        </span>
+                    </div>
+                </div>
+                <div class="project-actions">
+                    <button class="btn btn-sm btn-primary" onclick="event.stopPropagation(); triggerScan({{ project.id }}, 'normal')">
+                        <i class="fas fa-play"></i> Scan
+                    </button>
+                    <a href="/projects/{{ project.id }}/edit" class="btn btn-sm btn-secondary" onclick="event.stopPropagation()">
+                        <i class="fas fa-edit"></i> Edit
+                    </a>
+                </div>
+            </div>
+            {% endfor %}
+
+            {% if not projects %}
+            <div class="empty-state">
+                <i class="fas fa-folder-open"></i>
+                <h3>No Projects Yet</h3>
+                <p>Create your first project to start monitoring</p>
+                <a href="/projects/new" class="btn btn-primary">
+                    <i class="fas fa-plus"></i> Create Project
+                </a>
+            </div>
+            {% endif %}
+        </div>
+    </div>
+
+    <!-- Recent scans -->
+    <div class="section">
+        <h3>Recent Scans</h3>
+        <div class="table-responsive">
+            <table class="table">
+                <thead>
+                    <tr>
+                        <th>Project</th>
+                        <th>Mode</th>
+                        <th>Status</th>
+                        <th>Started</th>
+                        <th>Duration</th>
+                        <th>Events</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    {% for scan in recent_scans %}
+                    <tr>
+                        <td>Project {{ scan.project_id }}</td>
+                        <td><span class="badge badge-info">{{ scan.scan_mode }}</span></td>
+                        <td>
+                            {% if scan.status == 'completed' %}
+                                <span class="badge badge-success">{{ scan.status }}</span>
+                            {% elif scan.status == 'running' %}
+                                <span class="badge badge-warning">{{ scan.status }}</span>
+                            {% else %}
+                                <span class="badge badge-danger">{{ scan.status }}</span>
+                            {% endif %}
+                        </td>
+                        <td>{{ scan.started_at.strftime('%Y-%m-%d %H:%M') }}</td>
+                        <td>
+                            {% if scan.completed_at %}
+                                {{ ((scan.completed_at - scan.started_at).total_seconds() / 60) | round(1) }} min
+                            {% else %}
+                                -
+                            {% endif %}
+                        </td>
+                        <td>{{ scan.events_generated or 0 }}</td>
+                    </tr>
+                    {% endfor %}
+                </tbody>
+            </table>
+        </div>
+    </div>
+</div>
+{% endblock %}
+
+{% block extra_js %}
+<script>
+function triggerScan(projectId, mode) {
+    if (!confirm(`Start ${mode} scan for project ${projectId}?`)) return;
+
+    showToast('Scan started...', 'info');
+
+    fetch('/api/scans/trigger', {
+        method: 'POST',
+        headers: {'Content-Type': 'application/json'},
+        body: JSON.stringify({project_id: projectId, mode: mode})
+    })
+    .then(res => res.json())
+    .then(data => {
+        showToast('Scan started successfully!', 'success');
+        setTimeout(() => location.reload(), 2000);
+    })
+    .catch(err => {
+        showToast('Failed to start scan: ' + err.message, 'error');
+    });
+}
+
+function refreshStats() {
+    location.reload();
+}
+</script>
+{% endblock %}
