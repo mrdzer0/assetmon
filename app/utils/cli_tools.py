@@ -277,10 +277,21 @@ def run_httpx(
     # Also get IP, CNAME, CDN info
     cmd.extend(["-ip", "-cname", "-cdn"])
 
-    # Write URLs to temp file
-    with tempfile.NamedTemporaryFile(mode='w', delete=False, suffix='.txt') as f:
-        f.write("\n".join(urls))
+    # Write URLs to temp file - close file explicitly to ensure flush
+    urls_file = None
+    try:
+        f = tempfile.NamedTemporaryFile(mode='w', delete=False, suffix='.txt')
         urls_file = f.name
+        content = "\n".join(urls)
+        f.write(content)
+        f.close()  # Explicitly close to ensure flush
+
+        logger.info(f"Writing {len(urls)} URLs to temp file: {urls_file}")
+    except Exception as e:
+        logger.error(f"Failed to write URLs to temp file: {e}")
+        if urls_file and os.path.exists(urls_file):
+            os.unlink(urls_file)
+        return []
 
     try:
         cmd.extend(["-list", urls_file])
