@@ -3,214 +3,242 @@
 {% block title %}Events - Asset Monitor{% endblock %}
 
 {% block content %}
-<div class="events-page">
-    <div class="page-header">
-        <h2>Events</h2>
-        <div class="header-actions">
-            <button class="btn btn-secondary" onclick="refreshEvents()">
-                <i class="fas fa-refresh"></i> Refresh
-            </button>
+<div class="events-page" style="padding: 1.5rem;">
+    <!-- Page Header -->
+    <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 2rem;">
+        <div>
+            <h2 style="margin: 0; font-size: 1.75rem; font-weight: 600; color: #1a202c;">
+                <i class="fas fa-bell" style="color: #667eea;"></i> Security Events
+            </h2>
+            <p style="margin: 0.5rem 0 0 0; color: #64748b; font-size: 0.875rem;">
+                Monitor and track security events across all projects
+            </p>
+        </div>
+        <button class="btn btn-primary" onclick="refreshEvents()" style="display: flex; align-items: center; gap: 0.5rem;">
+            <i class="fas fa-sync-alt"></i> Refresh
+        </button>
+    </div>
+
+    <!-- Quick Stats Cards -->
+    <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(240px, 1fr)); gap: 1.25rem; margin-bottom: 2rem;">
+        <div class="stat-card" style="background: linear-gradient(135deg, #667eea 0%, #764ba2 100%); color: white; padding: 1.5rem; border-radius: 12px; box-shadow: 0 4px 6px rgba(0,0,0,0.1);">
+            <div style="display: flex; justify-content: space-between; align-items: flex-start;">
+                <div>
+                    <div style="font-size: 0.875rem; opacity: 0.9; margin-bottom: 0.5rem;">Total Events</div>
+                    <div style="font-size: 2rem; font-weight: 700;">{{ total_events }}</div>
+                </div>
+                <div style="background: rgba(255,255,255,0.2); padding: 0.75rem; border-radius: 8px;">
+                    <i class="fas fa-list" style="font-size: 1.5rem;"></i>
+                </div>
+            </div>
+        </div>
+
+        <div class="stat-card" style="background: linear-gradient(135deg, #f093fb 0%, #f5576c 100%); color: white; padding: 1.5rem; border-radius: 12px; box-shadow: 0 4px 6px rgba(0,0,0,0.1);">
+            <div style="display: flex; justify-content: space-between; align-items: flex-start;">
+                <div>
+                    <div style="font-size: 0.875rem; opacity: 0.9; margin-bottom: 0.5rem;">Vulnerabilities</div>
+                    <div style="font-size: 2rem; font-weight: 700;">{{ vuln_count }}</div>
+                </div>
+                <div style="background: rgba(255,255,255,0.2); padding: 0.75rem; border-radius: 8px;">
+                    <i class="fas fa-bug" style="font-size: 1.5rem;"></i>
+                </div>
+            </div>
+        </div>
+
+        <div class="stat-card" style="background: linear-gradient(135deg, #fa709a 0%, #fee140 100%); color: white; padding: 1.5rem; border-radius: 12px; box-shadow: 0 4px 6px rgba(0,0,0,0.1);">
+            <div style="display: flex; justify-content: space-between; align-items: flex-start;">
+                <div>
+                    <div style="font-size: 0.875rem; opacity: 0.9; margin-bottom: 0.5rem;">New Ports</div>
+                    <div style="font-size: 2rem; font-weight: 700;">{{ port_count }}</div>
+                </div>
+                <div style="background: rgba(255,255,255,0.2); padding: 0.75rem; border-radius: 8px;">
+                    <i class="fas fa-network-wired" style="font-size: 1.5rem;"></i>
+                </div>
+            </div>
+        </div>
+
+        <div class="stat-card" style="background: linear-gradient(135deg, #4facfe 0%, #00f2fe 100%); color: white; padding: 1.5rem; border-radius: 12px; box-shadow: 0 4px 6px rgba(0,0,0,0.1);">
+            <div style="display: flex; justify-content: space-between; align-items: flex-start;">
+                <div>
+                    <div style="font-size: 0.875rem; opacity: 0.9; margin-bottom: 0.5rem;">DNS Changes</div>
+                    <div style="font-size: 2rem; font-weight: 700;">{{ dns_count }}</div>
+                </div>
+                <div style="background: rgba(255,255,255,0.2); padding: 0.75rem; border-radius: 8px;">
+                    <i class="fas fa-exchange-alt" style="font-size: 1.5rem;"></i>
+                </div>
+            </div>
         </div>
     </div>
 
-    <!-- Quick Stats -->
-    <div class="section">
-        <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)); gap: 1rem; margin-bottom: 1rem;">
-            <div style="background: #f8f9fa; padding: 1rem; border-radius: 4px; border-left: 4px solid #dc3545;">
-                <div style="font-size: 24px; font-weight: bold; color: #dc3545;">
-                    {% set vuln_count = namespace(value=0) %}
-                    {% for event in events %}
-                        {% if event.type.value == 'vulnerability_found' %}
-                            {% set vuln_count.value = vuln_count.value + 1 %}
-                        {% endif %}
-                    {% endfor %}
-                    {{ vuln_count.value }}
-                </div>
-                <div style="color: #6c757d;">Vulnerabilities Found</div>
-            </div>
-            <div style="background: #f8f9fa; padding: 1rem; border-radius: 4px; border-left: 4px solid #fd7e14;">
-                <div style="font-size: 24px; font-weight: bold; color: #fd7e14;">
-                    {% set port_count = namespace(value=0) %}
-                    {% for event in events %}
-                        {% if event.type.value == 'port_new' %}
-                            {% set port_count.value = port_count.value + 1 %}
-                        {% endif %}
-                    {% endfor %}
-                    {{ port_count.value }}
-                </div>
-                <div style="color: #6c757d;">New Open Ports</div>
-            </div>
-            <div style="background: #f8f9fa; padding: 1rem; border-radius: 4px; border-left: 4px solid #0056b3;">
-                <div style="font-size: 24px; font-weight: bold; color: #0056b3;">
-                    {% set dns_count = namespace(value=0) %}
-                    {% for event in events %}
-                        {% if event.type.value == 'dns_changed' %}
-                            {% set dns_count.value = dns_count.value + 1 %}
-                        {% endif %}
-                    {% endfor %}
-                    {{ dns_count.value }}
-                </div>
-                <div style="color: #6c757d;">DNS Changes</div>
-            </div>
-            <div style="background: #f8f9fa; padding: 1rem; border-radius: 4px; border-left: 4px solid #28a745;">
-                <div style="font-size: 24px; font-weight: bold; color: #28a745;">
-                    {{ events|length }}
-                </div>
-                <div style="color: #6c757d;">Total Events</div>
-            </div>
-        </div>
-    </div>
-
-    <!-- Filters -->
-    <div class="section">
-        <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)); gap: 1rem; margin-bottom: 1rem;">
-            <!-- Search Box -->
-            <input type="text" id="search-filter" class="form-control" placeholder="🔍 Search host, IP, subdomain..." oninput="applyFilters()">
-
-            <!-- Project Filter -->
-            <select id="project-filter" class="form-control" onchange="applyFilters()">
-                <option value="">All Projects</option>
-                {% for project in projects %}
-                <option value="{{ project.id }}">{{ project.name }}</option>
-                {% endfor %}
-            </select>
-
-            <!-- Severity Filter -->
-            <select id="severity-filter" class="form-control" onchange="applyFilters()">
-                <option value="">All Severities</option>
-                <option value="critical">Critical</option>
-                <option value="high">High</option>
-                <option value="medium">Medium</option>
-                <option value="low">Low</option>
-                <option value="info">Info</option>
-            </select>
-
-            <!-- Event Type Filter -->
-            <select id="type-filter" class="form-control" onchange="applyFilters()">
-                <option value="">All Event Types</option>
-                <option value="port_new">🔓 New Open Ports</option>
-                <option value="vulnerability_found">🐛 Vulnerabilities</option>
-                <option value="dns_changed">📡 DNS Changes</option>
-                <option value="http_status_changed">🌐 HTTP Status</option>
-                <option value="http_content_changed">📄 Content Changes</option>
-                <option value="subdomain_new">➕ New Subdomains</option>
-                <option value="subdomain_removed">➖ Removed Subdomains</option>
-                <option value="takeover_suspected">⚠️ Takeover Suspected</option>
-                <option value="endpoint_new">🔗 New Endpoints</option>
-            </select>
-
-            <!-- Acknowledge Status Filter -->
-            <select id="ack-filter" class="form-control" onchange="applyFilters()">
-                <option value="">All Status</option>
-                <option value="unacknowledged">Unacknowledged</option>
-                <option value="acknowledged">Acknowledged</option>
-            </select>
-
-            <!-- Sort Order -->
-            <select id="sort-filter" class="form-control" onchange="applyFilters()">
-                <option value="desc">Newest First</option>
-                <option value="asc">Oldest First</option>
-            </select>
-        </div>
-
-        <div style="display: flex; gap: 1rem; align-items: center; margin-bottom: 1rem;">
-            <button class="btn btn-secondary" onclick="resetFilters()">
-                <i class="fas fa-redo"></i> Reset All Filters
+    <!-- Filters Section -->
+    <div style="background: white; padding: 1.5rem; border-radius: 12px; box-shadow: 0 1px 3px rgba(0,0,0,0.1); margin-bottom: 1.5rem;">
+        <div style="display: flex; align-items: center; margin-bottom: 1rem;">
+            <i class="fas fa-filter" style="color: #667eea; margin-right: 0.5rem;"></i>
+            <h3 style="margin: 0; font-size: 1rem; font-weight: 600; color: #1a202c;">Filters</h3>
+            <button class="btn btn-sm btn-secondary" onclick="resetFilters()" style="margin-left: auto; display: flex; align-items: center; gap: 0.5rem;">
+                <i class="fas fa-redo"></i> Reset
             </button>
-
-            <div style="margin-left: auto; color: #6c757d; font-weight: 500;">
-                <span id="event-count"></span>
-            </div>
         </div>
 
-        <!-- Pagination Controls -->
-        <div style="display: flex; justify-content: space-between; align-items: center; padding: 0.5rem 0;">
+        <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)); gap: 1rem;">
             <div>
-                <label>Show
-                    <select id="page-size" class="form-control" style="display: inline-block; width: auto;" onchange="changePageSize()">
+                <label style="display: block; font-size: 0.875rem; font-weight: 500; color: #475569; margin-bottom: 0.5rem;">
+                    <i class="fas fa-search"></i> Search
+                </label>
+                <input type="text" id="search-filter" class="form-control" placeholder="Search events..." oninput="applyFilters()">
+            </div>
+
+            <div>
+                <label style="display: block; font-size: 0.875rem; font-weight: 500; color: #475569; margin-bottom: 0.5rem;">
+                    <i class="fas fa-folder"></i> Project
+                </label>
+                <select id="project-filter" class="form-control" onchange="applyFilters()">
+                    <option value="">All Projects</option>
+                    {% for project in projects %}
+                    <option value="{{ project.id }}">{{ project.name }}</option>
+                    {% endfor %}
+                </select>
+            </div>
+
+            <div>
+                <label style="display: block; font-size: 0.875rem; font-weight: 500; color: #475569; margin-bottom: 0.5rem;">
+                    <i class="fas fa-exclamation-circle"></i> Severity
+                </label>
+                <select id="severity-filter" class="form-control" onchange="applyFilters()">
+                    <option value="">All Severities</option>
+                    <option value="critical">Critical</option>
+                    <option value="high">High</option>
+                    <option value="medium">Medium</option>
+                    <option value="low">Low</option>
+                    <option value="info">Info</option>
+                </select>
+            </div>
+
+            <div>
+                <label style="display: block; font-size: 0.875rem; font-weight: 500; color: #475569; margin-bottom: 0.5rem;">
+                    <i class="fas fa-tag"></i> Event Type
+                </label>
+                <select id="type-filter" class="form-control" onchange="applyFilters()">
+                    <option value="">All Types</option>
+                    <option value="port_new">New Ports</option>
+                    <option value="vulnerability_found">Vulnerabilities</option>
+                    <option value="dns_changed">DNS Changes</option>
+                    <option value="http_status_changed">HTTP Status</option>
+                    <option value="http_content_changed">Content Changes</option>
+                    <option value="subdomain_new">New Subdomains</option>
+                    <option value="subdomain_removed">Removed Subdomains</option>
+                    <option value="takeover_suspected">Takeover Suspected</option>
+                    <option value="endpoint_new">New Endpoints</option>
+                </select>
+            </div>
+
+            <div>
+                <label style="display: block; font-size: 0.875rem; font-weight: 500; color: #475569; margin-bottom: 0.5rem;">
+                    <i class="fas fa-check-circle"></i> Status
+                </label>
+                <select id="ack-filter" class="form-control" onchange="applyFilters()">
+                    <option value="">All Status</option>
+                    <option value="unacknowledged">Unacknowledged</option>
+                    <option value="acknowledged">Acknowledged</option>
+                </select>
+            </div>
+
+            <div>
+                <label style="display: block; font-size: 0.875rem; font-weight: 500; color: #475569; margin-bottom: 0.5rem;">
+                    <i class="fas fa-sort"></i> Sort Order
+                </label>
+                <select id="sort-filter" class="form-control" onchange="applyFilters()">
+                    <option value="desc">Newest First</option>
+                    <option value="asc">Oldest First</option>
+                </select>
+            </div>
+        </div>
+
+        <div style="display: flex; justify-content: space-between; align-items: center; margin-top: 1rem; padding-top: 1rem; border-top: 1px solid #e2e8f0;">
+            <div style="color: #64748b; font-size: 0.875rem; font-weight: 500;">
+                <i class="fas fa-info-circle"></i> <span id="event-count">Loading...</span>
+            </div>
+            <div>
+                <label style="font-size: 0.875rem; color: #475569; display: flex; align-items: center; gap: 0.5rem;">
+                    Show
+                    <select id="page-size" class="form-control" style="width: auto; display: inline-block;" onchange="changePageSize()">
                         <option value="25">25</option>
                         <option value="50" selected>50</option>
                         <option value="100">100</option>
                         <option value="200">200</option>
                     </select>
-                    events per page
+                    per page
                 </label>
-            </div>
-            <div id="pagination-controls" style="display: flex; gap: 0.5rem; align-items: center;">
-                <!-- Pagination buttons will be inserted here -->
             </div>
         </div>
     </div>
 
-    <!-- Events table -->
-    <div class="section">
-        <div class="table-responsive">
-            <table class="table">
-                <thead>
+    <!-- Events Table -->
+    <div style="background: white; border-radius: 12px; box-shadow: 0 1px 3px rgba(0,0,0,0.1); overflow: hidden;">
+        <!-- Loading Indicator -->
+        <div id="loading-indicator" style="display: none; padding: 3rem; text-align: center;">
+            <i class="fas fa-spinner fa-spin" style="font-size: 2rem; color: #667eea;"></i>
+            <p style="margin-top: 1rem; color: #64748b;">Loading events...</p>
+        </div>
+
+        <!-- Table Container -->
+        <div id="table-container" style="overflow-x: auto;">
+            <table class="table" style="margin: 0; width: 100%;">
+                <thead style="background: linear-gradient(to right, #667eea, #764ba2); color: white;">
                     <tr>
-                        <th>Severity</th>
-                        <th>Type</th>
-                        <th>Summary</th>
-                        <th>Project</th>
-                        <th>Time</th>
-                        <th>Actions</th>
+                        <th style="padding: 1rem; font-weight: 600;">Severity</th>
+                        <th style="padding: 1rem; font-weight: 600;">Type</th>
+                        <th style="padding: 1rem; font-weight: 600;">Summary</th>
+                        <th style="padding: 1rem; font-weight: 600;">Project</th>
+                        <th style="padding: 1rem; font-weight: 600;">Time</th>
+                        <th style="padding: 1rem; font-weight: 600; text-align: center;">Actions</th>
                     </tr>
                 </thead>
-                <tbody>
-                    {% for event in events %}
-                    <tr id="event-{{ event.id }}" data-project-id="{{ event.project_id }}">
-                        <td>
-                            <span class="badge badge-{{ event.severity.value }}">
-                                {{ event.severity.value }}
-                            </span>
-                        </td>
-                        <td><code>{{ event.type.value }}</code></td>
-                        <td>{{ event.summary }}</td>
-                        <td>{{ project_map.get(event.project_id, 'Project ' ~ event.project_id) }}</td>
-                        <td>{{ event.created_at.strftime('%Y-%m-%d %H:%M') }}</td>
-                        <td>
-                            {% if event.details %}
-                            <button class="btn btn-sm btn-primary" onclick="showEventDetail({{ event.id }})">
-                                <i class="fas fa-info-circle"></i> Detail
-                            </button>
-                            {% endif %}
-                            {% if not event.acknowledged %}
-                            <button class="btn btn-sm btn-success" onclick="acknowledgeEvent({{ event.id }})">
-                                <i class="fas fa-check"></i>
-                            </button>
-                            {% else %}
-                            <span class="badge badge-success">Acknowledged</span>
-                            {% endif %}
-                        </td>
-                    </tr>
-                    <tr id="event-detail-{{ event.id }}" style="display: none;">
-                        <td colspan="6">
-                            <div class="event-detail-box">
-                                <h4><i class="fas fa-info-circle"></i> Event Details</h4>
-                                <div id="event-detail-content-{{ event.id }}">
-                                    <!-- Detail will be loaded here -->
-                                </div>
-                            </div>
-                        </td>
-                    </tr>
-                    {% endfor %}
+                <tbody id="events-tbody">
+                    <!-- Events will be loaded here via AJAX -->
                 </tbody>
             </table>
+        </div>
+
+        <!-- Empty State -->
+        <div id="empty-state" style="display: none; padding: 3rem; text-align: center;">
+            <i class="fas fa-inbox" style="font-size: 3rem; color: #cbd5e1;"></i>
+            <p style="margin-top: 1rem; color: #64748b; font-size: 1rem; font-weight: 500;">No events found</p>
+            <p style="color: #94a3b8; font-size: 0.875rem;">Try adjusting your filters or check back later</p>
+        </div>
+
+        <!-- Pagination -->
+        <div style="padding: 1rem 1.5rem; background: #f8fafc; border-top: 1px solid #e2e8f0; display: flex; justify-content: space-between; align-items: center; flex-wrap: wrap; gap: 1rem;">
+            <div id="pagination-info" style="color: #64748b; font-size: 0.875rem; font-weight: 500;">
+                <!-- Pagination info will be inserted here -->
+            </div>
+            <div id="pagination-controls" style="display: flex; gap: 0.5rem; align-items: center; flex-wrap: wrap;">
+                <!-- Pagination buttons will be inserted here -->
+            </div>
         </div>
     </div>
 </div>
 
 <style>
-.event-detail-box {
-    background: #f8f9fa;
-    border-left: 4px solid #007bff;
-    padding: 1.5rem;
-    margin: 1rem 0;
+/* Event row hover effect */
+.event-row:hover {
+    background: #f8fafc !important;
 }
 
-.event-detail-box h4 {
-    margin-top: 0;
-    color: #007bff;
+/* Improved detail box styles */
+.event-detail-box {
+    animation: slideDown 0.3s ease-out;
+}
+
+@keyframes slideDown {
+    from {
+        opacity: 0;
+        transform: translateY(-10px);
+    }
+    to {
+        opacity: 1;
+        transform: translateY(0);
+    }
 }
 
 .detail-comparison {
@@ -221,24 +249,26 @@
 }
 
 .detail-column {
-    background: white;
-    border: 1px solid #dee2e6;
-    border-radius: 4px;
+    background: #f8fafc;
+    border: 1px solid #e2e8f0;
+    border-radius: 8px;
     padding: 1rem;
 }
 
 .detail-column h5 {
-    margin-top: 0;
+    margin: 0 0 0.75rem 0;
     padding-bottom: 0.5rem;
-    border-bottom: 2px solid #dee2e6;
+    border-bottom: 2px solid #e2e8f0;
+    font-size: 0.875rem;
+    font-weight: 600;
 }
 
 .detail-column.old-value h5 {
-    color: #dc3545;
+    color: #dc2626;
 }
 
 .detail-column.new-value h5 {
-    color: #28a745;
+    color: #10b981;
 }
 
 .detail-list {
@@ -248,29 +278,92 @@
 }
 
 .detail-list li {
-    padding: 0.25rem 0;
+    padding: 0.375rem 0;
     font-family: monospace;
+    font-size: 0.875rem;
 }
 
 .detail-added {
-    color: #28a745;
-    font-weight: bold;
+    color: #10b981;
+    font-weight: 600;
 }
 
 .detail-removed {
-    color: #dc3545;
-    font-weight: bold;
+    color: #dc2626;
+    font-weight: 600;
 }
 
 .detail-info {
-    background: #e7f3ff;
-    padding: 0.75rem;
-    border-radius: 4px;
+    background: #eff6ff;
+    padding: 1rem;
+    border-radius: 8px;
     margin-top: 1rem;
+    border-left: 4px solid #3b82f6;
 }
 
 .detail-info strong {
-    color: #0056b3;
+    color: #1e40af;
+}
+
+/* Pagination button styles */
+.pagination-btn {
+    padding: 0.5rem 0.75rem;
+    border: 1px solid #e2e8f0;
+    background: white;
+    color: #475569;
+    border-radius: 6px;
+    font-size: 0.875rem;
+    font-weight: 500;
+    cursor: pointer;
+    transition: all 0.2s;
+}
+
+.pagination-btn:hover:not(:disabled) {
+    background: #f1f5f9;
+    border-color: #cbd5e1;
+}
+
+.pagination-btn:disabled {
+    opacity: 0.5;
+    cursor: not-allowed;
+}
+
+.pagination-btn.active {
+    background: #667eea;
+    color: white;
+    border-color: #667eea;
+}
+
+/* Stat card hover effect */
+.stat-card {
+    transition: transform 0.2s, box-shadow 0.2s;
+}
+
+.stat-card:hover {
+    transform: translateY(-2px);
+    box-shadow: 0 8px 12px rgba(0,0,0,0.15);
+}
+
+@keyframes slideIn {
+    from {
+        transform: translateX(100%);
+        opacity: 0;
+    }
+    to {
+        transform: translateX(0);
+        opacity: 1;
+    }
+}
+
+@keyframes slideOut {
+    from {
+        transform: translateX(0);
+        opacity: 1;
+    }
+    to {
+        transform: translateX(100%);
+        opacity: 0;
+    }
 }
 </style>
 
@@ -278,638 +371,273 @@
 // Pagination state
 let currentPage = 1;
 let pageSize = 50;
-
-function showEventDetail(eventId) {
-    const detailRow = document.getElementById(`event-detail-${eventId}`);
-    const contentDiv = document.getElementById(`event-detail-content-${eventId}`);
-
-    // Toggle visibility
-    if (detailRow.style.display === 'none') {
-        // Load event details via API
-        fetch(`/api/events/${eventId}`)
-            .then(res => res.json())
-            .then(event => {
-                contentDiv.innerHTML = formatEventDetails(event);
-                detailRow.style.display = 'table-row';
-            })
-            .catch(err => {
-                contentDiv.innerHTML = '<p class="text-danger">Failed to load event details</p>';
-                detailRow.style.display = 'table-row';
-            });
-    } else {
-        detailRow.style.display = 'none';
-    }
-}
-
-function formatEventDetails(event) {
-    if (!event.details) {
-        return '<p>No additional details available</p>';
-    }
-
-    const details = event.details;
-    let html = '';
-
-    // DNS A Record Changes
-    if (details.change_type === 'a_record') {
-        html += '<div class="detail-comparison">';
-
-        // Old IPs
-        html += '<div class="detail-column old-value">';
-        html += '<h5><i class="fas fa-clock"></i> Previous A Records</h5>';
-        if (details.old_ips && details.old_ips.length > 0) {
-            html += '<ul class="detail-list">';
-            details.old_ips.forEach(ip => {
-                html += `<li><code>${ip}</code></li>`;
-            });
-            html += '</ul>';
-        } else {
-            html += '<p class="text-muted">No records</p>';
-        }
-        html += '</div>';
-
-        // New IPs
-        html += '<div class="detail-column new-value">';
-        html += '<h5><i class="fas fa-check-circle"></i> Current A Records</h5>';
-        if (details.new_ips && details.new_ips.length > 0) {
-            html += '<ul class="detail-list">';
-            details.new_ips.forEach(ip => {
-                html += `<li><code>${ip}</code></li>`;
-            });
-            html += '</ul>';
-        } else {
-            html += '<p class="text-muted">No records</p>';
-        }
-        html += '</div>';
-
-        html += '</div>';
-
-        // Summary of changes
-        html += '<div class="detail-info">';
-        if (details.added_ips && details.added_ips.length > 0) {
-            html += '<p class="detail-added"><i class="fas fa-plus-circle"></i> Added IPs: ' + details.added_ips.join(', ') + '</p>';
-        }
-        if (details.removed_ips && details.removed_ips.length > 0) {
-            html += '<p class="detail-removed"><i class="fas fa-minus-circle"></i> Removed IPs: ' + details.removed_ips.join(', ') + '</p>';
-        }
-        html += '</div>';
-    }
-
-    // DNS CNAME Changes
-    else if (details.change_type === 'cname') {
-        html += '<div class="detail-comparison">';
-
-        // Old CNAMEs
-        html += '<div class="detail-column old-value">';
-        html += '<h5><i class="fas fa-clock"></i> Previous CNAME Records</h5>';
-        if (details.old_cnames && details.old_cnames.length > 0) {
-            html += '<ul class="detail-list">';
-            details.old_cnames.forEach(cname => {
-                html += `<li><code>${cname}</code></li>`;
-            });
-            html += '</ul>';
-        } else {
-            html += '<p class="text-muted">No records</p>';
-        }
-        html += '</div>';
-
-        // New CNAMEs
-        html += '<div class="detail-column new-value">';
-        html += '<h5><i class="fas fa-check-circle"></i> Current CNAME Records</h5>';
-        if (details.new_cnames && details.new_cnames.length > 0) {
-            html += '<ul class="detail-list">';
-            details.new_cnames.forEach(cname => {
-                html += `<li><code>${cname}</code></li>`;
-            });
-            html += '</ul>';
-        } else {
-            html += '<p class="text-muted">No records</p>';
-        }
-        html += '</div>';
-
-        html += '</div>';
-
-        // Summary of changes
-        html += '<div class="detail-info">';
-        if (details.added_cnames && details.added_cnames.length > 0) {
-            html += '<p class="detail-added"><i class="fas fa-plus-circle"></i> Added CNAMEs: ' + details.added_cnames.join(', ') + '</p>';
-        }
-        if (details.removed_cnames && details.removed_cnames.length > 0) {
-            html += '<p class="detail-removed"><i class="fas fa-minus-circle"></i> Removed CNAMEs: ' + details.removed_cnames.join(', ') + '</p>';
-        }
-        html += '</div>';
-    }
-
-    // HTTP Status Changes
-    else if (details.old_status !== undefined && details.new_status !== undefined) {
-        html += '<div class="detail-comparison">';
-
-        html += '<div class="detail-column old-value">';
-        html += '<h5><i class="fas fa-clock"></i> Previous Status</h5>';
-        html += `<p><code>${details.old_status}</code></p>`;
-        html += '</div>';
-
-        html += '<div class="detail-column new-value">';
-        html += '<h5><i class="fas fa-check-circle"></i> Current Status</h5>';
-        html += `<p><code>${details.new_status}</code></p>`;
-        html += '</div>';
-
-        html += '</div>';
-    }
-
-    // HTTP Title Changes
-    else if (details.old_title !== undefined && details.new_title !== undefined) {
-        html += '<div class="detail-comparison">';
-
-        html += '<div class="detail-column old-value">';
-        html += '<h5><i class="fas fa-clock"></i> Previous Title</h5>';
-        html += `<p>${details.old_title || '(empty)'}</p>`;
-        html += '</div>';
-
-        html += '<div class="detail-column new-value">';
-        html += '<h5><i class="fas fa-check-circle"></i> Current Title</h5>';
-        html += `<p>${details.new_title || '(empty)'}</p>`;
-        html += '</div>';
-
-        html += '</div>';
-    }
-
-    // New Port Detected (Shodan) - has hostnames field
-    else if (details.port !== undefined && details.ip && details.hostnames !== undefined) {
-        html += '<div class="detail-info">';
-        html += '<h5><i class="fas fa-network-wired"></i> New Port Discovered</h5>';
-        html += `<p><strong>IP Address:</strong> <code>${details.ip}</code></p>`;
-        html += `<p><strong>Port:</strong> <code>${details.port}</code></p>`;
-
-        if (details.subdomains && details.subdomains.length > 0) {
-            html += `<p><strong>Related Subdomains:</strong></p>`;
-            html += '<ul class="detail-list">';
-            details.subdomains.forEach(subdomain => {
-                html += `<li><code>${subdomain}</code></li>`;
-            });
-            html += '</ul>';
-        }
-
-        if (details.hostnames && details.hostnames.length > 0) {
-            html += `<p><strong>Shodan Hostnames:</strong> ${details.hostnames.map(h => `<code>${h}</code>`).join(', ')}</p>`;
-        }
-        html += '</div>';
-    }
-
-    // Port Removed (Shodan) - no hostnames field
-    else if (details.port !== undefined && details.ip && details.hostnames === undefined && !details.cve) {
-        html += '<div class="detail-info" style="border-left: 4px solid #6c757d;">';
-        html += '<h5 style="color: #6c757d;"><i class="fas fa-times-circle"></i> Port Closed</h5>';
-        html += `<p><strong>IP Address:</strong> <code>${details.ip}</code></p>`;
-        html += `<p><strong>Port:</strong> <code>${details.port}</code></p>`;
-
-        if (details.subdomains && details.subdomains.length > 0) {
-            html += `<p><strong>Related Subdomains:</strong></p>`;
-            html += '<ul class="detail-list">';
-            details.subdomains.forEach(subdomain => {
-                html += `<li><code>${subdomain}</code></li>`;
-            });
-            html += '</ul>';
-        }
-        html += '</div>';
-    }
-
-    // Vulnerability Found (Shodan)
-    else if (details.cve !== undefined && details.ip) {
-        html += '<div class="detail-info" style="border-left: 4px solid #dc3545;">';
-        html += '<h5 style="color: #dc3545;"><i class="fas fa-bug"></i> Vulnerability Details</h5>';
-        html += `<p><strong>CVE ID:</strong> <code>${details.cve}</code></p>`;
-        html += `<p><strong>IP Address:</strong> <code>${details.ip}</code></p>`;
-
-        if (details.subdomains && details.subdomains.length > 0) {
-            html += `<p><strong>Affected Subdomains:</strong></p>`;
-            html += '<ul class="detail-list">';
-            details.subdomains.forEach(subdomain => {
-                html += `<li><code>${subdomain}</code></li>`;
-            });
-            html += '</ul>';
-        }
-
-        if (details.hostnames && details.hostnames.length > 0) {
-            html += `<p><strong>Shodan Hostnames:</strong> ${details.hostnames.map(h => `<code>${h}</code>`).join(', ')}</p>`;
-        }
-
-        html += `<p style="margin-top: 1rem;"><a href="https://nvd.nist.gov/vuln/detail/${details.cve}" target="_blank" class="btn btn-sm btn-danger">`;
-        html += '<i class="fas fa-external-link-alt"></i> View on NVD</a></p>';
-        html += '</div>';
-    }
-
-    // Sensitive Accessible Endpoint Events
-    else if (details.change_type === 'sensitive_accessible') {
-        html += '<div class="detail-info" style="border-left: 4px solid #dc3545;">';
-        html += '<h5 style="color: #dc3545;"><i class="fas fa-exclamation-triangle"></i> Sensitive Endpoint Accessible</h5>';
-        html += `<p><strong>URL:</strong><br><code style="word-break: break-all;">${details.url}</code></p>`;
-
-        if (details.status_code) {
-            html += `<p><strong>Status Code:</strong> <span class="badge badge-success">${details.status_code}</span></p>`;
-        }
-
-        if (details.title) {
-            html += `<p><strong>Page Title:</strong> ${details.title}</p>`;
-        }
-
-        // Display categories
-        if (details.categories && details.categories.length > 0) {
-            html += '<p><strong>Detected Categories:</strong></p>';
-            html += '<div style="display: flex; flex-wrap: wrap; gap: 0.5rem; margin-bottom: 1rem;">';
-            details.categories.forEach(cat => {
-                html += `<span class="badge" style="background-color: ${cat.color}; color: white;">`;
-                html += `<i class="fas ${cat.icon}"></i> ${cat.name} - ${cat.description}`;
-                html += '</span>';
-            });
-            html += '</div>';
-        }
-
-        // Display matched keywords
-        if (details.matched_keywords && details.matched_keywords.length > 0) {
-            html += '<p><strong>Matched Keywords:</strong></p>';
-            html += '<div style="display: flex; flex-wrap: wrap; gap: 0.25rem; margin-bottom: 1rem;">';
-            details.matched_keywords.forEach(keyword => {
-                html += `<span class="badge badge-warning">${keyword}</span>`;
-            });
-            html += '</div>';
-        }
-
-        // Display matched extensions
-        if (details.matched_extensions && details.matched_extensions.length > 0) {
-            html += '<p><strong>Matched Extensions:</strong></p>';
-            html += '<div style="display: flex; flex-wrap: wrap; gap: 0.25rem; margin-bottom: 1rem;">';
-            details.matched_extensions.forEach(ext => {
-                html += `<span class="badge badge-danger">${ext}</span>`;
-            });
-            html += '</div>';
-        }
-
-        // Severity warning
-        const severityColor = details.severity === 'high' ? '#dc3545' : (details.severity === 'medium' ? '#ffc107' : '#17a2b8');
-        html += `<p><strong>Severity:</strong> <span style="color: ${severityColor}; font-weight: bold;">${(details.severity || 'medium').toUpperCase()}</span></p>`;
-
-        html += '<div style="background: #fff3cd; padding: 0.75rem; border-radius: 4px; margin-top: 1rem;">';
-        html += '<strong>⚠️ Security Note:</strong> This endpoint contains sensitive patterns and is publicly accessible (HTTP 200). ';
-        html += 'Please verify:';
-        html += '<ul style="margin: 0.5rem 0 0 1.5rem;">';
-        html += '<li>Is authentication required?</li>';
-        html += '<li>Should this endpoint be publicly accessible?</li>';
-        html += '<li>Are there any exposed sensitive files or configurations?</li>';
-        html += '</ul>';
-        html += '</div>';
-
-        html += '<div style="margin-top: 1rem;">';
-        html += `<a href="${details.url}" target="_blank" class="btn btn-sm btn-primary">`;
-        html += '<i class="fas fa-external-link-alt"></i> Open URL</a>';
-        html += '</div>';
-
-        html += '</div>';
-    }
-
-    // JS File Events
-    else if (details.file_type === 'javascript' || details.url) {
-        const changeType = details.change_type || 'unknown';
-
-        if (changeType === 'new') {
-            html += '<div class="detail-info" style="border-left: 4px solid #17a2b8;">';
-            html += '<h5 style="color: #17a2b8;"><i class="fas fa-file-code"></i> New JavaScript File</h5>';
-            html += `<p><strong>URL:</strong><br><code style="word-break: break-all;">${details.url}</code></p>`;
-
-            if (details.status) {
-                const statusColor = details.status === 'active' ? '#28a745' : '#dc3545';
-                html += `<p><strong>Status:</strong> <span style="color: ${statusColor};">${details.status.toUpperCase()}</span></p>`;
-            }
-
-            if (details.is_active !== undefined) {
-                html += `<p><strong>Accessible:</strong> ${details.is_active ? '✅ Yes (HTTP 200)' : '❌ No'}</p>`;
-            }
-
-            html += '</div>';
-
-        } else if (changeType === 'removed') {
-            html += '<div class="detail-info" style="border-left: 4px solid #6c757d;">';
-            html += '<h5 style="color: #6c757d;"><i class="fas fa-trash"></i> JavaScript File Removed</h5>';
-            html += `<p><strong>URL:</strong><br><code style="word-break: break-all;">${details.url}</code></p>`;
-            html += '<p style="color: #6c757d;"><em>This file is no longer available or was not found in latest scan.</em></p>';
-            html += '</div>';
-
-        } else if (changeType === 'status_changed') {
-            html += '<div class="detail-info" style="border-left: 4px solid #ffc107;">';
-            html += '<h5 style="color: #ffc107;"><i class="fas fa-exchange-alt"></i> Status Changed</h5>';
-            html += `<p><strong>URL:</strong><br><code style="word-break: break-all;">${details.url}</code></p>`;
-
-            // Status comparison
-            html += '<div class="detail-comparison">';
-
-            html += '<div class="detail-column old-value">';
-            html += '<h5><i class="fas fa-clock"></i> Previous Status</h5>';
-            const oldStatusColor = details.old_status === 'active' ? '#28a745' : '#dc3545';
-            html += `<p style="color: ${oldStatusColor}; font-size: 1.2rem; font-weight: bold;">${details.old_status.toUpperCase()}</p>`;
-
-            if (details.old_analysis && details.old_analysis.status_code) {
-                html += `<p><small>HTTP ${details.old_analysis.status_code}</small></p>`;
-            }
-            html += '</div>';
-
-            html += '<div class="detail-column new-value">';
-            html += '<h5><i class="fas fa-check-circle"></i> Current Status</h5>';
-            const newStatusColor = details.new_status === 'active' ? '#28a745' : '#dc3545';
-            html += `<p style="color: ${newStatusColor}; font-size: 1.2rem; font-weight: bold;">${details.new_status.toUpperCase()}</p>`;
-
-            if (details.new_analysis && details.new_analysis.status_code) {
-                html += `<p><small>HTTP ${details.new_analysis.status_code}</small></p>`;
-            }
-            html += '</div>';
-
-            html += '</div>';
-
-            if (details.new_status === 'inactive') {
-                html += '<div style="background: #fff3cd; padding: 0.75rem; border-radius: 4px; margin-top: 1rem;">';
-                html += '<strong>⚠️ Note:</strong> File is no longer accessible. It may have been removed, renamed, or the server is down.';
-                html += '</div>';
-            }
-
-            html += '</div>';
-        }
-
-        // Secret detection info
-        if (details.secrets_found && details.secrets_found.length > 0) {
-            html += '<div style="margin-top: 1rem; background: #f8d7da; border-left: 4px solid #dc3545; padding: 1rem;">';
-            html += '<h5 style="color: #dc3545; margin-top: 0;"><i class="fas fa-key"></i> Secrets Detected</h5>';
-
-            html += '<table class="table" style="margin-top: 0.5rem; background: white;">';
-            html += '<thead><tr><th>Type</th><th>Count</th></tr></thead><tbody>';
-
-            details.secrets_found.forEach(secret => {
-                html += `<tr><td><code>${secret.type.replace(/_/g, ' ').toUpperCase()}</code></td><td><strong>${secret.count}</strong></td></tr>`;
-            });
-
-            html += '</tbody></table>';
-
-            if (details.risk_level) {
-                const riskColor = details.risk_level === 'high' ? '#dc3545' : (details.risk_level === 'medium' ? '#ffc107' : '#17a2b8');
-                html += `<p><strong>Risk Level:</strong> <span style="color: ${riskColor}; font-weight: bold;">${details.risk_level.toUpperCase()}</span></p>`;
-            }
-
-            html += '<p style="margin-top: 1rem;"><strong>⚠️ CRITICAL:</strong> This file contains exposed secrets. Immediate action required:</p>';
-            html += '<ul style="margin: 0.5rem 0 0 1.5rem;">';
-            html += '<li>Rotate all exposed credentials immediately</li>';
-            html += '<li>Remove secrets from the file</li>';
-            html += '<li>Use environment variables or secret management</li>';
-            html += '</ul>';
-            html += '</div>';
-        }
-
-        if (details.suspicious_keywords && details.suspicious_keywords.length > 0) {
-            html += '<div style="margin-top: 1rem;">';
-            html += '<p><strong>Suspicious Keywords:</strong></p>';
-            html += '<div style="display: flex; flex-wrap: wrap; gap: 0.25rem;">';
-            details.suspicious_keywords.forEach(keyword => {
-                html += `<span class="badge badge-warning">${keyword}</span>`;
-            });
-            html += '</div>';
-            html += '</div>';
-        }
-
-        // Action button
-        html += '<div style="margin-top: 1rem;">';
-        html += `<a href="${details.url}" target="_blank" class="btn btn-sm btn-primary">`;
-        html += '<i class="fas fa-external-link-alt"></i> Open File</a>';
-        html += '</div>';
-    }
-
-    // Generic details view
-    else {
-        html += '<div class="detail-info">';
-        html += '<pre>' + JSON.stringify(details, null, 2) + '</pre>';
-        html += '</div>';
-    }
-
-    // Show subdomain/URL if available
-    if (details.subdomain || details.url) {
-        html += '<div style="margin-top: 1rem;">';
-        html += '<strong><i class="fas fa-globe"></i> Target:</strong> ';
-        html += `<code>${details.subdomain || details.url}</code>`;
-        html += '</div>';
-    }
-
-    return html;
-}
+let isLoading = false;
+
+// Initialize on page load
+document.addEventListener('DOMContentLoaded', () => {
+    loadEvents();
+});
 
 function applyFilters() {
-    const searchFilter = document.getElementById('search-filter').value.toLowerCase();
-    const projectFilter = document.getElementById('project-filter').value;
-    const severityFilter = document.getElementById('severity-filter').value;
-    const typeFilter = document.getElementById('type-filter').value;
-    const ackFilter = document.getElementById('ack-filter').value;
-    const sortFilter = document.getElementById('sort-filter').value;
-
-    // Get all event rows
-    const tbody = document.querySelector('tbody');
-    const rows = Array.from(tbody.querySelectorAll('tr')).filter(row =>
-        row.id.startsWith('event-') && !row.id.includes('event-detail-')
-    );
-
-    let filteredRows = [];
-
-    // Filter rows
-    rows.forEach(row => {
-        const severity = row.querySelector('.badge').textContent.trim().toLowerCase();
-        const type = row.querySelector('code').textContent.trim();
-        const summary = row.querySelector('td:nth-child(3)').textContent.toLowerCase();
-        const projectId = row.dataset.projectId;
-        const ackCell = row.querySelector('td:nth-child(6)');
-        const isAcknowledged = ackCell.textContent.includes('Acknowledged');
-
-        let show = true;
-
-        // Search filter (search in summary which contains host, IP, subdomain info)
-        if (searchFilter && !summary.includes(searchFilter)) {
-            show = false;
-        }
-
-        // Project filter (now comparing project IDs)
-        if (projectFilter && projectId !== projectFilter) {
-            show = false;
-        }
-
-        // Severity filter
-        if (severityFilter && severity !== severityFilter) {
-            show = false;
-        }
-
-        // Type filter
-        if (typeFilter && type !== typeFilter) {
-            show = false;
-        }
-
-        // Acknowledge status filter
-        if (ackFilter === 'acknowledged' && !isAcknowledged) {
-            show = false;
-        } else if (ackFilter === 'unacknowledged' && isAcknowledged) {
-            show = false;
-        }
-
-        if (show) {
-            filteredRows.push(row);
-        }
-    });
-
-    // Sort filtered rows
-    const detailRows = {};
-
-    // Store detail rows temporarily
-    filteredRows.forEach(row => {
-        const eventId = row.id.replace('event-', '');
-        const detailRow = document.getElementById('event-detail-' + eventId);
-        if (detailRow) {
-            detailRows[eventId] = detailRow;
-        }
-    });
-
-    // Sort by time (using row index as proxy for time order)
-    if (sortFilter === 'asc') {
-        filteredRows.sort((a, b) => {
-            const indexA = parseInt(a.dataset.originalIndex || Array.from(rows).indexOf(a));
-            const indexB = parseInt(b.dataset.originalIndex || Array.from(rows).indexOf(b));
-            return indexA - indexB;
-        });
-    } else {
-        filteredRows.sort((a, b) => {
-            const indexA = parseInt(a.dataset.originalIndex || Array.from(rows).indexOf(a));
-            const indexB = parseInt(b.dataset.originalIndex || Array.from(rows).indexOf(b));
-            return indexB - indexA;
-        });
-    }
-
-    // Calculate pagination
-    const totalFiltered = filteredRows.length;
-    const totalPages = Math.ceil(totalFiltered / pageSize);
-
-    // Ensure current page is valid
-    if (currentPage > totalPages && totalPages > 0) {
-        currentPage = totalPages;
-    }
-    if (currentPage < 1) {
-        currentPage = 1;
-    }
-
-    const startIndex = (currentPage - 1) * pageSize;
-    const endIndex = startIndex + pageSize;
-    const pageRows = filteredRows.slice(startIndex, endIndex);
-
-    // Hide all rows first
-    rows.forEach(row => {
-        row.style.display = 'none';
-        const detailRow = document.getElementById('event-detail-' + row.id.replace('event-', ''));
-        if (detailRow) {
-            detailRow.style.display = 'none';
-        }
-    });
-
-    // Show only current page rows
-    pageRows.forEach((row, index) => {
-        if (!row.dataset.originalIndex) {
-            row.dataset.originalIndex = Array.from(rows).indexOf(row);
-        }
-
-        const eventId = row.id.replace('event-', '');
-        const detailRow = detailRows[eventId];
-
-        // Show row
-        row.style.display = '';
-
-        // Reorder in DOM
-        tbody.appendChild(row);
-        if (detailRow) {
-            tbody.appendChild(detailRow);
-        }
-    });
-
-    // Update count
-    if (totalFiltered === rows.length) {
-        document.getElementById('event-count').textContent = `Showing ${totalFiltered} events`;
-    } else {
-        document.getElementById('event-count').textContent = `Showing ${totalFiltered} of ${rows.length} events`;
-    }
-
-    // Render pagination controls
-    renderPagination(totalFiltered, totalPages);
+    currentPage = 1; // Reset to first page when filters change
+    loadEvents();
 }
 
-function renderPagination(totalItems, totalPages) {
-    const paginationControls = document.getElementById('pagination-controls');
+function loadEvents() {
+    if (isLoading) return;
 
-    if (totalPages <= 1) {
-        paginationControls.innerHTML = '';
+    isLoading = true;
+    showLoading();
+
+    // Build query parameters
+    const params = new URLSearchParams();
+    params.append('page', currentPage);
+    params.append('per_page', pageSize);
+
+    const search = document.getElementById('search-filter').value;
+    if (search) params.append('search', search);
+
+    const projectId = document.getElementById('project-filter').value;
+    if (projectId) params.append('project_id', projectId);
+
+    const severity = document.getElementById('severity-filter').value;
+    if (severity) params.append('severity', severity);
+
+    const eventType = document.getElementById('type-filter').value;
+    if (eventType) params.append('event_type', eventType);
+
+    const acknowledged = document.getElementById('ack-filter').value;
+    if (acknowledged) params.append('acknowledged', acknowledged);
+
+    params.append('sort_order', document.getElementById('sort-filter').value);
+
+    fetch(`/api/events?${params}`)
+        .then(res => res.json())
+        .then(data => {
+            renderEvents(data);
+            renderPagination(data);
+            isLoading = false;
+            hideLoading();
+        })
+        .catch(err => {
+            console.error('Failed to load events:', err);
+            showError('Failed to load events. Please try again.');
+            isLoading = false;
+            hideLoading();
+        });
+}
+
+function showLoading() {
+    document.getElementById('loading-indicator').style.display = 'block';
+    document.getElementById('table-container').style.opacity = '0.5';
+}
+
+function hideLoading() {
+    document.getElementById('loading-indicator').style.display = 'none';
+    document.getElementById('table-container').style.opacity = '1';
+}
+
+function renderEvents(data) {
+    const tbody = document.getElementById('events-tbody');
+    const emptyState = document.getElementById('empty-state');
+    const tableContainer = document.getElementById('table-container');
+
+    // Update count
+    if (data.total === 0) {
+        document.getElementById('event-count').textContent = 'No events found';
+        emptyState.style.display = 'block';
+        tableContainer.style.display = 'none';
         return;
     }
 
-    let html = '';
+    emptyState.style.display = 'none';
+    tableContainer.style.display = 'block';
+    document.getElementById('event-count').textContent = `Showing ${data.showing_start}-${data.showing_end} of ${data.total} events`;
+
+    // Clear tbody
+    tbody.innerHTML = '';
+
+    // Render events
+    data.events.forEach(event => {
+        // Main event row
+        const row = document.createElement('tr');
+        row.className = 'event-row';
+        row.id = `event-${event.id}`;
+        row.style.borderBottom = '1px solid #e2e8f0';
+        row.style.transition = 'background 0.2s';
+
+        // Severity badge
+        let severityBadge = '';
+        const severityColors = {
+            'critical': { bg: '#dc2626', icon: 'fa-exclamation-triangle' },
+            'high': { bg: '#ea580c', icon: 'fa-exclamation-circle' },
+            'medium': { bg: '#f59e0b', icon: 'fa-exclamation' },
+            'low': { bg: '#3b82f6', icon: 'fa-info-circle' },
+            'info': { bg: '#6b7280', icon: 'fa-info' }
+        };
+        const sev = severityColors[event.severity] || severityColors['info'];
+        severityBadge = `<span style="background: ${sev.bg}; color: white; padding: 0.375rem 0.75rem; border-radius: 6px; font-size: 0.75rem; font-weight: 600; display: inline-flex; align-items: center; gap: 0.25rem;">
+            <i class="fas ${sev.icon}"></i> ${event.severity.toUpperCase()}
+        </span>`;
+
+        // Actions
+        let actions = '<div style="display: flex; gap: 0.5rem; justify-content: center; align-items: center;">';
+        if (event.has_details) {
+            actions += `<button class="btn btn-sm btn-primary" onclick="showEventDetail(${event.id})" title="View Details" style="display: inline-flex; align-items: center; gap: 0.25rem;">
+                <i class="fas fa-info-circle"></i>
+            </button>`;
+        }
+        if (!event.acknowledged) {
+            actions += `<button class="btn btn-sm btn-success" onclick="acknowledgeEvent(${event.id})" title="Acknowledge" style="display: inline-flex; align-items: center; gap: 0.25rem;">
+                <i class="fas fa-check"></i>
+            </button>`;
+        } else {
+            actions += `<span style="background: #10b981; color: white; padding: 0.375rem 0.75rem; border-radius: 6px; font-size: 0.75rem; font-weight: 500;">
+                <i class="fas fa-check-circle"></i> Ack
+            </span>`;
+        }
+        actions += '</div>';
+
+        row.innerHTML = `
+            <td style="padding: 1rem;">${severityBadge}</td>
+            <td style="padding: 1rem;">
+                <code style="background: #f1f5f9; padding: 0.25rem 0.5rem; border-radius: 4px; font-size: 0.75rem; color: #334155;">${event.type}</code>
+            </td>
+            <td style="padding: 1rem; max-width: 400px;">
+                <div style="color: #1e293b; font-weight: 500;">${event.summary}</div>
+            </td>
+            <td style="padding: 1rem;">
+                <span style="color: #667eea; font-weight: 500;">${event.project_name}</span>
+            </td>
+            <td style="padding: 1rem; white-space: nowrap;">
+                <div style="color: #64748b; font-size: 0.875rem;">
+                    <i class="fas fa-clock"></i> ${event.created_at}
+                </div>
+            </td>
+            <td style="padding: 1rem; text-align: center;">
+                ${actions}
+            </td>
+        `;
+
+        tbody.appendChild(row);
+
+        // Detail row (hidden by default)
+        const detailRow = document.createElement('tr');
+        detailRow.id = `event-detail-${event.id}`;
+        detailRow.style.display = 'none';
+        detailRow.innerHTML = `
+            <td colspan="6" style="padding: 0; background: #f8fafc;">
+                <div class="event-detail-box" style="margin: 1rem; padding: 1.5rem; background: white; border-radius: 8px; border-left: 4px solid #667eea;">
+                    <h4 style="margin: 0 0 1rem 0; color: #667eea; display: flex; align-items: center; gap: 0.5rem;">
+                        <i class="fas fa-info-circle"></i> Event Details
+                    </h4>
+                    <div id="event-detail-content-${event.id}">
+                        <!-- Detail will be loaded here -->
+                    </div>
+                </div>
+            </td>
+        `;
+
+        tbody.appendChild(detailRow);
+    });
+}
+
+function renderPagination(data) {
+    const paginationInfo = document.getElementById('pagination-info');
+    const paginationControls = document.getElementById('pagination-controls');
+
+    // Update info
+    paginationInfo.innerHTML = `Showing <strong>${data.showing_start}-${data.showing_end}</strong> of <strong>${data.total}</strong> events`;
+
+    // Clear controls
+    paginationControls.innerHTML = '';
+
+    if (data.total_pages <= 1) {
+        return;
+    }
 
     // Previous button
-    html += `<button class="btn btn-sm btn-secondary" onclick="changePage(${currentPage - 1})" ${currentPage === 1 ? 'disabled' : ''}>
-                <i class="fas fa-chevron-left"></i> Prev
-             </button>`;
+    const prevBtn = document.createElement('button');
+    prevBtn.className = 'pagination-btn';
+    prevBtn.innerHTML = '<i class="fas fa-chevron-left"></i>';
+    prevBtn.disabled = currentPage === 1;
+    prevBtn.onclick = () => changePage(currentPage - 1);
+    paginationControls.appendChild(prevBtn);
 
     // Page numbers
     const maxButtons = 5;
     let startPage = Math.max(1, currentPage - Math.floor(maxButtons / 2));
-    let endPage = Math.min(totalPages, startPage + maxButtons - 1);
+    let endPage = Math.min(data.total_pages, startPage + maxButtons - 1);
 
-    // Adjust start if we're near the end
     if (endPage - startPage < maxButtons - 1) {
         startPage = Math.max(1, endPage - maxButtons + 1);
     }
 
     // First page
     if (startPage > 1) {
-        html += `<button class="btn btn-sm btn-secondary" onclick="changePage(1)">1</button>`;
+        const btn = createPageButton(1);
+        paginationControls.appendChild(btn);
+
         if (startPage > 2) {
-            html += `<span style="padding: 0 0.5rem;">...</span>`;
+            const ellipsis = document.createElement('span');
+            ellipsis.textContent = '...';
+            ellipsis.style.padding = '0 0.5rem';
+            ellipsis.style.color = '#64748b';
+            paginationControls.appendChild(ellipsis);
         }
     }
 
-    // Page number buttons
+    // Page numbers
     for (let i = startPage; i <= endPage; i++) {
-        const active = i === currentPage ? 'btn-primary' : 'btn-secondary';
-        html += `<button class="btn btn-sm ${active}" onclick="changePage(${i})">${i}</button>`;
+        const btn = createPageButton(i);
+        if (i === currentPage) {
+            btn.classList.add('active');
+        }
+        paginationControls.appendChild(btn);
     }
 
     // Last page
-    if (endPage < totalPages) {
-        if (endPage < totalPages - 1) {
-            html += `<span style="padding: 0 0.5rem;">...</span>`;
+    if (endPage < data.total_pages) {
+        if (endPage < data.total_pages - 1) {
+            const ellipsis = document.createElement('span');
+            ellipsis.textContent = '...';
+            ellipsis.style.padding = '0 0.5rem';
+            ellipsis.style.color = '#64748b';
+            paginationControls.appendChild(ellipsis);
         }
-        html += `<button class="btn btn-sm btn-secondary" onclick="changePage(${totalPages})">${totalPages}</button>`;
+
+        const btn = createPageButton(data.total_pages);
+        paginationControls.appendChild(btn);
     }
 
     // Next button
-    html += `<button class="btn btn-sm btn-secondary" onclick="changePage(${currentPage + 1})" ${currentPage === totalPages ? 'disabled' : ''}>
-                Next <i class="fas fa-chevron-right"></i>
-             </button>`;
+    const nextBtn = document.createElement('button');
+    nextBtn.className = 'pagination-btn';
+    nextBtn.innerHTML = '<i class="fas fa-chevron-right"></i>';
+    nextBtn.disabled = currentPage === data.total_pages;
+    nextBtn.onclick = () => changePage(currentPage + 1);
+    paginationControls.appendChild(nextBtn);
+}
 
-    // Page info
-    const startItem = (currentPage - 1) * pageSize + 1;
-    const endItem = Math.min(currentPage * pageSize, totalItems);
-    html += `<span style="margin-left: 1rem; color: #6c757d;">
-                Page ${currentPage} of ${totalPages} (${startItem}-${endItem} of ${totalItems})
-             </span>`;
-
-    paginationControls.innerHTML = html;
+function createPageButton(pageNum) {
+    const btn = document.createElement('button');
+    btn.className = 'pagination-btn';
+    btn.textContent = pageNum;
+    btn.onclick = () => changePage(pageNum);
+    return btn;
 }
 
 function changePage(page) {
+    if (page < 1 || isLoading) return;
     currentPage = page;
-    applyFilters();
-    // Scroll to top of table
-    document.querySelector('.table-responsive').scrollIntoView({ behavior: 'smooth', block: 'start' });
+    loadEvents();
+    window.scrollTo({ top: 0, behavior: 'smooth' });
 }
 
 function changePageSize() {
     pageSize = parseInt(document.getElementById('page-size').value);
-    currentPage = 1; // Reset to first page
-    applyFilters();
+    currentPage = 1;
+    loadEvents();
 }
 
 function resetFilters() {
@@ -919,29 +647,137 @@ function resetFilters() {
     document.getElementById('type-filter').value = '';
     document.getElementById('ack-filter').value = '';
     document.getElementById('sort-filter').value = 'desc';
-    currentPage = 1; // Reset to first page
-    applyFilters();
+    currentPage = 1;
+    loadEvents();
+}
+
+function showEventDetail(eventId) {
+    const detailRow = document.getElementById(`event-detail-${eventId}`);
+    const contentDiv = document.getElementById(`event-detail-content-${eventId}`);
+
+    if (detailRow.style.display === 'none') {
+        fetch(`/api/events/${eventId}`)
+            .then(res => res.json())
+            .then(event => {
+                contentDiv.innerHTML = formatEventDetails(event);
+                detailRow.style.display = 'table-row';
+            })
+            .catch(err => {
+                contentDiv.innerHTML = '<p style="color: #dc2626;">Failed to load event details</p>';
+                detailRow.style.display = 'table-row';
+            });
+    } else {
+        detailRow.style.display = 'none';
+    }
+}
+
+function formatEventDetails(event) {
+    if (!event.details) {
+        return '<p style="color: #64748b;">No additional details available</p>';
+    }
+
+    const details = event.details;
+    let html = '';
+
+    // DNS A Record Changes
+    if (details.change_type === 'a_record') {
+        html += '<div class="detail-comparison">';
+        html += '<div class="detail-column old-value">';
+        html += '<h5><i class="fas fa-clock"></i> Previous A Records</h5>';
+        if (details.old_ips && details.old_ips.length > 0) {
+            html += '<ul class="detail-list">';
+            details.old_ips.forEach(ip => html += `<li><code>${ip}</code></li>`);
+            html += '</ul>';
+        } else {
+            html += '<p style="color: #94a3b8;">No records</p>';
+        }
+        html += '</div>';
+
+        html += '<div class="detail-column new-value">';
+        html += '<h5><i class="fas fa-check-circle"></i> Current A Records</h5>';
+        if (details.new_ips && details.new_ips.length > 0) {
+            html += '<ul class="detail-list">';
+            details.new_ips.forEach(ip => html += `<li><code>${ip}</code></li>`);
+            html += '</ul>';
+        } else {
+            html += '<p style="color: #94a3b8;">No records</p>';
+        }
+        html += '</div>';
+        html += '</div>';
+
+        html += '<div class="detail-info">';
+        if (details.added_ips && details.added_ips.length > 0) {
+            html += '<p class="detail-added"><i class="fas fa-plus-circle"></i> Added: ' + details.added_ips.join(', ') + '</p>';
+        }
+        if (details.removed_ips && details.removed_ips.length > 0) {
+            html += '<p class="detail-removed"><i class="fas fa-minus-circle"></i> Removed: ' + details.removed_ips.join(', ') + '</p>';
+        }
+        html += '</div>';
+    }
+    // Add more detail formatters as needed...
+    else {
+        html += '<div class="detail-info">';
+        html += '<pre style="background: #f1f5f9; padding: 1rem; border-radius: 6px; overflow-x: auto; font-size: 0.875rem;">' + JSON.stringify(details, null, 2) + '</pre>';
+        html += '</div>';
+    }
+
+    return html;
 }
 
 function acknowledgeEvent(eventId) {
+    if (!confirm('Mark this event as acknowledged?')) {
+        return;
+    }
+
     fetch(`/api/events/${eventId}`, {
         method: 'PATCH',
         headers: {'Content-Type': 'application/json'},
         body: JSON.stringify({acknowledged: true, acknowledged_by: 'user'})
     })
-    .then(() => {
-        showToast('Event acknowledged', 'success');
-        location.reload();
+    .then(res => {
+        if (res.ok) {
+            showToast('Event acknowledged successfully', 'success');
+            // Reload current page after 1 second
+            setTimeout(() => loadEvents(), 1000);
+        } else {
+            throw new Error('Failed to acknowledge event');
+        }
+    })
+    .catch(err => {
+        showToast('Failed to acknowledge event', 'error');
     });
 }
 
 function refreshEvents() {
-    location.reload();
+    loadEvents();
+    showToast('Events refreshed', 'success');
 }
 
-// Initialize count on page load
-document.addEventListener('DOMContentLoaded', () => {
-    applyFilters();
-});
+function showError(message) {
+    showToast(message, 'error');
+}
+
+function showToast(message, type) {
+    const toast = document.createElement('div');
+    toast.style.cssText = `
+        position: fixed;
+        top: 20px;
+        right: 20px;
+        padding: 1rem 1.5rem;
+        background: ${type === 'success' ? '#10b981' : '#dc2626'};
+        color: white;
+        border-radius: 8px;
+        box-shadow: 0 4px 6px rgba(0,0,0,0.1);
+        z-index: 9999;
+        animation: slideIn 0.3s ease-out;
+    `;
+    toast.innerHTML = `<i class="fas fa-${type === 'success' ? 'check-circle' : 'exclamation-circle'}"></i> ${message}`;
+    document.body.appendChild(toast);
+
+    setTimeout(() => {
+        toast.style.animation = 'slideOut 0.3s ease-out';
+        setTimeout(() => toast.remove(), 300);
+    }, 3000);
+}
 </script>
 {% endblock %}

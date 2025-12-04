@@ -50,7 +50,7 @@ class HTTPMonitor:
                 "stats": {"total": 0, "success": 0, "failed": 0}
             }
 
-        # Run httpx with screenshot support
+        # Run httpx without screenshot (requires chromium)
         raw_results = run_httpx(
             self.targets,
             threads=self.threads,
@@ -59,7 +59,7 @@ class HTTPMonitor:
             status_code=True,
             title=True,
             content_length=True,
-            screenshot=True
+            screenshot=False
         )
 
         # Process results

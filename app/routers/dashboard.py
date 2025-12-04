@@ -7,6 +7,7 @@ from fastapi.responses import HTMLResponse
 from fastapi.templating import Jinja2Templates
 from sqlalchemy.orm import Session
 from datetime import datetime, timedelta
+from typing import Optional
 
 from app.db import get_db
 from app.models import Project, Event, Snapshot, ScanLog, SeverityLevel, User
@@ -218,26 +219,120 @@ def project_edit(
 
 @router.get("/events", response_class=HTMLResponse)
 def events_page(request: Request, db: Session = Depends(get_db), current_user: User = Depends(get_current_user)):
-    """Events list page"""
-    # Get all events (last 30 days)
-    cutoff = datetime.utcnow() - timedelta(days=30)
-    events = db.query(Event).filter(
-        Event.created_at >= cutoff
-    ).order_by(Event.created_at.desc()).all()
-
-    # Get all active projects
+    """Events list page - uses AJAX for data loading"""
+    # Get all active projects for filter dropdown
     projects = db.query(Project).filter(Project.is_active == True).all()
 
-    # Create project ID to name mapping
-    project_map = {p.id: p.name for p in projects}
+    # Get quick stats (count only, no full data loading)
+    cutoff = datetime.utcnow() - timedelta(days=30)
+    total_events = db.query(Event).filter(Event.created_at >= cutoff).count()
+    vuln_count = db.query(Event).filter(
+        Event.created_at >= cutoff,
+        Event.type == 'vulnerability_found'
+    ).count()
+    port_count = db.query(Event).filter(
+        Event.created_at >= cutoff,
+        Event.type == 'port_new'
+    ).count()
+    dns_count = db.query(Event).filter(
+        Event.created_at >= cutoff,
+        Event.type == 'dns_changed'
+    ).count()
 
     return templates.TemplateResponse("events.html", {
         "request": request,
         "current_user": current_user,
-        "events": events,
         "projects": projects,
-        "project_map": project_map
+        "total_events": total_events,
+        "vuln_count": vuln_count,
+        "port_count": port_count,
+        "dns_count": dns_count
     })
+
+
+@router.get("/api/events")
+def get_events_paginated(
+    page: int = 1,
+    per_page: int = 50,
+    search: str = "",
+    project_id: Optional[int] = None,
+    severity: str = "",
+    event_type: str = "",
+    acknowledged: str = "",
+    sort_order: str = "desc",
+    days: int = 30,
+    db: Session = Depends(get_db),
+    current_user: User = Depends(get_current_user)
+):
+    """Get paginated events with server-side filtering"""
+    # Build base query
+    cutoff = datetime.utcnow() - timedelta(days=days)
+    query = db.query(Event).filter(Event.created_at >= cutoff)
+
+    # Apply filters
+    if project_id is not None:
+        query = query.filter(Event.project_id == project_id)
+
+    if severity:
+        query = query.filter(Event.severity == severity.upper())
+
+    if event_type:
+        query = query.filter(Event.type == event_type)
+
+    if acknowledged == "acknowledged":
+        query = query.filter(Event.acknowledged == True)
+    elif acknowledged == "unacknowledged":
+        query = query.filter(Event.acknowledged == False)
+
+    if search:
+        search_pattern = f"%{search}%"
+        query = query.filter(Event.summary.ilike(search_pattern))
+
+    # Sort order
+    if sort_order == "asc":
+        query = query.order_by(Event.created_at.asc())
+    else:
+        query = query.order_by(Event.created_at.desc())
+
+    # Get total count before pagination
+    total_count = query.count()
+
+    # Apply pagination
+    total_pages = max(1, (total_count + per_page - 1) // per_page)
+    page = max(1, min(page, total_pages))
+
+    start_idx = (page - 1) * per_page
+    events = query.offset(start_idx).limit(per_page).all()
+
+    # Get project mapping
+    project_ids = list(set([e.project_id for e in events]))
+    projects = db.query(Project).filter(Project.id.in_(project_ids)).all()
+    project_map = {p.id: p.name for p in projects}
+
+    # Convert events to dict
+    events_list = []
+    for event in events:
+        events_list.append({
+            "id": event.id,
+            "type": event.type.value if hasattr(event.type, 'value') else str(event.type),
+            "severity": event.severity.value if hasattr(event.severity, 'value') else str(event.severity),
+            "summary": event.summary,
+            "project_id": event.project_id,
+            "project_name": project_map.get(event.project_id, f"Project {event.project_id}"),
+            "created_at": event.created_at.strftime('%Y-%m-%d %H:%M'),
+            "acknowledged": event.acknowledged,
+            "has_details": event.details is not None
+        })
+
+    return {
+        "events": events_list,
+        "total": total_count,
+        "page": page,
+        "per_page": per_page,
+        "total_pages": total_pages,
+        "showing_start": start_idx + 1 if total_count > 0 else 0,
+        "showing_end": min(start_idx + per_page, total_count)
+    }
 
 
 @router.get("/settings", response_class=HTMLResponse)

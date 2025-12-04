@@ -470,7 +470,7 @@ class ScanOrchestrator:
             }
             self.db.commit()
 
-            # Get HTTP data for enrichment (status code, title)
+            # Get existing HTTP data
             http_snapshot = self.db.query(Snapshot).filter(
                 Snapshot.project_id == project.id,
                 Snapshot.type == SnapshotType.HTTP
@@ -479,6 +479,36 @@ class ScanOrchestrator:
             http_data = {}
             if http_snapshot and http_snapshot.data:
                 http_data = http_snapshot.data.get("http_records", {})
+
+            # Probe new endpoints with httpx (sample to avoid overload)
+            logger.info(f"Probing endpoints with httpx...")
+            new_urls = [url for url in result["urls"] if url not in http_data]
+
+            if new_urls:
+                # Limit to 500 URLs to avoid long scan times
+                sample_urls = new_urls[:500] if len(new_urls) > 500 else new_urls
+                logger.info(f"Probing {len(sample_urls)} new endpoints (out of {len(new_urls)} total new)")
+
+                try:
+                    http_config = config.get("http", {})
+                    threads = http_config.get("threads", 50)
+                    timeout = http_config.get("timeout", 10)
+
+                    probe_results = monitor_http(sample_urls, threads=threads, timeout=timeout)
+
+                    # Merge new results with existing http_data
+                    if probe_results and "http_records" in probe_results:
+                        http_data.update(probe_results["http_records"])
+                        logger.info(f"Probed {len(probe_results['http_records'])} endpoints successfully")
+
+                        # Update HTTP snapshot with new endpoint data
+                        if http_snapshot:
+                            http_snapshot.data["http_records"].update(probe_results["http_records"])
+                            self.db.commit()
+
+                except Exception as e:
+                    logger.error(f"Failed to probe endpoints: {e}")
+                    # Continue with existing data only
 
             # Categorize and enrich endpoints
             from app.utils.endpoint_categorizer import categorize_endpoints
