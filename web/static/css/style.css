@@ -162,6 +162,15 @@ body {
     color: white;
 }
 
+.btn-warning {
+    background: var(--warning);
+    color: white;
+}
+
+.btn-warning:hover {
+    background: #d97706;
+}
+
 .btn-sm {
     padding: 0.375rem 0.75rem;
     font-size: 0.75rem;

@@ -178,9 +178,14 @@
                     <a href="/projects/{{ job.project_id }}" class="btn btn-sm btn-primary">
                         <i class="fas fa-eye"></i> View Project
                     </a>
-                    <a href="/projects/{{ job.project_id }}/edit" class="btn btn-sm btn-secondary">
-                        <i class="fas fa-edit"></i> Edit Schedule
-                    </a>
+                    <button
+                        class="btn btn-sm btn-warning"
+                        data-job-id="{{ job.id }}"
+                        data-trigger="{{ job.trigger }}"
+                        data-project-name="{{ job.project.name if job.project is defined else job.name }}"
+                        onclick="openEditScheduleModal(this.getAttribute('data-job-id'), this.getAttribute('data-trigger'), this.getAttribute('data-project-name'))">
+                        <i class="fas fa-clock"></i> Edit Schedule
+                    </button>
                     {% endif %}
                 </div>
             </div>
@@ -241,6 +246,85 @@
             <li><code>30 1 * * 1-5</code> - Every weekday at 1:30 AM</li>
             <li><code>0 0 1 * *</code> - First day of every month at midnight</li>
         </ul>
+    </div>
+
+    <!-- Edit Schedule Modal -->
+    <div id="editScheduleModal" style="display: none; position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: rgba(0,0,0,0.5); z-index: 9999; justify-content: center; align-items: center;">
+        <div style="background: white; border-radius: 12px; max-width: 700px; width: 90%; max-height: 90vh; overflow-y: auto; box-shadow: 0 20px 25px -5px rgba(0,0,0,0.3);">
+            <div style="padding: 1.5rem; border-bottom: 2px solid #007bff; background: linear-gradient(135deg, #007bff 0%, #0056b3 100%); color: white; border-radius: 12px 12px 0 0;">
+                <h3 style="margin: 0; font-size: 1.5rem;">
+                    <i class="fas fa-clock"></i> Edit Schedule
+                </h3>
+                <p style="margin: 0.5rem 0 0 0; font-size: 0.875rem; opacity: 0.9;" id="modalProjectName"></p>
+            </div>
+
+            <div style="padding: 1.5rem;">
+                <!-- Quick Presets -->
+                <div style="margin-bottom: 1.5rem;">
+                    <label style="display: block; font-weight: 600; color: #333; margin-bottom: 0.75rem;">
+                        <i class="fas fa-magic"></i> Quick Presets
+                    </label>
+                    <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)); gap: 0.75rem;">
+                        <button class="preset-btn" onclick="setCronExpression('0 2 * * *', 'Daily at 2:00 AM')">
+                            <i class="fas fa-calendar-day"></i> Daily at 2:00 AM
+                        </button>
+                        <button class="preset-btn" onclick="setCronExpression('0 */6 * * *', 'Every 6 hours')">
+                            <i class="fas fa-clock"></i> Every 6 hours
+                        </button>
+                        <button class="preset-btn" onclick="setCronExpression('0 */12 * * *', 'Every 12 hours')">
+                            <i class="fas fa-clock"></i> Every 12 hours
+                        </button>
+                        <button class="preset-btn" onclick="setCronExpression('0 3 * * 0', 'Weekly (Sunday 3:00 AM)')">
+                            <i class="fas fa-calendar-week"></i> Weekly (Sunday)
+                        </button>
+                        <button class="preset-btn" onclick="setCronExpression('0 4 * * 1', 'Weekly (Monday 4:00 AM)')">
+                            <i class="fas fa-calendar-week"></i> Weekly (Monday)
+                        </button>
+                        <button class="preset-btn" onclick="setCronExpression('0 0 1 * *', 'Monthly (1st at midnight)')">
+                            <i class="fas fa-calendar-alt"></i> Monthly
+                        </button>
+                    </div>
+                </div>
+
+                <!-- Manual Input -->
+                <div style="margin-bottom: 1.5rem;">
+                    <label for="cronExpression" style="display: block; font-weight: 600; color: #333; margin-bottom: 0.5rem;">
+                        <i class="fas fa-terminal"></i> Cron Expression
+                    </label>
+                    <input type="text" id="cronExpression"
+                           style="width: 100%; padding: 0.75rem; border: 2px solid #dee2e6; border-radius: 8px; font-family: monospace; font-size: 1rem;"
+                           placeholder="0 2 * * *"
+                           oninput="validateCron()">
+                    <small id="cronValidation" style="display: block; margin-top: 0.5rem; color: #6c757d;"></small>
+                </div>
+
+                <!-- Cron Helper -->
+                <div style="background: #f8f9fa; padding: 1rem; border-radius: 8px; margin-bottom: 1.5rem; border-left: 4px solid #007bff;">
+                    <div style="font-weight: 600; margin-bottom: 0.5rem; color: #333;">
+                        <i class="fas fa-info-circle"></i> Cron Format
+                    </div>
+                    <div style="font-family: monospace; font-size: 0.875rem; color: #6c757d; margin-bottom: 0.5rem;">
+                        minute hour day month day_of_week
+                    </div>
+                    <div style="font-size: 0.875rem; color: #6c757d;">
+                        Examples:
+                        <code>0 2 * * *</code> = Daily at 2 AM |
+                        <code>0 */6 * * *</code> = Every 6 hours |
+                        <code>0 3 * * 0</code> = Sunday at 3 AM
+                    </div>
+                </div>
+
+                <!-- Action Buttons -->
+                <div style="display: flex; gap: 0.75rem; justify-content: flex-end;">
+                    <button class="btn btn-secondary" onclick="closeEditScheduleModal()">
+                        <i class="fas fa-times"></i> Cancel
+                    </button>
+                    <button class="btn btn-primary" onclick="saveSchedule()" id="saveBtn">
+                        <i class="fas fa-save"></i> Save Schedule
+                    </button>
+                </div>
+            </div>
+        </div>
     </div>
 </div>
 
@@ -409,11 +493,211 @@
         justify-content: flex-start;
     }
 }
+
+/* Preset Buttons */
+.preset-btn {
+    padding: 0.75rem;
+    background: white;
+    border: 2px solid #dee2e6;
+    border-radius: 8px;
+    cursor: pointer;
+    font-size: 0.875rem;
+    font-weight: 500;
+    transition: all 0.2s;
+    text-align: left;
+    color: #495057;
+}
+
+.preset-btn:hover {
+    border-color: #007bff;
+    background: #f8f9fa;
+    color: #007bff;
+    transform: translateY(-2px);
+    box-shadow: 0 4px 8px rgba(0, 123, 255, 0.15);
+}
+
+.preset-btn i {
+    margin-right: 0.5rem;
+    color: #007bff;
+}
 </style>
 
 <script>
+let currentJobId = null;
+let currentTrigger = null;
+
 function refreshPage() {
     location.reload();
 }
+
+function openEditScheduleModal(jobId, trigger, projectName) {
+    currentJobId = jobId;
+    currentTrigger = trigger;
+
+    // Extract cron from trigger string (format: "cron[minute='0', hour='2', ...]")
+    const cronMatch = extractCronFromTrigger(trigger);
+
+    document.getElementById('modalProjectName').textContent = `Job: ${jobId} - ${projectName}`;
+    document.getElementById('cronExpression').value = cronMatch || '';
+    document.getElementById('editScheduleModal').style.display = 'flex';
+
+    validateCron();
+}
+
+function closeEditScheduleModal() {
+    document.getElementById('editScheduleModal').style.display = 'none';
+    currentJobId = null;
+    currentTrigger = null;
+}
+
+function extractCronFromTrigger(trigger) {
+    // Parse cron trigger string like "cron[minute='0', hour='2', day='*', month='*', day_of_week='*']"
+    const regex = /minute='([^']+)'.*hour='([^']+)'.*day='([^']+)'.*month='([^']+)'.*day_of_week='([^']+)'/;
+    const match = trigger.match(regex);
+
+    if (match) {
+        return `${match[1]} ${match[2]} ${match[3]} ${match[4]} ${match[5]}`;
+    }
+
+    // Fallback: if already in cron format
+    const parts = trigger.trim().split(/\s+/);
+    if (parts.length === 5) {
+        return trigger.trim();
+    }
+
+    return '';
+}
+
+function setCronExpression(cron, description) {
+    document.getElementById('cronExpression').value = cron;
+    validateCron();
+    showToast(`Preset selected: ${description}`, 'info');
+}
+
+function validateCron() {
+    const input = document.getElementById('cronExpression');
+    const validation = document.getElementById('cronValidation');
+    const saveBtn = document.getElementById('saveBtn');
+    const cron = input.value.trim();
+
+    if (!cron) {
+        validation.textContent = '';
+        validation.style.color = '#6c757d';
+        saveBtn.disabled = true;
+        input.style.borderColor = '#dee2e6';
+        return;
+    }
+
+    const parts = cron.split(/\s+/);
+
+    if (parts.length !== 5) {
+        validation.textContent = '❌ Invalid format. Must be 5 fields: minute hour day month day_of_week';
+        validation.style.color = '#dc3545';
+        saveBtn.disabled = true;
+        input.style.borderColor = '#dc3545';
+        return;
+    }
+
+    // Basic validation for each field
+    const validations = [
+        { name: 'minute', range: [0, 59], value: parts[0] },
+        { name: 'hour', range: [0, 23], value: parts[1] },
+        { name: 'day', range: [1, 31], value: parts[2] },
+        { name: 'month', range: [1, 12], value: parts[3] },
+        { name: 'day_of_week', range: [0, 6], value: parts[4] }
+    ];
+
+    for (const field of validations) {
+        if (!isValidCronField(field.value, field.range[0], field.range[1])) {
+            validation.textContent = `❌ Invalid ${field.name}: ${field.value}`;
+            validation.style.color = '#dc3545';
+            saveBtn.disabled = true;
+            input.style.borderColor = '#dc3545';
+            return;
+        }
+    }
+
+    validation.textContent = '✅ Valid cron expression';
+    validation.style.color = '#28a745';
+    saveBtn.disabled = false;
+    input.style.borderColor = '#28a745';
+}
+
+function isValidCronField(value, min, max) {
+    // Allow wildcards, ranges, lists, and steps
+    if (value === '*') return true;
+    if (value.includes('/')) {
+        const [range, step] = value.split('/');
+        if (range !== '*' && !isValidCronField(range, min, max)) return false;
+        const stepNum = parseInt(step);
+        return !isNaN(stepNum) && stepNum > 0;
+    }
+    if (value.includes('-')) {
+        const [start, end] = value.split('-');
+        const startNum = parseInt(start);
+        const endNum = parseInt(end);
+        return !isNaN(startNum) && !isNaN(endNum) &&
+               startNum >= min && startNum <= max &&
+               endNum >= min && endNum <= max &&
+               startNum < endNum;
+    }
+    if (value.includes(',')) {
+        return value.split(',').every(v => isValidCronField(v.trim(), min, max));
+    }
+
+    const num = parseInt(value);
+    return !isNaN(num) && num >= min && num <= max;
+}
+
+async function saveSchedule() {
+    const cron = document.getElementById('cronExpression').value.trim();
+    const saveBtn = document.getElementById('saveBtn');
+
+    if (!cron || !currentJobId) {
+        showToast('Invalid input', 'error');
+        return;
+    }
+
+    saveBtn.disabled = true;
+    saveBtn.innerHTML = '<i class="fas fa-spinner fa-spin"></i> Saving...';
+
+    try {
+        const response = await fetch(`/api/scans/schedule/${currentJobId}?cron_expression=${encodeURIComponent(cron)}`, {
+            method: 'PUT',
+            headers: {
+                'Content-Type': 'application/json'
+            }
+        });
+
+        if (!response.ok) {
+            const error = await response.json();
+            throw new Error(error.detail || 'Failed to update schedule');
+        }
+
+        const result = await response.json();
+
+        showToast('Schedule updated successfully!', 'success');
+        closeEditScheduleModal();
+
+        // Reload page after short delay
+        setTimeout(() => {
+            location.reload();
+        }, 1000);
+
+    } catch (error) {
+        console.error('Error:', error);
+        showToast(error.message || 'Failed to update schedule', 'error');
+        saveBtn.disabled = false;
+        saveBtn.innerHTML = '<i class="fas fa-save"></i> Save Schedule';
+    }
+}
+
+// Close modal when clicking outside
+document.addEventListener('click', (e) => {
+    const modal = document.getElementById('editScheduleModal');
+    if (e.target === modal) {
+        closeEditScheduleModal();
+    }
+});
 </script>
 {% endblock %}

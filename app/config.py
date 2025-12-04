@@ -40,7 +40,7 @@ class Settings(BaseSettings):
     subfinder_path: str = "subfinder"
     assetfinder_path: str = "assetfinder"
     dnsx_path: str = "dnsx"
-    httpx_path: str = "httpx"
+    httpx_path: str = "/home/daud/go/bin/httpx"  # Use absolute path to avoid conflict with Python httpx CLI
     gau_path: str = "gau"
     katana_path: str = "katana"
     waybackurls_path: str = "waybackurls"

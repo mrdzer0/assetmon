@@ -215,6 +215,83 @@ def schedule_scan(
         )
 
 
+@router.put("/schedule/{job_id}")
+def update_schedule(
+    job_id: str,
+    cron_expression: str,
+    db: Session = Depends(get_db)
+):
+    """
+    Update an existing scheduled scan job
+
+    Args:
+        job_id: Job ID (e.g., "scan_project_1_normal")
+        cron_expression: New cron expression (e.g., "0 2 * * *")
+    """
+    job_manager = get_job_manager()
+
+    # Check if job exists
+    existing_job = job_manager.scheduler.get_job(job_id)
+    if not existing_job:
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail=f"Job {job_id} not found"
+        )
+
+    # Extract project_id and scan_mode from job_id
+    # Format: scan_project_{project_id}_{scan_mode}
+    try:
+        parts = job_id.split('_')
+        if len(parts) < 4 or parts[0] != 'scan' or parts[1] != 'project':
+            raise ValueError("Invalid job_id format")
+
+        project_id = int(parts[2])
+        scan_mode = parts[3] if len(parts) > 3 else 'normal'
+
+        # Validate project exists
+        project = db.query(Project).filter(Project.id == project_id).first()
+        if not project:
+            raise HTTPException(
+                status_code=status.HTTP_404_NOT_FOUND,
+                detail=f"Project {project_id} not found"
+            )
+
+        # Update the schedule by adding job with same ID (will replace)
+        job_manager.add_scan_job(
+            project_id=project_id,
+            cron_expression=cron_expression,
+            scan_mode=scan_mode,
+            job_id=job_id
+        )
+
+        # Update project config to store the new schedule
+        config = project.config or {}
+        if 'schedule' not in config:
+            config['schedule'] = {}
+
+        config['schedule'][scan_mode] = cron_expression
+        project.config = config
+        db.commit()
+
+        return {
+            "success": True,
+            "job_id": job_id,
+            "cron_expression": cron_expression,
+            "message": "Schedule updated successfully"
+        }
+
+    except ValueError as e:
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail=f"Invalid job_id format: {str(e)}"
+        )
+    except Exception as e:
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail=f"Failed to update schedule: {str(e)}"
+        )
+
+
 @router.delete("/schedule/{job_id}")
 def unschedule_scan(job_id: str):
     """Remove a scheduled scan job"""

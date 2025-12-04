@@ -31,6 +31,13 @@ def check_tool_exists(tool_path: str) -> bool:
     Check if a tool exists in PATH or at specified path
     """
     import shutil
+    import os
+
+    # If absolute path, check if file exists directly
+    if os.path.isabs(tool_path):
+        return os.path.isfile(tool_path) and os.access(tool_path, os.X_OK)
+
+    # Otherwise check in PATH
     return shutil.which(tool_path) is not None
 
 
