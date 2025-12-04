@@ -279,6 +279,8 @@ def run_httpx(
 
     # Write URLs to temp file - close file explicitly to ensure flush
     urls_file = None
+    records = []  # Initialize here so finally block can access it
+
     try:
         f = tempfile.NamedTemporaryFile(mode='w', delete=False, suffix='.txt')
         urls_file = f.name
@@ -287,6 +289,16 @@ def run_httpx(
         f.close()  # Explicitly close to ensure flush
 
         logger.info(f"Writing {len(urls)} URLs to temp file: {urls_file}")
+        logger.debug(f"First 3 URLs: {urls[:3]}")
+
+        # Verify file was written
+        if os.path.exists(urls_file):
+            file_size = os.path.getsize(urls_file)
+            logger.info(f"Temp file created successfully, size: {file_size} bytes")
+        else:
+            logger.error(f"Temp file not found after writing: {urls_file}")
+            return []
+
     except Exception as e:
         logger.error(f"Failed to write URLs to temp file: {e}")
         if urls_file and os.path.exists(urls_file):
@@ -298,8 +310,13 @@ def run_httpx(
         # httpx can return exit code 1 even on partial success, so don't check exit code
         result = run_command(cmd, timeout=settings.scan_timeout, check=False)
 
+        # Log stdout and stderr for debugging
+        if result.stdout:
+            logger.debug(f"httpx stdout length: {len(result.stdout)}")
+        if result.stderr:
+            logger.warning(f"httpx stderr: {result.stderr[:500]}")
+
         # Parse JSON output
-        records = []
         for line in result.stdout.splitlines():
             if line.strip():
                 try:
@@ -309,17 +326,24 @@ def run_httpx(
                     logger.warning(f"Failed to parse httpx JSON: {line}")
 
         logger.info(f"httpx probed {len(records)} URLs")
+
+        # Keep temp file for debugging if no results
+        if len(records) == 0:
+            logger.warning(f"No results from httpx. Keeping temp file for debugging: {urls_file}")
+            logger.warning(f"Please check file content: cat {urls_file}")
+
         return records
 
     except Exception as e:
         logger.error(f"httpx execution failed: {e}")
         return []
     finally:
-        # Cleanup temp file
-        try:
-            os.unlink(urls_file)
-        except:
-            pass
+        # Cleanup temp file only if we got results
+        if len(records) > 0 and urls_file:
+            try:
+                os.unlink(urls_file)
+            except:
+                pass
 
 
 # Endpoint Discovery Tools
