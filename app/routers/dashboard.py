@@ -65,10 +65,15 @@ def project_new(request: Request, current_user: User = Depends(get_current_user)
 def project_detail(
     request: Request,
     project_id: int,
+    page: int = 1,
+    per_page: int = 50,
+    search: str = "",
+    status_filter: str = "",
+    tech_filter: str = "",
     db: Session = Depends(get_db),
     current_user: User = Depends(get_current_user)
 ):
-    """Project detail page"""
+    """Project detail page with server-side pagination for assets"""
     project = db.query(Project).filter(Project.id == project_id).first()
 
     if not project:
@@ -89,6 +94,64 @@ def project_detail(
         if snapshot:
             latest_snapshots[snap_type] = snapshot
 
+    # Server-side pagination for All Assets
+    all_subdomains = []
+    total_subdomains = 0
+    paginated_subdomains = []
+    total_pages = 1
+
+    if "subdomains" in latest_snapshots:
+        all_subdomains = sorted(latest_snapshots["subdomains"].data.get("subdomains", []))
+
+        # Apply filters
+        filtered_subdomains = []
+        dns_data = latest_snapshots.get("dns", {}).data.get("dns_records", {}) if "dns" in latest_snapshots else {}
+        http_data = latest_snapshots.get("http", {}).data.get("http_records", {}) if "http" in latest_snapshots else {}
+
+        for subdomain in all_subdomains:
+            # Get related data
+            dns_record = dns_data.get(subdomain, {})
+            http_url_https = f"https://{subdomain}"
+            http_url_http = f"http://{subdomain}"
+            http_record = http_data.get(http_url_https) or http_data.get(http_url_http, {})
+
+            # Apply search filter
+            if search:
+                search_lower = search.lower()
+                matches_search = (
+                    search_lower in subdomain.lower() or
+                    search_lower in http_record.get("title", "").lower() or
+                    search_lower in str(dns_record.get("a", [])).lower() or
+                    search_lower in str(dns_record.get("cname", [])).lower() or
+                    search_lower in str(http_record.get("technologies", [])).lower()
+                )
+                if not matches_search:
+                    continue
+
+            # Apply status filter
+            if status_filter:
+                status_code = http_record.get("status_code", "")
+                if not str(status_code).startswith(status_filter):
+                    continue
+
+            # Apply technology filter
+            if tech_filter:
+                technologies = http_record.get("technologies", [])
+                tech_str = ",".join(technologies).lower() if isinstance(technologies, list) else str(technologies).lower()
+                if tech_filter.lower() not in tech_str:
+                    continue
+
+            filtered_subdomains.append(subdomain)
+
+        # Calculate pagination
+        total_subdomains = len(filtered_subdomains)
+        total_pages = max(1, (total_subdomains + per_page - 1) // per_page)
+        page = max(1, min(page, total_pages))  # Clamp page number
+
+        start_idx = (page - 1) * per_page
+        end_idx = min(start_idx + per_page, total_subdomains)
+        paginated_subdomains = filtered_subdomains[start_idx:end_idx]
+
     # Get recent events (last 7 days)
     week_ago = datetime.utcnow() - timedelta(days=7)
     recent_events = db.query(Event).filter(
@@ -107,7 +170,16 @@ def project_detail(
         "project": project,
         "latest_snapshots": latest_snapshots,
         "recent_events": recent_events,
-        "recent_scans": recent_scans
+        "recent_scans": recent_scans,
+        # Pagination data
+        "paginated_subdomains": paginated_subdomains,
+        "current_page": page,
+        "per_page": per_page,
+        "total_subdomains": total_subdomains,
+        "total_pages": total_pages,
+        "search": search,
+        "status_filter": status_filter,
+        "tech_filter": tech_filter
     })
 
 

@@ -158,24 +158,23 @@
             <h3>🌐 All Discovered Assets</h3>
 
             <!-- Filters -->
-            <div class="filter-bar" style="display: flex; gap: 0.75rem; flex-wrap: wrap; margin-bottom: 1.5rem; align-items: center;">
+            <form method="GET" action="/projects/{{ project.id }}" style="display: flex; gap: 0.75rem; flex-wrap: wrap; margin-bottom: 1.5rem; align-items: center;">
                 <div style="flex: 1; min-width: 250px;">
-                    <input type="text" id="assetSearchInput"
+                    <input type="text" name="search" value="{{ search }}"
                            placeholder="🔍 Search URL, title, IP, or technology..."
-                           onkeyup="filterAssets()"
                            style="width: 100%; padding: 0.625rem 1rem; border: 2px solid #e2e8f0; border-radius: 8px; font-size: 0.875rem;">
                 </div>
 
-                <select id="assetStatusFilter" onchange="filterAssets()"
+                <select name="status_filter"
                         style="padding: 0.625rem 1rem; border: 2px solid #e2e8f0; border-radius: 8px; font-size: 0.875rem; background: white;">
                     <option value="">📊 All Status</option>
-                    <option value="2">✅ 2xx Success</option>
-                    <option value="3">🔄 3xx Redirect</option>
-                    <option value="4">⚠️  4xx Client Error</option>
-                    <option value="5">❌ 5xx Server Error</option>
+                    <option value="2" {% if status_filter == "2" %}selected{% endif %}>✅ 2xx Success</option>
+                    <option value="3" {% if status_filter == "3" %}selected{% endif %}>🔄 3xx Redirect</option>
+                    <option value="4" {% if status_filter == "4" %}selected{% endif %}>⚠️  4xx Client Error</option>
+                    <option value="5" {% if status_filter == "5" %}selected{% endif %}>❌ 5xx Server Error</option>
                 </select>
 
-                <select id="assetTechFilter" onchange="filterAssets()"
+                <select name="tech_filter"
                         style="padding: 0.625rem 1rem; border: 2px solid #e2e8f0; border-radius: 8px; font-size: 0.875rem; background: white;">
                     <option value="">🔧 All Technologies</option>
                     {% if latest_snapshots.http %}
@@ -190,21 +189,28 @@
                         {% endif %}
                     {% endfor %}
                     {% for tech in all_technologies|sort %}
-                    <option value="{{ tech }}">{{ tech }}</option>
+                    <option value="{{ tech }}" {% if tech_filter == tech %}selected{% endif %}>{{ tech }}</option>
                     {% endfor %}
                     {% endif %}
                 </select>
 
-                <button class="btn btn-sm btn-secondary" onclick="resetAssetFilters()"
-                        style="padding: 0.625rem 1rem; border: none; border-radius: 8px; background: #64748b; color: white; cursor: pointer; font-size: 0.875rem; font-weight: 500;">
-                    <i class="fas fa-undo"></i> Reset
+                <input type="hidden" name="per_page" value="{{ per_page }}">
+
+                <button type="submit" class="btn btn-sm btn-primary"
+                        style="padding: 0.625rem 1rem; border: none; border-radius: 8px; background: #667eea; color: white; cursor: pointer; font-size: 0.875rem; font-weight: 500;">
+                    <i class="fas fa-filter"></i> Apply
                 </button>
 
-                <button class="btn btn-sm btn-primary" onclick="exportAssetsToCSV()"
-                        style="padding: 0.625rem 1rem; border: none; border-radius: 8px; background: #667eea; color: white; cursor: pointer; font-size: 0.875rem; font-weight: 500;">
+                <a href="/projects/{{ project.id }}" class="btn btn-sm btn-secondary"
+                   style="padding: 0.625rem 1rem; border: none; border-radius: 8px; background: #64748b; color: white; cursor: pointer; font-size: 0.875rem; font-weight: 500; text-decoration: none; display: inline-block;">
+                    <i class="fas fa-undo"></i> Reset
+                </a>
+
+                <button type="button" class="btn btn-sm btn-primary" onclick="exportAssetsToCSV()"
+                        style="padding: 0.625rem 1rem; border: none; border-radius: 8px; background: #10b981; color: white; cursor: pointer; font-size: 0.875rem; font-weight: 500;">
                     <i class="fas fa-download"></i> Export CSV
                 </button>
-            </div>
+            </form>
 
             <!-- Stats Summary -->
             <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(150px, 1fr)); gap: 1rem; margin-bottom: 1.5rem;">
@@ -263,8 +269,8 @@
                         </tr>
                     </thead>
                     <tbody id="assetsTableBody">
-                        {% if latest_snapshots.subdomains %}
-                        {% for subdomain in latest_snapshots.subdomains.data.subdomains|sort %}
+                        {% if paginated_subdomains %}
+                        {% for subdomain in paginated_subdomains %}
                         {% set dns_record = latest_snapshots.dns.data.dns_records.get(subdomain) if latest_snapshots.dns else none %}
                         {% set http_url_https = 'https://' + subdomain %}
                         {% set http_url_http = 'http://' + subdomain %}
@@ -283,7 +289,7 @@
                             data-ip="{{ http_record.ip if http_record else (dns_record.a[0] if dns_record and dns_record.a else '') }}"
                             data-technologies="{{ http_record.technologies|join(',') if http_record and http_record.technologies else '' }}"
                             data-cname="{{ dns_record.cname|join(',') if dns_record and dns_record.cname else '' }}">
-                            <td style="padding: 1rem; color: #64748b; font-size: 0.875rem;">{{ loop.index }}</td>
+                            <td style="padding: 1rem; color: #64748b; font-size: 0.875rem;">{{ ((current_page - 1) * per_page) + loop.index }}</td>
                             <!-- Screenshot -->
                             <td style="padding: 1rem;">
                                 {% if http_record and http_record.screenshot %}
@@ -428,7 +434,7 @@
             <div style="margin-top: 1rem; display: flex; justify-content: space-between; align-items: center; flex-wrap: wrap; gap: 1rem;">
                 <!-- Stats -->
                 <div style="padding: 1rem; background: #f8fafc; border-radius: 8px; color: #64748b; font-size: 0.875rem; flex: 1; min-width: 200px;">
-                    Showing <span id="assetsVisibleRows" style="font-weight: 600; color: #475569;">0</span> of <span id="assetsTotalRows" style="font-weight: 600; color: #475569;">0</span> assets
+                    Showing <span style="font-weight: 600; color: #475569;">{{ ((current_page - 1) * per_page) + 1 }}</span>-<span style="font-weight: 600; color: #475569;">{{ min(current_page * per_page, total_subdomains) }}</span> of <span style="font-weight: 600; color: #475569;">{{ total_subdomains }}</span> assets
                     <span style="margin-left: 0.5rem;">•</span>
                     <small style="color: #94a3b8; margin-left: 0.5rem;">Last scan: {{ latest_snapshots.subdomains.created_at.strftime('%Y-%m-%d %H:%M') if latest_snapshots.subdomains else 'Never' }}</small>
                 </div>
@@ -436,17 +442,65 @@
                 <!-- Per Page Selector -->
                 <div style="display: flex; align-items: center; gap: 0.5rem;">
                     <label style="font-size: 0.875rem; color: #64748b;">Per page:</label>
-                    <select id="assetsPerPage" onchange="updateAssetsPagination(1)"
+                    <select onchange="window.location.href='?page=1&per_page=' + this.value + '{{ ('&search=' + search) if search else '' }}{{ ('&status_filter=' + status_filter) if status_filter else '' }}{{ ('&tech_filter=' + tech_filter) if tech_filter else '' }}'"
                             style="padding: 0.5rem 1rem; border: 2px solid #e2e8f0; border-radius: 8px; font-size: 0.875rem; background: white; cursor: pointer;">
-                        <option value="25">25</option>
-                        <option value="50" selected>50</option>
-                        <option value="100">100</option>
-                        <option value="9999">All</option>
+                        <option value="25" {% if per_page == 25 %}selected{% endif %}>25</option>
+                        <option value="50" {% if per_page == 50 %}selected{% endif %}>50</option>
+                        <option value="100" {% if per_page == 100 %}selected{% endif %}>100</option>
+                        <option value="500" {% if per_page == 500 %}selected{% endif %}>500</option>
                     </select>
                 </div>
 
                 <!-- Pagination Buttons -->
-                <div id="assetsPaginationControls" style="display: flex; gap: 0.5rem; align-items: center;"></div>
+                <div style="display: flex; gap: 0.5rem; align-items: center;">
+                    {% if current_page > 1 %}
+                    <a href="?page=1&per_page={{ per_page }}{{ ('&search=' + search) if search else '' }}{{ ('&status_filter=' + status_filter) if status_filter else '' }}{{ ('&tech_filter=' + tech_filter) if tech_filter else '' }}"
+                       style="padding: 0.5rem 1rem; border: 2px solid #e2e8f0; border-radius: 8px; background: white; color: #475569; text-decoration: none; font-size: 0.875rem; cursor: pointer; transition: all 0.2s;"
+                       onmouseover="this.style.background='#f8fafc'; this.style.borderColor='#cbd5e1'"
+                       onmouseout="this.style.background='white'; this.style.borderColor='#e2e8f0'">
+                        <i class="fas fa-angle-double-left"></i> First
+                    </a>
+                    <a href="?page={{ current_page - 1 }}&per_page={{ per_page }}{{ ('&search=' + search) if search else '' }}{{ ('&status_filter=' + status_filter) if status_filter else '' }}{{ ('&tech_filter=' + tech_filter) if tech_filter else '' }}"
+                       style="padding: 0.5rem 1rem; border: 2px solid #e2e8f0; border-radius: 8px; background: white; color: #475569; text-decoration: none; font-size: 0.875rem; cursor: pointer; transition: all 0.2s;"
+                       onmouseover="this.style.background='#f8fafc'; this.style.borderColor='#cbd5e1'"
+                       onmouseout="this.style.background='white'; this.style.borderColor='#e2e8f0'">
+                        <i class="fas fa-angle-left"></i> Prev
+                    </a>
+                    {% else %}
+                    <span style="padding: 0.5rem 1rem; border: 2px solid #f1f5f9; border-radius: 8px; background: #f8fafc; color: #cbd5e1; font-size: 0.875rem; cursor: not-allowed;">
+                        <i class="fas fa-angle-double-left"></i> First
+                    </span>
+                    <span style="padding: 0.5rem 1rem; border: 2px solid #f1f5f9; border-radius: 8px; background: #f8fafc; color: #cbd5e1; font-size: 0.875rem; cursor: not-allowed;">
+                        <i class="fas fa-angle-left"></i> Prev
+                    </span>
+                    {% endif %}
+
+                    <span style="padding: 0.5rem 1rem; background: #667eea; color: white; border-radius: 8px; font-weight: 600; font-size: 0.875rem;">
+                        Page {{ current_page }} of {{ total_pages }}
+                    </span>
+
+                    {% if current_page < total_pages %}
+                    <a href="?page={{ current_page + 1 }}&per_page={{ per_page }}{{ ('&search=' + search) if search else '' }}{{ ('&status_filter=' + status_filter) if status_filter else '' }}{{ ('&tech_filter=' + tech_filter) if tech_filter else '' }}"
+                       style="padding: 0.5rem 1rem; border: 2px solid #e2e8f0; border-radius: 8px; background: white; color: #475569; text-decoration: none; font-size: 0.875rem; cursor: pointer; transition: all 0.2s;"
+                       onmouseover="this.style.background='#f8fafc'; this.style.borderColor='#cbd5e1'"
+                       onmouseout="this.style.background='white'; this.style.borderColor='#e2e8f0'">
+                        Next <i class="fas fa-angle-right"></i>
+                    </a>
+                    <a href="?page={{ total_pages }}&per_page={{ per_page }}{{ ('&search=' + search) if search else '' }}{{ ('&status_filter=' + status_filter) if status_filter else '' }}{{ ('&tech_filter=' + tech_filter) if tech_filter else '' }}"
+                       style="padding: 0.5rem 1rem; border: 2px solid #e2e8f0; border-radius: 8px; background: white; color: #475569; text-decoration: none; font-size: 0.875rem; cursor: pointer; transition: all 0.2s;"
+                       onmouseover="this.style.background='#f8fafc'; this.style.borderColor='#cbd5e1'"
+                       onmouseout="this.style.background='white'; this.style.borderColor='#e2e8f0'">
+                        Last <i class="fas fa-angle-double-right"></i>
+                    </a>
+                    {% else %}
+                    <span style="padding: 0.5rem 1rem; border: 2px solid #f1f5f9; border-radius: 8px; background: #f8fafc; color: #cbd5e1; font-size: 0.875rem; cursor: not-allowed;">
+                        Next <i class="fas fa-angle-right"></i>
+                    </span>
+                    <span style="padding: 0.5rem 1rem; border: 2px solid #f1f5f9; border-radius: 8px; background: #f8fafc; color: #cbd5e1; font-size: 0.875rem; cursor: not-allowed;">
+                        Last <i class="fas fa-angle-double-right"></i>
+                    </span>
+                    {% endif %}
+                </div>
             </div>
         </div>
     </div>
@@ -1459,72 +1513,6 @@ function exportToCSV() {
 
 // ========== NEW ASSETS TAB FUNCTIONS ==========
 
-// Assets pagination state
-let assetsCurrentPage = 1;
-let assetsFilteredRows = [];
-
-// Filter assets in new table
-function filterAssets() {
-    const searchInput = document.getElementById('assetSearchInput').value.toLowerCase();
-    const statusFilter = document.getElementById('assetStatusFilter').value;
-    const techFilter = document.getElementById('assetTechFilter').value.toLowerCase();
-
-    const rows = document.querySelectorAll('#assetsTableBody .asset-row');
-    assetsFilteredRows = [];
-
-    for (let row of rows) {
-        const subdomain = row.getAttribute('data-subdomain').toLowerCase();
-        const url = row.getAttribute('data-url').toLowerCase();
-        const status = row.getAttribute('data-status');
-        const title = row.getAttribute('data-title').toLowerCase();
-        const ip = row.getAttribute('data-ip').toLowerCase();
-        const technologies = row.getAttribute('data-technologies').toLowerCase();
-        const cname = row.getAttribute('data-cname').toLowerCase();
-
-        let show = true;
-
-        // Search filter
-        if (searchInput) {
-            if (!subdomain.includes(searchInput) &&
-                !url.includes(searchInput) &&
-                !title.includes(searchInput) &&
-                !ip.includes(searchInput) &&
-                !cname.includes(searchInput) &&
-                !technologies.includes(searchInput)) {
-                show = false;
-            }
-        }
-
-        // Status filter
-        if (statusFilter && status) {
-            if (!status.startsWith(statusFilter)) {
-                show = false;
-            }
-        }
-
-        // Technology filter
-        if (techFilter && !technologies.includes(techFilter)) {
-            show = false;
-        }
-
-        if (show) {
-            assetsFilteredRows.push(row);
-        }
-    }
-
-    // Reset to page 1 when filtering
-    assetsCurrentPage = 1;
-    updateAssetsPagination();
-}
-
-// Reset asset filters
-function resetAssetFilters() {
-    document.getElementById('assetSearchInput').value = '';
-    document.getElementById('assetStatusFilter').value = '';
-    document.getElementById('assetTechFilter').value = '';
-    filterAssets();
-}
-
 // Export assets to CSV
 function exportAssetsToCSV() {
     const table = document.getElementById('assetsTable');
@@ -1552,113 +1540,6 @@ function exportAssetsToCSV() {
     a.download = 'http_assets_' + new Date().toISOString().split('T')[0] + '.csv';
     a.click();
     window.URL.revokeObjectURL(url);
-}
-
-// Update assets pagination
-function updateAssetsPagination(page) {
-    if (page) {
-        assetsCurrentPage = page;
-    }
-
-    const perPage = parseInt(document.getElementById('assetsPerPage').value);
-    const totalRows = assetsFilteredRows.length;
-    const totalPages = Math.ceil(totalRows / perPage);
-
-    // Hide all rows first
-    const allRows = document.querySelectorAll('#assetsTableBody .asset-row');
-    allRows.forEach(row => row.style.display = 'none');
-
-    // Show only rows for current page
-    const start = (assetsCurrentPage - 1) * perPage;
-    const end = Math.min(start + perPage, totalRows);
-
-    for (let i = start; i < end; i++) {
-        assetsFilteredRows[i].style.display = '';
-    }
-
-    // Update stats
-    document.getElementById('assetsVisibleRows').textContent = Math.min(end - start, totalRows);
-    document.getElementById('assetsTotalRows').textContent = totalRows;
-
-    // Update pagination controls
-    const controls = document.getElementById('assetsPaginationControls');
-    controls.innerHTML = '';
-
-    if (totalPages <= 1) return;
-
-    // Previous button
-    const prevBtn = document.createElement('button');
-    prevBtn.innerHTML = '<i class="fas fa-chevron-left"></i>';
-    prevBtn.disabled = assetsCurrentPage === 1;
-    prevBtn.onclick = () => updateAssetsPagination(assetsCurrentPage - 1);
-    prevBtn.style.cssText = 'padding: 0.5rem 0.75rem; border: 2px solid #e2e8f0; border-radius: 8px; background: white; cursor: pointer; font-size: 0.875rem;';
-    if (prevBtn.disabled) prevBtn.style.opacity = '0.5';
-    controls.appendChild(prevBtn);
-
-    // Page numbers
-    const maxPages = 5;
-    let startPage = Math.max(1, assetsCurrentPage - Math.floor(maxPages / 2));
-    let endPage = Math.min(totalPages, startPage + maxPages - 1);
-
-    if (endPage - startPage < maxPages - 1) {
-        startPage = Math.max(1, endPage - maxPages + 1);
-    }
-
-    if (startPage > 1) {
-        const firstBtn = document.createElement('button');
-        firstBtn.textContent = '1';
-        firstBtn.onclick = () => updateAssetsPagination(1);
-        firstBtn.style.cssText = 'padding: 0.5rem 0.75rem; border: 2px solid #e2e8f0; border-radius: 8px; background: white; cursor: pointer; font-size: 0.875rem;';
-        controls.appendChild(firstBtn);
-
-        if (startPage > 2) {
-            const dots = document.createElement('span');
-            dots.textContent = '...';
-            dots.style.cssText = 'padding: 0.5rem; color: #64748b;';
-            controls.appendChild(dots);
-        }
-    }
-
-    for (let i = startPage; i <= endPage; i++) {
-        const btn = document.createElement('button');
-        btn.textContent = i;
-        btn.onclick = () => updateAssetsPagination(i);
-        btn.style.cssText = 'padding: 0.5rem 0.75rem; border: 2px solid #e2e8f0; border-radius: 8px; cursor: pointer; font-size: 0.875rem;';
-
-        if (i === assetsCurrentPage) {
-            btn.style.background = '#667eea';
-            btn.style.color = 'white';
-            btn.style.borderColor = '#667eea';
-        } else {
-            btn.style.background = 'white';
-        }
-
-        controls.appendChild(btn);
-    }
-
-    if (endPage < totalPages) {
-        if (endPage < totalPages - 1) {
-            const dots = document.createElement('span');
-            dots.textContent = '...';
-            dots.style.cssText = 'padding: 0.5rem; color: #64748b;';
-            controls.appendChild(dots);
-        }
-
-        const lastBtn = document.createElement('button');
-        lastBtn.textContent = totalPages;
-        lastBtn.onclick = () => updateAssetsPagination(totalPages);
-        lastBtn.style.cssText = 'padding: 0.5rem 0.75rem; border: 2px solid #e2e8f0; border-radius: 8px; background: white; cursor: pointer; font-size: 0.875rem;';
-        controls.appendChild(lastBtn);
-    }
-
-    // Next button
-    const nextBtn = document.createElement('button');
-    nextBtn.innerHTML = '<i class="fas fa-chevron-right"></i>';
-    nextBtn.disabled = assetsCurrentPage === totalPages;
-    nextBtn.onclick = () => updateAssetsPagination(assetsCurrentPage + 1);
-    nextBtn.style.cssText = 'padding: 0.5rem 0.75rem; border: 2px solid #e2e8f0; border-radius: 8px; background: white; cursor: pointer; font-size: 0.875rem;';
-    if (nextBtn.disabled) nextBtn.style.opacity = '0.5';
-    controls.appendChild(nextBtn);
 }
 
 // Show screenshot modal
@@ -2091,7 +1972,7 @@ function triggerScan(projectId, mode) {
 // Initialize stats on page load
 document.addEventListener('DOMContentLoaded', () => {
     filterTable(); // Initialize counts for JS Files table
-    filterAssets(); // Initialize counts and pagination for All Assets table
+    // All Assets pagination is now handled server-side
 });
 </script>
 {% endblock %}
