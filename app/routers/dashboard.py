@@ -99,6 +99,8 @@ def project_detail(
     total_subdomains = 0
     paginated_subdomains = []
     total_pages = 1
+    showing_start = 0
+    showing_end = 0
 
     if "subdomains" in latest_snapshots:
         all_subdomains = sorted(latest_snapshots["subdomains"].data.get("subdomains", []))
@@ -152,6 +154,10 @@ def project_detail(
         end_idx = min(start_idx + per_page, total_subdomains)
         paginated_subdomains = filtered_subdomains[start_idx:end_idx]
 
+        # Calculate display indices (1-based)
+        showing_start = start_idx + 1 if total_subdomains > 0 else 0
+        showing_end = end_idx
+
     # Get recent events (last 7 days)
     week_ago = datetime.utcnow() - timedelta(days=7)
     recent_events = db.query(Event).filter(
@@ -177,6 +183,8 @@ def project_detail(
         "per_page": per_page,
         "total_subdomains": total_subdomains,
         "total_pages": total_pages,
+        "showing_start": showing_start,
+        "showing_end": showing_end,
         "search": search,
         "status_filter": status_filter,
         "tech_filter": tech_filter

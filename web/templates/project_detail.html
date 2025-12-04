@@ -434,7 +434,7 @@
             <div style="margin-top: 1rem; display: flex; justify-content: space-between; align-items: center; flex-wrap: wrap; gap: 1rem;">
                 <!-- Stats -->
                 <div style="padding: 1rem; background: #f8fafc; border-radius: 8px; color: #64748b; font-size: 0.875rem; flex: 1; min-width: 200px;">
-                    Showing <span style="font-weight: 600; color: #475569;">{{ ((current_page - 1) * per_page) + 1 }}</span>-<span style="font-weight: 600; color: #475569;">{{ min(current_page * per_page, total_subdomains) }}</span> of <span style="font-weight: 600; color: #475569;">{{ total_subdomains }}</span> assets
+                    Showing <span style="font-weight: 600; color: #475569;">{{ showing_start }}</span>-<span style="font-weight: 600; color: #475569;">{{ showing_end }}</span> of <span style="font-weight: 600; color: #475569;">{{ total_subdomains }}</span> assets
                     <span style="margin-left: 0.5rem;">•</span>
                     <small style="color: #94a3b8; margin-left: 0.5rem;">Last scan: {{ latest_snapshots.subdomains.created_at.strftime('%Y-%m-%d %H:%M') if latest_snapshots.subdomains else 'Never' }}</small>
                 </div>
