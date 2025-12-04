@@ -277,7 +277,8 @@ def run_httpx(
 
     try:
         cmd.extend(["-list", urls_file])
-        result = run_command(cmd, timeout=settings.scan_timeout)
+        # httpx can return exit code 1 even on partial success, so don't check exit code
+        result = run_command(cmd, timeout=settings.scan_timeout, check=False)
 
         # Parse JSON output
         records = []
