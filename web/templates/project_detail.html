@@ -2090,7 +2090,8 @@ function triggerScan(projectId, mode) {
 
 // Initialize stats on page load
 document.addEventListener('DOMContentLoaded', () => {
-    filterTable(); // Initialize counts
+    filterTable(); // Initialize counts for JS Files table
+    filterAssets(); // Initialize counts and pagination for All Assets table
 });
 </script>
 {% endblock %}
