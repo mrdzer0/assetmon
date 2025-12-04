@@ -41,6 +41,7 @@ class ProjectCreate(ProjectBase):
 class ProjectUpdate(BaseModel):
     name: Optional[str] = None
     description: Optional[str] = None
+    domains: Optional[List[str]] = None
     config: Optional[Dict[str, Any]] = None
     notification_config: Optional[Dict[str, Any]] = None
     is_active: Optional[bool] = None

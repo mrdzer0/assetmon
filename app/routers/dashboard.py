@@ -519,6 +519,186 @@ def get_project_jsfiles(
     }
 
 
+@router.get("/api/projects/{project_id}/takeovers")
+def get_project_takeovers(
+    project_id: int,
+    page: int = 1,
+    per_page: int = 50,
+    search: str = "",
+    severity: str = "",
+    service: str = "",
+    db: Session = Depends(get_db),
+    current_user: User = Depends(get_current_user)
+):
+    """Get paginated takeover findings for a project (AJAX endpoint)"""
+    # Verify project access
+    project = db.query(Project).filter(Project.id == project_id).first()
+    if not project:
+        return {"has_data": False, "takeovers": [], "total": 0}
+
+    # Get latest DNS snapshot
+    dns_snapshot = db.query(Snapshot).filter(
+        Snapshot.project_id == project_id,
+        Snapshot.type == "DNS"
+    ).order_by(Snapshot.created_at.desc()).first()
+
+    if not dns_snapshot or not dns_snapshot.scan_metadata:
+        return {
+            "takeovers": [],
+            "total": 0,
+            "page": page,
+            "per_page": per_page,
+            "total_pages": 0,
+            "showing_start": 0,
+            "showing_end": 0,
+            "has_data": False,
+            "snapshot_date": None
+        }
+
+    # Get takeover findings from metadata
+    all_takeovers = dns_snapshot.scan_metadata.get("takeover_findings", [])
+
+    # Filter by search
+    if search:
+        search_lower = search.lower()
+        all_takeovers = [
+            t for t in all_takeovers
+            if search_lower in t.get("subdomain", "").lower() or
+               search_lower in t.get("cname", "").lower()
+        ]
+
+    # Filter by severity
+    if severity:
+        all_takeovers = [
+            t for t in all_takeovers
+            if t.get("severity", "").lower() == severity.lower()
+        ]
+
+    # Filter by service
+    if service:
+        all_takeovers = [
+            t for t in all_takeovers
+            if t.get("service", "").lower() == service.lower()
+        ]
+
+    # Pagination
+    total_takeovers = len(all_takeovers)
+    total_pages = (total_takeovers + per_page - 1) // per_page if total_takeovers > 0 else 0
+
+    start_idx = (page - 1) * per_page
+    end_idx = min(start_idx + per_page, total_takeovers)
+
+    paginated_takeovers = all_takeovers[start_idx:end_idx]
+
+    # Get unique services for filter dropdown
+    unique_services = sorted(list(set(t.get("service", "unknown") for t in all_takeovers)))
+
+    return {
+        "takeovers": paginated_takeovers,
+        "total": total_takeovers,
+        "page": page,
+        "per_page": per_page,
+        "total_pages": total_pages,
+        "showing_start": start_idx + 1 if total_takeovers > 0 else 0,
+        "showing_end": end_idx,
+        "has_data": True,
+        "snapshot_date": dns_snapshot.created_at.isoformat(),
+        "unique_services": unique_services
+    }
+
+
+@router.get("/api/projects/{project_id}/events")
+def get_project_events(
+    project_id: int,
+    page: int = 1,
+    per_page: int = 50,
+    search: str = "",
+    severity: str = "",
+    event_type: str = "",
+    days: int = 7,
+    db: Session = Depends(get_db),
+    current_user: User = Depends(get_current_user)
+):
+    """Get paginated events for a project (AJAX endpoint)"""
+    # Verify project access
+    project = db.query(Project).filter(Project.id == project_id).first()
+    if not project:
+        return {"has_data": False, "events": [], "total": 0}
+
+    # Build query
+    query = db.query(Event).filter(Event.project_id == project_id)
+
+    # Filter by days
+    if days > 0:
+        cutoff_date = datetime.utcnow() - timedelta(days=days)
+        query = query.filter(Event.created_at >= cutoff_date)
+
+    # Filter by severity
+    if severity:
+        query = query.filter(Event.severity == severity)
+
+    # Filter by type
+    if event_type:
+        query = query.filter(Event.type == event_type)
+
+    # Filter by search
+    if search:
+        search_pattern = f"%{search}%"
+        query = query.filter(Event.summary.ilike(search_pattern))
+
+    # Order by most recent
+    query = query.order_by(Event.created_at.desc())
+
+    # Get total count
+    total_events = query.count()
+
+    # Pagination
+    total_pages = (total_events + per_page - 1) // per_page if total_events > 0 else 0
+    start_idx = (page - 1) * per_page
+    end_idx = min(start_idx + per_page, total_events)
+
+    paginated_events = query.offset(start_idx).limit(per_page).all()
+
+    # Convert to dict
+    events_list = []
+    for event in paginated_events:
+        events_list.append({
+            "id": event.id,
+            "type": event.type.value if hasattr(event.type, 'value') else str(event.type),
+            "severity": event.severity.value if hasattr(event.severity, 'value') else str(event.severity),
+            "summary": event.summary,
+            "details": event.details,
+            "created_at": event.created_at.isoformat(),
+            "related_entities": event.related_entities
+        })
+
+    # Get unique event types for filter
+    unique_types = db.query(Event.type).filter(Event.project_id == project_id).distinct().all()
+    unique_types = [t[0].value if hasattr(t[0], 'value') else str(t[0]) for t in unique_types]
+
+    # Count by severity
+    severity_counts = {
+        "CRITICAL": query.filter(Event.severity == "CRITICAL").count(),
+        "HIGH": query.filter(Event.severity == "HIGH").count(),
+        "MEDIUM": query.filter(Event.severity == "MEDIUM").count(),
+        "LOW": query.filter(Event.severity == "LOW").count(),
+        "INFO": query.filter(Event.severity == "INFO").count()
+    }
+
+    return {
+        "events": events_list,
+        "total": total_events,
+        "page": page,
+        "per_page": per_page,
+        "total_pages": total_pages,
+        "showing_start": start_idx + 1 if total_events > 0 else 0,
+        "showing_end": end_idx,
+        "has_data": True,
+        "unique_types": unique_types,
+        "severity_counts": severity_counts
+    }
+
+
 @router.get("/api/dashboard/stats")
 def get_dashboard_stats(db: Session = Depends(get_db), current_user: User = Depends(get_current_user)):
     """Get dashboard statistics (API endpoint for AJAX)"""

@@ -109,6 +109,30 @@ def update_project(
     if project_data.is_active is not None:
         project.is_active = project_data.is_active
 
+    # Update domains if provided
+    if project_data.domains is not None:
+        # Get current domains
+        current_domains = {d.name for d in project.domains}
+        new_domains = set(project_data.domains)
+
+        # Find domains to remove (in current but not in new)
+        domains_to_remove = current_domains - new_domains
+
+        # Find domains to add (in new but not in current)
+        domains_to_add = new_domains - current_domains
+
+        # Remove domains
+        if domains_to_remove:
+            db.query(Domain).filter(
+                Domain.project_id == project_id,
+                Domain.name.in_(domains_to_remove)
+            ).delete(synchronize_session=False)
+
+        # Add new domains
+        for domain_name in domains_to_add:
+            domain = Domain(project_id=project_id, name=domain_name)
+            db.add(domain)
+
     db.commit()
     db.refresh(project)
 

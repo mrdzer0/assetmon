@@ -1,0 +1,226 @@
+    <!-- Tab: Events -->
+    <div id="tab-events" class="tab-content">
+        <div class="section">
+            <!-- Loading State -->
+            <div id="events-loading" style="text-align: center; padding: 4rem 2rem;">
+                <div style="display: inline-block; padding: 2rem; background: linear-gradient(135deg, #8b5cf6 0%, #7c3aed 100%); border-radius: 50%; margin-bottom: 1.5rem;">
+                    <i class="fas fa-spinner fa-spin" style="font-size: 3rem; color: white;"></i>
+                </div>
+                <h3 style="color: #1e293b; font-size: 1.5rem; margin-bottom: 0.5rem;">Loading Events...</h3>
+                <p style="color: #64748b; font-size: 0.875rem;">Fetching security events and changes</p>
+                <div style="width: 200px; height: 4px; background: #e2e8f0; border-radius: 4px; margin: 1.5rem auto; overflow: hidden;">
+                    <div style="width: 60%; height: 100%; background: linear-gradient(90deg, #8b5cf6, #7c3aed); animation: loading 1.5s ease-in-out infinite;"></div>
+                </div>
+            </div>
+
+            <!-- Main Content -->
+            <div id="events-content" style="display: none;">
+                <!-- Stats Cards -->
+                <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)); gap: 1rem; margin-bottom: 1.5rem;">
+                    <div style="background: linear-gradient(135deg, #fee2e2 0%, #fecaca 100%); padding: 1.25rem; border-radius: 12px; border-left: 4px solid #ef4444;">
+                        <div style="display: flex; justify-content: space-between; align-items: start;">
+                            <div>
+                                <div style="font-size: 0.75rem; font-weight: 600; color: #991b1b; text-transform: uppercase; letter-spacing: 0.5px; margin-bottom: 0.5rem;">Critical</div>
+                                <div id="events-critical-count" style="font-size: 2rem; font-weight: 700; color: #7f1d1d;">0</div>
+                            </div>
+                            <i class="fas fa-exclamation-circle" style="font-size: 2rem; color: #dc2626; opacity: 0.3;"></i>
+                        </div>
+                    </div>
+
+                    <div style="background: linear-gradient(135deg, #fef3c7 0%, #fde68a 100%); padding: 1.25rem; border-radius: 12px; border-left: 4px solid #f59e0b;">
+                        <div style="display: flex; justify-content: space-between; align-items: start;">
+                            <div>
+                                <div style="font-size: 0.75rem; font-weight: 600; color: #92400e; text-transform: uppercase; letter-spacing: 0.5px; margin-bottom: 0.5rem;">High</div>
+                                <div id="events-high-count" style="font-size: 2rem; font-weight: 700; color: #78350f;">0</div>
+                            </div>
+                            <i class="fas fa-exclamation-triangle" style="font-size: 2rem; color: #d97706; opacity: 0.3;"></i>
+                        </div>
+                    </div>
+
+                    <div style="background: linear-gradient(135deg, #e0e7ff 0%, #c7d2fe 100%); padding: 1.25rem; border-radius: 12px; border-left: 4px solid #6366f1;">
+                        <div style="display: flex; justify-content: space-between; align-items: start;">
+                            <div>
+                                <div style="font-size: 0.75rem; font-weight: 600; color: #3730a3; text-transform: uppercase; letter-spacing: 0.5px; margin-bottom: 0.5rem;">Medium</div>
+                                <div id="events-medium-count" style="font-size: 2rem; font-weight: 700; color: #312e81;">0</div>
+                            </div>
+                            <i class="fas fa-info-circle" style="font-size: 2rem; color: #4f46e5; opacity: 0.3;"></i>
+                        </div>
+                    </div>
+
+                    <div style="background: linear-gradient(135deg, #f8fafc 0%, #f1f5f9 100%); padding: 1.25rem; border-radius: 12px; border-left: 4px solid #64748b;">
+                        <div style="display: flex; justify-content: space-between; align-items: start;">
+                            <div>
+                                <div style="font-size: 0.75rem; font-weight: 600; color: #334155; text-transform: uppercase; letter-spacing: 0.5px; margin-bottom: 0.5rem;">Info</div>
+                                <div id="events-info-count" style="font-size: 2rem; font-weight: 700; color: #1e293b;">0</div>
+                            </div>
+                            <i class="fas fa-bell" style="font-size: 2rem; color: #475569; opacity: 0.3;"></i>
+                        </div>
+                    </div>
+                </div>
+
+                <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 1.5rem;">
+                    <h3 style="margin: 0; color: #1e293b; font-size: 1.25rem;">
+                        <i class="fas fa-bell"></i> Security Events
+                    </h3>
+                    <div style="color: #64748b; font-size: 0.875rem;">
+                        <i class="fas fa-clock"></i> Showing last <span id="events-timerange">7</span> days
+                    </div>
+                </div>
+
+                <!-- Filters Bar -->
+                <div style="background: white; padding: 1.25rem; border-radius: 12px; box-shadow: 0 1px 3px rgba(0,0,0,0.1); margin-bottom: 1.5rem;">
+                    <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)); gap: 1rem; margin-bottom: 1rem;">
+                        <!-- Search -->
+                        <div>
+                            <label style="display: block; font-size: 0.75rem; font-weight: 600; color: #475569; margin-bottom: 0.5rem; text-transform: uppercase; letter-spacing: 0.5px;">
+                                <i class="fas fa-search"></i> Search
+                            </label>
+                            <input type="text" id="events-search" placeholder="Search events..."
+                                   style="width: 100%; padding: 0.625rem 1rem; border: 2px solid #e2e8f0; border-radius: 8px; font-size: 0.875rem; transition: all 0.2s;"
+                                   onfocus="this.style.borderColor='#8b5cf6'"
+                                   onblur="this.style.borderColor='#e2e8f0'">
+                        </div>
+
+                        <!-- Severity Filter -->
+                        <div>
+                            <label style="display: block; font-size: 0.75rem; font-weight: 600; color: #475569; margin-bottom: 0.5rem; text-transform: uppercase; letter-spacing: 0.5px;">
+                                <i class="fas fa-exclamation-circle"></i> Severity
+                            </label>
+                            <select id="events-severity"
+                                    style="width: 100%; padding: 0.625rem 1rem; border: 2px solid #e2e8f0; border-radius: 8px; font-size: 0.875rem; background: white; cursor: pointer;">
+                                <option value="">All Severity</option>
+                                <option value="CRITICAL">🔴 Critical</option>
+                                <option value="HIGH">🟠 High</option>
+                                <option value="MEDIUM">🟡 Medium</option>
+                                <option value="LOW">🟢 Low</option>
+                                <option value="INFO">ℹ️ Info</option>
+                            </select>
+                        </div>
+
+                        <!-- Type Filter -->
+                        <div>
+                            <label style="display: block; font-size: 0.75rem; font-weight: 600; color: #475569; margin-bottom: 0.5rem; text-transform: uppercase; letter-spacing: 0.5px;">
+                                <i class="fas fa-tag"></i> Event Type
+                            </label>
+                            <select id="events-type"
+                                    style="width: 100%; padding: 0.625rem 1rem; border: 2px solid #e2e8f0; border-radius: 8px; font-size: 0.875rem; background: white; cursor: pointer;">
+                                <option value="">All Types</option>
+                                <!-- Populated dynamically -->
+                            </select>
+                        </div>
+
+                        <!-- Days Filter -->
+                        <div>
+                            <label style="display: block; font-size: 0.75rem; font-weight: 600; color: #475569; margin-bottom: 0.5rem; text-transform: uppercase; letter-spacing: 0.5px;">
+                                <i class="fas fa-calendar"></i> Time Range
+                            </label>
+                            <select id="events-days"
+                                    style="width: 100%; padding: 0.625rem 1rem; border: 2px solid #e2e8f0; border-radius: 8px; font-size: 0.875rem; background: white; cursor: pointer;">
+                                <option value="1">Last 24 hours</option>
+                                <option value="7" selected>Last 7 days</option>
+                                <option value="30">Last 30 days</option>
+                                <option value="90">Last 90 days</option>
+                                <option value="0">All time</option>
+                            </select>
+                        </div>
+
+                        <!-- Per Page -->
+                        <div>
+                            <label style="display: block; font-size: 0.75rem; font-weight: 600; color: #475569; margin-bottom: 0.5rem; text-transform: uppercase; letter-spacing: 0.5px;">
+                                <i class="fas fa-list"></i> Per Page
+                            </label>
+                            <select id="events-per-page"
+                                    style="width: 100%; padding: 0.625rem 1rem; border: 2px solid #e2e8f0; border-radius: 8px; font-size: 0.875rem; background: white; cursor: pointer;">
+                                <option value="25">25</option>
+                                <option value="50" selected>50</option>
+                                <option value="100">100</option>
+                                <option value="200">200</option>
+                            </select>
+                        </div>
+                    </div>
+
+                    <!-- Filter Actions -->
+                    <div style="display: flex; gap: 0.75rem; align-items: center;">
+                        <button onclick="applyEventsFilters()"
+                                style="padding: 0.625rem 1.25rem; background: linear-gradient(135deg, #8b5cf6 0%, #7c3aed 100%); color: white; border: none; border-radius: 8px; cursor: pointer; font-size: 0.875rem; font-weight: 600; transition: transform 0.2s;"
+                                onmouseover="this.style.transform='translateY(-2px)'"
+                                onmouseout="this.style.transform='translateY(0)'">
+                            <i class="fas fa-filter"></i> Apply Filters
+                        </button>
+                        <button onclick="resetEventsFilters()"
+                                style="padding: 0.625rem 1.25rem; background: white; color: #64748b; border: 2px solid #e2e8f0; border-radius: 8px; cursor: pointer; font-size: 0.875rem; font-weight: 600;">
+                            <i class="fas fa-undo"></i> Reset
+                        </button>
+                        <div id="events-filter-info" style="margin-left: auto; color: #64748b; font-size: 0.875rem; font-weight: 500;">
+                            <i class="fas fa-info-circle"></i> <span id="events-count-display">0 events</span>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Table -->
+                <div style="background: white; border-radius: 12px; box-shadow: 0 1px 3px rgba(0,0,0,0.1); overflow: hidden;">
+                    <div class="table-responsive">
+                        <table class="table" style="margin: 0;">
+                            <thead style="background: linear-gradient(135deg, #faf5ff 0%, #f3e8ff 100%); border-bottom: 2px solid #e9d5ff;">
+                                <tr>
+                                    <th style="padding: 1rem; font-weight: 600; color: #581c87; font-size: 0.8125rem; text-transform: uppercase; letter-spacing: 0.5px; width: 100px;">Severity</th>
+                                    <th style="padding: 1rem; font-weight: 600; color: #581c87; font-size: 0.8125rem; text-transform: uppercase; letter-spacing: 0.5px; width: 180px;">Type</th>
+                                    <th style="padding: 1rem; font-weight: 600; color: #581c87; font-size: 0.8125rem; text-transform: uppercase; letter-spacing: 0.5px;">Summary</th>
+                                    <th style="padding: 1rem; font-weight: 600; color: #581c87; font-size: 0.8125rem; text-transform: uppercase; letter-spacing: 0.5px; width: 150px;">Time</th>
+                                    <th style="padding: 1rem; font-weight: 600; color: #581c87; font-size: 0.8125rem; text-transform: uppercase; letter-spacing: 0.5px; width: 100px;">Actions</th>
+                                </tr>
+                            </thead>
+                            <tbody id="events-table-body">
+                                <!-- Data loaded via AJAX -->
+                            </tbody>
+                        </table>
+                    </div>
+                </div>
+
+                <!-- Pagination -->
+                <div style="margin-top: 1.5rem; display: flex; justify-content: space-between; align-items: center; padding: 1rem; background: white; border-radius: 12px; box-shadow: 0 1px 3px rgba(0,0,0,0.1);">
+                    <div style="color: #64748b; font-size: 0.875rem; font-weight: 500;">
+                        Showing <span id="events-showing-start" style="font-weight: 700; color: #475569;">0</span> -
+                        <span id="events-showing-end" style="font-weight: 700; color: #475569;">0</span> of
+                        <span id="events-total" style="font-weight: 700; color: #475569;">0</span> events
+                    </div>
+                    <div id="events-pagination" style="display: flex; gap: 0.5rem; align-items: center;">
+                        <!-- Pagination buttons loaded via JS -->
+                    </div>
+                </div>
+            </div>
+
+            <!-- Empty State -->
+            <div id="events-empty" style="display: none; text-align: center; padding: 4rem 2rem;">
+                <div style="display: inline-block; padding: 2rem; background: #faf5ff; border-radius: 50%; margin-bottom: 1.5rem;">
+                    <i class="fas fa-bell" style="font-size: 3rem; color: #8b5cf6;"></i>
+                </div>
+                <h3 style="color: #64748b; font-size: 1.25rem; margin-bottom: 0.5rem;">No Events Found</h3>
+                <p style="color: #94a3b8; font-size: 0.875rem;">No security events or changes detected in the selected timeframe</p>
+            </div>
+        </div>
+    </div>
+
+<!-- Event Detail Modal -->
+<div id="event-detail-modal" style="display: none; position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: rgba(0,0,0,0.5); z-index: 9999; justify-content: center; align-items: center;">
+    <div style="background: white; border-radius: 12px; max-width: 700px; width: 90%; max-height: 80vh; overflow: hidden; box-shadow: 0 20px 25px -5px rgba(0,0,0,0.3);">
+        <div style="padding: 1.5rem; border-bottom: 1px solid #e2e8f0; display: flex; justify-content: space-between; align-items: center; background: linear-gradient(135deg, #faf5ff 0%, #f3e8ff 100%);">
+            <h3 style="margin: 0; color: #1e293b; font-size: 1.25rem;">
+                <i class="fas fa-info-circle"></i> Event Details
+            </h3>
+            <button onclick="closeEventDetail()" style="background: none; border: none; font-size: 1.5rem; color: #64748b; cursor: pointer; padding: 0; width: 32px; height: 32px;">
+                <i class="fas fa-times"></i>
+            </button>
+        </div>
+        <div id="event-detail-content" style="padding: 1.5rem; max-height: calc(80vh - 120px); overflow-y: auto;">
+            <!-- Content loaded via JS -->
+        </div>
+    </div>
+</div>
+
+<style>
+@keyframes loading {
+    0% { transform: translateX(-100%); }
+    100% { transform: translateX(300%); }
+}
+</style>

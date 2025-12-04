@@ -517,49 +517,7 @@
         </div>
     </div>
 
-    <!-- Tab: Takeovers -->
-    <div id="tab-takeovers" class="tab-content">
-        <div class="section">
-            <h3>⚠️ Potential Subdomain Takeovers</h3>
-
-            {% if latest_snapshots.dns and latest_snapshots.dns.scan_metadata and latest_snapshots.dns.scan_metadata.takeover_findings %}
-            <div class="table-responsive">
-                <table class="table">
-                    <thead>
-                        <tr>
-                            <th>#</th>
-                            <th>Subdomain</th>
-                            <th>CNAME</th>
-                            <th>Service</th>
-                            <th>Reason</th>
-                            <th>Severity</th>
-                            <th>Description</th>
-                        </tr>
-                    </thead>
-                    <tbody>
-                        {% for finding in latest_snapshots.dns.scan_metadata.takeover_findings %}
-                        <tr>
-                            <td>{{ loop.index }}</td>
-                            <td><code>{{ finding.subdomain }}</code></td>
-                            <td><code>{{ finding.cname }}</code></td>
-                            <td><span class="badge badge-danger">{{ finding.service }}</span></td>
-                            <td><code>{{ finding.reason }}</code></td>
-                            <td><span class="badge badge-{{ finding.severity }}">{{ finding.severity }}</span></td>
-                            <td>{{ finding.description if finding.description else '-' }}</td>
-                        </tr>
-                        {% endfor %}
-                    </tbody>
-                </table>
-            </div>
-            {% else %}
-            <div class="empty-state">
-                <i class="fas fa-shield-alt"></i>
-                <h3>No Takeover Vulnerabilities</h3>
-                <p>No potential subdomain takeovers detected</p>
-            </div>
-            {% endif %}
-        </div>
-    </div>
+{% include '_takeovers_tab.html' %}
 
     <!-- Tab: Endpoints -->
     <div id="tab-endpoints" class="tab-content">
@@ -896,64 +854,7 @@
     </div>
 
 
-    <!-- Tab: Events -->
-    <div id="tab-events" class="tab-content">
-        <div class="section">
-            <h3>Recent Events (Last 7 Days)</h3>
-            {% if recent_events %}
-            <div class="table-responsive">
-                <table class="table">
-                    <thead>
-                        <tr>
-                            <th>Severity</th>
-                            <th>Type</th>
-                            <th>Summary</th>
-                            <th>Time</th>
-                            <th>Actions</th>
-                        </tr>
-                    </thead>
-                    <tbody>
-                        {% for event in recent_events %}
-                        <tr>
-                            <td>
-                                <span class="badge badge-{{ event.severity.value }}">
-                                    {{ event.severity.value }}
-                                </span>
-                            </td>
-                            <td><code>{{ event.type.value }}</code></td>
-                            <td>{{ event.summary }}</td>
-                            <td>{{ event.created_at.strftime('%Y-%m-%d %H:%M') }}</td>
-                            <td>
-                                {% if event.details %}
-                                <button class="btn btn-sm btn-primary" onclick="showEventDetail({{ event.id }})">
-                                    <i class="fas fa-info-circle"></i> Detail
-                                </button>
-                                {% endif %}
-                            </td>
-                        </tr>
-                        <tr id="event-detail-{{ event.id }}" style="display: none;">
-                            <td colspan="5">
-                                <div class="event-detail-box">
-                                    <h4><i class="fas fa-info-circle"></i> Event Details</h4>
-                                    <div id="event-detail-content-{{ event.id }}">
-                                        <!-- Detail will be loaded here -->
-                                    </div>
-                                </div>
-                            </td>
-                        </tr>
-                        {% endfor %}
-                    </tbody>
-                </table>
-            </div>
-            {% else %}
-            <div class="empty-state">
-                <i class="fas fa-bell"></i>
-                <h3>No Recent Events</h3>
-                <p>No events in the last 7 days</p>
-            </div>
-            {% endif %}
-        </div>
-    </div>
+{% include '_events_tab.html' %}
 
     <!-- Tab: Scans -->
     <div id="tab-scans" class="tab-content">
@@ -1345,6 +1246,10 @@ function switchTab(tabName) {
         loadEndpointsData();
     } else if (tabName === 'jsfiles') {
         loadJSFilesData();
+    } else if (tabName === 'takeovers') {
+        loadTakeoversData();
+    } else if (tabName === 'events') {
+        loadEventsData();
     }
 }
 
@@ -2416,5 +2321,7 @@ function copyToClipboard(text) {
     });
 }
 </script>
-</script>
+
+{% include '_ajax_takeovers_events.html' %}
+
 {% endblock %}
