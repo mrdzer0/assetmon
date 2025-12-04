@@ -251,7 +251,7 @@ def run_httpx(
     if not urls:
         return []
 
-    cmd = [settings.httpx_path, "-silent", "-json"]
+    cmd = [settings.httpx_path, "-fr", "-silent", "-json"]
 
     if threads:
         cmd.extend(["-threads", str(threads)])
