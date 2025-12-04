@@ -1,0 +1,174 @@
+    <!-- Tab: JS Files -->
+    <div id="tab-jsfiles" class="tab-content">
+        <div class="section">
+            <!-- Loading State -->
+            <div id="jsfiles-loading" style="text-align: center; padding: 4rem 2rem;">
+                <div style="display: inline-block; padding: 2rem; background: linear-gradient(135deg, #f59e0b 0%, #d97706 100%); border-radius: 50%; margin-bottom: 1.5rem;">
+                    <i class="fas fa-spinner fa-spin" style="font-size: 3rem; color: white;"></i>
+                </div>
+                <h3 style="color: #1e293b; font-size: 1.5rem; margin-bottom: 0.5rem;">Loading JavaScript Files...</h3>
+                <p style="color: #64748b; font-size: 0.875rem;">Fetching JS files data from the server</p>
+                <div style="width: 200px; height: 4px; background: #e2e8f0; border-radius: 4px; margin: 1.5rem auto; overflow: hidden;">
+                    <div style="width: 60%; height: 100%; background: linear-gradient(90deg, #f59e0b, #d97706); animation: loading 1.5s ease-in-out infinite;"></div>
+                </div>
+            </div>
+
+            <!-- Main Content -->
+            <div id="jsfiles-content" style="display: none;">
+                <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 1.5rem;">
+                    <h3 style="margin: 0; color: #1e293b; font-size: 1.25rem;">
+                        <i class="fas fa-file-code"></i> JavaScript Files
+                    </h3>
+                    <div style="color: #64748b; font-size: 0.875rem;">
+                        <i class="fas fa-clock"></i> Last scan: <span id="jsfiles-last-scan">-</span>
+                    </div>
+                </div>
+
+                <!-- Secrets Alert (if any) -->
+                <div id="jsfiles-secrets-alert" style="display: none; background: linear-gradient(135deg, #fef3c7 0%, #fde68a 100%); padding: 1rem 1.25rem; border-radius: 12px; border-left: 4px solid #f59e0b; margin-bottom: 1.5rem;">
+                    <div style="display: flex; align-items: center; gap: 1rem;">
+                        <i class="fas fa-exclamation-triangle" style="font-size: 1.5rem; color: #d97706;"></i>
+                        <div>
+                            <div style="font-weight: 600; color: #92400e; margin-bottom: 0.25rem;">
+                                <span id="jsfiles-secrets-count">0</span> file(s) with potential secrets detected
+                            </div>
+                            <div style="font-size: 0.875rem; color: #b45309;">
+                                Review these files immediately to prevent credential leakage
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Filters Bar -->
+                <div style="background: white; padding: 1.25rem; border-radius: 12px; box-shadow: 0 1px 3px rgba(0,0,0,0.1); margin-bottom: 1.5rem;">
+                    <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)); gap: 1rem; margin-bottom: 1rem;">
+                        <!-- Search -->
+                        <div>
+                            <label style="display: block; font-size: 0.75rem; font-weight: 600; color: #475569; margin-bottom: 0.5rem; text-transform: uppercase; letter-spacing: 0.5px;">
+                                <i class="fas fa-search"></i> Search
+                            </label>
+                            <input type="text" id="jsfiles-search" placeholder="Search JS file URL..."
+                                   style="width: 100%; padding: 0.625rem 1rem; border: 2px solid #e2e8f0; border-radius: 8px; font-size: 0.875rem; transition: all 0.2s;"
+                                   onfocus="this.style.borderColor='#f59e0b'"
+                                   onblur="this.style.borderColor='#e2e8f0'">
+                        </div>
+
+                        <!-- Status Filter -->
+                        <div>
+                            <label style="display: block; font-size: 0.75rem; font-weight: 600; color: #475569; margin-bottom: 0.5rem; text-transform: uppercase; letter-spacing: 0.5px;">
+                                <i class="fas fa-power-off"></i> Status
+                            </label>
+                            <select id="jsfiles-status"
+                                    style="width: 100%; padding: 0.625rem 1rem; border: 2px solid #e2e8f0; border-radius: 8px; font-size: 0.875rem; background: white; cursor: pointer;">
+                                <option value="">All Status</option>
+                                <option value="active">✅ Active (200 OK)</option>
+                                <option value="inactive">❌ Inactive</option>
+                                <option value="unknown">⚪ Unknown</option>
+                            </select>
+                        </div>
+
+                        <!-- Secrets Filter -->
+                        <div>
+                            <label style="display: block; font-size: 0.75rem; font-weight: 600; color: #475569; margin-bottom: 0.5rem; text-transform: uppercase; letter-spacing: 0.5px;">
+                                <i class="fas fa-key"></i> Secrets
+                            </label>
+                            <select id="jsfiles-secrets"
+                                    style="width: 100%; padding: 0.625rem 1rem; border: 2px solid #e2e8f0; border-radius: 8px; font-size: 0.875rem; background: white; cursor: pointer;">
+                                <option value="">All Files</option>
+                                <option value="suspicious">🔥 Has Secrets</option>
+                                <option value="clean">✅ Clean</option>
+                            </select>
+                        </div>
+
+                        <!-- Per Page -->
+                        <div>
+                            <label style="display: block; font-size: 0.75rem; font-weight: 600; color: #475569; margin-bottom: 0.5rem; text-transform: uppercase; letter-spacing: 0.5px;">
+                                <i class="fas fa-list"></i> Per Page
+                            </label>
+                            <select id="jsfiles-per-page"
+                                    style="width: 100%; padding: 0.625rem 1rem; border: 2px solid #e2e8f0; border-radius: 8px; font-size: 0.875rem; background: white; cursor: pointer;">
+                                <option value="50">50</option>
+                                <option value="100" selected>100</option>
+                                <option value="250">250</option>
+                                <option value="500">500</option>
+                            </select>
+                        </div>
+                    </div>
+
+                    <!-- Filter Actions -->
+                    <div style="display: flex; gap: 0.75rem; align-items: center;">
+                        <button onclick="applyJSFilesFilters()"
+                                style="padding: 0.625rem 1.25rem; background: linear-gradient(135deg, #f59e0b 0%, #d97706 100%); color: white; border: none; border-radius: 8px; cursor: pointer; font-size: 0.875rem; font-weight: 600; transition: transform 0.2s;"
+                                onmouseover="this.style.transform='translateY(-2px)'"
+                                onmouseout="this.style.transform='translateY(0)'">
+                            <i class="fas fa-filter"></i> Apply Filters
+                        </button>
+                        <button onclick="resetJSFilesFilters()"
+                                style="padding: 0.625rem 1.25rem; background: white; color: #64748b; border: 2px solid #e2e8f0; border-radius: 8px; cursor: pointer; font-size: 0.875rem; font-weight: 600;">
+                            <i class="fas fa-undo"></i> Reset
+                        </button>
+                        <div id="jsfiles-filter-info" style="margin-left: auto; color: #64748b; font-size: 0.875rem; font-weight: 500;">
+                            <i class="fas fa-info-circle"></i> <span id="jsfiles-count-display">0 files</span>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Table -->
+                <div style="background: white; border-radius: 12px; box-shadow: 0 1px 3px rgba(0,0,0,0.1); overflow: hidden;">
+                    <div class="table-responsive">
+                        <table class="table" style="margin: 0;">
+                            <thead style="background: linear-gradient(135deg, #fffbeb 0%, #fef3c7 100%); border-bottom: 2px solid #fde68a;">
+                                <tr>
+                                    <th style="padding: 1rem; font-weight: 600; color: #78350f; font-size: 0.8125rem; text-transform: uppercase; letter-spacing: 0.5px;">#</th>
+                                    <th style="padding: 1rem; font-weight: 600; color: #78350f; font-size: 0.8125rem; text-transform: uppercase; letter-spacing: 0.5px; width: 100px;">Status</th>
+                                    <th style="padding: 1rem; font-weight: 600; color: #78350f; font-size: 0.8125rem; text-transform: uppercase; letter-spacing: 0.5px;">URL</th>
+                                    <th style="padding: 1rem; font-weight: 600; color: #78350f; font-size: 0.8125rem; text-transform: uppercase; letter-spacing: 0.5px; width: 150px;">Secrets</th>
+                                    <th style="padding: 1rem; font-weight: 600; color: #78350f; font-size: 0.8125rem; text-transform: uppercase; letter-spacing: 0.5px; width: 120px;">Actions</th>
+                                </tr>
+                            </thead>
+                            <tbody id="jsfiles-table-body">
+                                <!-- Data loaded via AJAX -->
+                            </tbody>
+                        </table>
+                    </div>
+                </div>
+
+                <!-- Pagination -->
+                <div style="margin-top: 1.5rem; display: flex; justify-content: space-between; align-items: center; padding: 1rem; background: white; border-radius: 12px; box-shadow: 0 1px 3px rgba(0,0,0,0.1);">
+                    <div style="color: #64748b; font-size: 0.875rem; font-weight: 500;">
+                        Showing <span id="jsfiles-showing-start" style="font-weight: 700; color: #475569;">0</span> -
+                        <span id="jsfiles-showing-end" style="font-weight: 700; color: #475569;">0</span> of
+                        <span id="jsfiles-total" style="font-weight: 700; color: #475569;">0</span> files
+                    </div>
+                    <div id="jsfiles-pagination" style="display: flex; gap: 0.5rem; align-items: center;">
+                        <!-- Pagination buttons loaded via JS -->
+                    </div>
+                </div>
+
+                <!-- Info Box -->
+                <div style="margin-top: 1.5rem; padding: 1rem 1.25rem; background: #f8fafc; border-radius: 12px; border-left: 4px solid #3b82f6;">
+                    <div style="display: flex; align-items: start; gap: 1rem;">
+                        <i class="fas fa-info-circle" style="font-size: 1.25rem; color: #3b82f6; margin-top: 0.125rem;"></i>
+                        <div style="font-size: 0.875rem; color: #475569; line-height: 1.6;">
+                            <strong style="color: #1e293b;">Status</strong> indicates if file is accessible (HTTP 200 check).
+                            <strong style="color: #1e293b;">Secrets</strong> shows risk level based on pattern matching.
+                            High risk files should be reviewed immediately.
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Empty State -->
+            <div id="jsfiles-empty" style="display: none; text-align: center; padding: 4rem 2rem;">
+                <div style="display: inline-block; padding: 2rem; background: #fffbeb; border-radius: 50%; margin-bottom: 1.5rem;">
+                    <i class="fas fa-file-code" style="font-size: 3rem; color: #f59e0b;"></i>
+                </div>
+                <h3 style="color: #64748b; font-size: 1.25rem; margin-bottom: 0.5rem;">No JavaScript Files</h3>
+                <p style="color: #94a3b8; font-size: 0.875rem; margin-bottom: 1.5rem;">Run a weekly scan to discover JavaScript files</p>
+                <button class="btn btn-primary" onclick="triggerScan({{ project.id }}, 'weekly')"
+                        style="padding: 0.75rem 1.5rem; background: linear-gradient(135deg, #667eea 0%, #764ba2 100%); color: white; border: none; border-radius: 8px; cursor: pointer; font-size: 0.875rem; font-weight: 600;">
+                    <i class="fas fa-calendar-week"></i> Run Weekly Scan
+                </button>
+            </div>
+        </div>
+    </div>
