@@ -73,8 +73,7 @@
 
             // Update last scan date
             if (data.snapshot_date) {
-                const date = new Date(data.snapshot_date);
-                document.getElementById('endpoints-last-scan').textContent = date.toLocaleString();
+                document.getElementById('endpoints-last-scan').textContent = formatDate(data.snapshot_date);
             }
 
             // Render table directly with server data
@@ -349,8 +348,7 @@
 
             // Update last scan date
             if (data.snapshot_date) {
-                const date = new Date(data.snapshot_date);
-                document.getElementById('jsfiles-last-scan').textContent = date.toLocaleString();
+                document.getElementById('jsfiles-last-scan').textContent = formatDate(data.snapshot_date);
             }
 
             // Show secrets alert if any

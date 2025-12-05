@@ -80,8 +80,7 @@
 
         // Update last scan
         if (data.snapshot_date) {
-            const date = new Date(data.snapshot_date);
-            document.getElementById('takeovers-last-scan').textContent = date.toLocaleString();
+            document.getElementById('takeovers-last-scan').textContent = formatDate(data.snapshot_date);
         }
 
         // Populate service filter dropdown
@@ -364,8 +363,7 @@
             };
             const severityStyle = severityColors[event.severity] || severityColors['INFO'];
 
-            const created = new Date(event.created_at);
-            const timeStr = created.toLocaleDateString() + ' ' + created.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
+            const timeStr = formatDate(event.created_at);
 
             row.innerHTML = `
             <td style="padding: 1rem;">

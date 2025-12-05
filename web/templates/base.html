@@ -1,5 +1,6 @@
 <!DOCTYPE html>
 <html lang="en">
+
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
@@ -8,6 +9,7 @@
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
     {% block extra_css %}{% endblock %}
 </head>
+
 <body>
     <div class="app-container">
         <!-- Sidebar -->
@@ -33,11 +35,13 @@
                 </a>
             </nav>
             <div class="sidebar-footer">
-                <div class="user-info" style="padding: 0.75rem; background: rgba(255,255,255,0.05); border-radius: 8px; margin-bottom: 0.5rem;">
+                <div class="user-info"
+                    style="padding: 0.75rem; background: rgba(255,255,255,0.05); border-radius: 8px; margin-bottom: 0.5rem;">
                     <div style="display: flex; align-items: center; gap: 0.5rem; margin-bottom: 0.5rem;">
                         <i class="fas fa-user-circle" style="font-size: 1.5rem; color: #667eea;"></i>
                         <div style="flex: 1; overflow: hidden;">
-                            <div style="font-weight: 600; font-size: 0.875rem; white-space: nowrap; overflow: hidden; text-overflow: ellipsis;">
+                            <div
+                                style="font-weight: 600; font-size: 0.875rem; white-space: nowrap; overflow: hidden; text-overflow: ellipsis;">
                                 {{ current_user.full_name or current_user.username }}
                             </div>
                             <div style="font-size: 0.75rem; color: rgba(255,255,255,0.6);">
@@ -49,7 +53,8 @@
                             </div>
                         </div>
                     </div>
-                    <a href="/logout" style="display: block; padding: 0.5rem; background: rgba(220,38,38,0.2); color: #fca5a5; text-align: center; border-radius: 4px; text-decoration: none; font-size: 0.875rem; transition: all 0.2s;">
+                    <a href="/logout"
+                        style="display: block; padding: 0.5rem; background: rgba(220,38,38,0.2); color: #fca5a5; text-align: center; border-radius: 4px; text-decoration: none; font-size: 0.875rem; transition: all 0.2s;">
                         <i class="fas fa-sign-out-alt"></i> Logout
                     </a>
                 </div>
@@ -68,7 +73,8 @@
     <!-- Toast notifications -->
     <div id="toast-container"></div>
 
-    <script src="/static/js/main.js"></script>
+    <script src="/static/js/main.js?v=3"></script>
     {% block extra_js %}{% endblock %}
 </body>
+
 </html>

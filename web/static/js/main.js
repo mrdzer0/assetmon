@@ -8,8 +8,8 @@ function showToast(message, type = 'info') {
     toast.className = `toast ${type}`;
 
     const icon = type === 'success' ? 'fa-check-circle' :
-                 type === 'error' ? 'fa-exclamation-circle' :
-                 'fa-info-circle';
+        type === 'error' ? 'fa-exclamation-circle' :
+            'fa-info-circle';
 
     toast.innerHTML = `
         <i class="fas ${icon}"></i>
@@ -47,17 +47,59 @@ async function apiRequest(url, options = {}) {
     }
 }
 
+// Timezone Management
+function getUserTimezone() {
+    return localStorage.getItem('user_timezone') || Intl.DateTimeFormat().resolvedOptions().timeZone;
+}
+
+function setUserTimezone(timezone) {
+    if (!timezone) {
+        timezone = Intl.DateTimeFormat().resolvedOptions().timeZone;
+    }
+    localStorage.setItem('user_timezone', timezone);
+    showToast(`Timezone set to ${timezone}`, 'success');
+
+    // Refresh page to apply changes if needed, or trigger re-render
+    // For now, reload is safest to update all dates
+    setTimeout(() => location.reload(), 1000);
+}
+
+// Helper to ensure UTC
+function ensureUTC(dateString) {
+    if (!dateString) return null;
+    // If it's a standard ISO string without timezone info (Z or +HH:MM), append Z
+    if (typeof dateString === 'string' && /^\d{4}-\d{2}-\d{2}T\d{2}:\d{2}:\d{2}(?:\.\d+)?$/.test(dateString)) {
+        return dateString + 'Z';
+    }
+    return dateString;
+}
+
 // Format date
 function formatDate(dateString) {
     if (!dateString) return 'Never';
-    const date = new Date(dateString);
-    return date.toLocaleString();
+    const date = new Date(ensureUTC(dateString));
+    const timezone = getUserTimezone();
+
+    try {
+        return date.toLocaleString('default', {
+            timeZone: timezone,
+            year: 'numeric',
+            month: 'short',
+            day: 'numeric',
+            hour: '2-digit',
+            minute: '2-digit',
+            timeZoneName: 'short'
+        });
+    } catch (e) {
+        console.error(`Invalid timezone ${timezone}, falling back to local`);
+        return date.toLocaleString();
+    }
 }
 
 // Format relative time
 function formatRelativeTime(dateString) {
     if (!dateString) return 'Never';
-    const date = new Date(dateString);
+    const date = new Date(ensureUTC(dateString));
     const now = new Date();
     const diff = now - date;
 
@@ -82,9 +124,22 @@ function initTooltips() {
     // Add tooltip functionality if needed
 }
 
+// Hydrate server-side rendered dates
+function hydrateDates() {
+    const elements = document.querySelectorAll('.local-date');
+    console.log(`Hydrating ${elements.length} date elements...`);
+    elements.forEach(el => {
+        const dateStr = el.getAttribute('data-date');
+        if (dateStr) {
+            el.textContent = formatDate(dateStr);
+        }
+    });
+}
+
 // Page-specific initialization
 document.addEventListener('DOMContentLoaded', () => {
     initTooltips();
+    hydrateDates();
 
     // Update relative timestamps
     setInterval(() => {
@@ -96,6 +151,11 @@ document.addEventListener('DOMContentLoaded', () => {
 });
 
 // Export functions for use in templates
+window.hydrateDates = hydrateDates;
+
+// Export functions for use in templates
+window.getUserTimezone = getUserTimezone;
+window.setUserTimezone = setUserTimezone;
 window.showToast = showToast;
 window.apiRequest = apiRequest;
 window.formatDate = formatDate;

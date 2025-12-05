@@ -106,7 +106,9 @@
             <h4><i class="fas fa-clock"></i> Last Scan</h4>
             <p>
                 {% if project.last_scan_at %}
-                {{ project.last_scan_at.strftime('%Y-%m-%d %H:%M:%S') }}
+                <span class="local-date" data-date="{{ project.last_scan_at.isoformat() }}">
+                    {{ project.last_scan_at.strftime('%Y-%m-%d %H:%M:%S') }}
+                </span>
                 {% else %}
                 Never scanned
                 {% endif %}
@@ -532,9 +534,15 @@
                         style="font-weight: 600; color: #475569;">{{ showing_end }}</span> of <span
                         style="font-weight: 600; color: #475569;">{{ total_subdomains }}</span> assets
                     <span style="margin-left: 0.5rem;">•</span>
-                    <small style="color: #94a3b8; margin-left: 0.5rem;">Last scan: {{
-                        latest_snapshots.subdomains.created_at.strftime('%Y-%m-%d %H:%M') if latest_snapshots.subdomains
-                        else 'Never' }}</small>
+                    <small style="color: #94a3b8; margin-left: 0.5rem;">Last scan:
+                        {% if latest_snapshots.subdomains %}
+                        <span class="local-date" data-date="{{ latest_snapshots.subdomains.created_at.isoformat() }}">
+                            {{ latest_snapshots.subdomains.created_at.strftime('%Y-%m-%d %H:%M') }}
+                        </span>
+                        {% else %}
+                        Never
+                        {% endif %}
+                    </small>
                 </div>
 
                 <!-- Per Page Selector -->
@@ -664,10 +672,16 @@
                                     {{ scan.status }}
                                 </span>
                             </td>
-                            <td>{{ scan.started_at.strftime('%Y-%m-%d %H:%M') }}</td>
+                            <td>
+                                <span class="local-date" data-date="{{ scan.started_at.isoformat() }}">
+                                    {{ scan.started_at.strftime('%Y-%m-%d %H:%M') }}
+                                </span>
+                            </td>
                             <td>
                                 {% if scan.completed_at %}
-                                {{ scan.completed_at.strftime('%Y-%m-%d %H:%M') }}
+                                <span class="local-date" data-date="{{ scan.completed_at.isoformat() }}">
+                                    {{ scan.completed_at.strftime('%Y-%m-%d %H:%M') }}
+                                </span>
                                 {% else %}
                                 <span class="text-muted">-</span>
                                 {% endif %}

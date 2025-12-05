@@ -9,6 +9,30 @@
     </div>
 
     <div class="section">
+        <h3>User Preferences</h3>
+
+        <div class="setting-item">
+            <label>Timezone</label>
+            <div style="display: flex; gap: 1rem;">
+                <select id="timezone-select" class="form-control">
+                    <!-- Populated via JS -->
+                </select>
+                <button onclick="detectTimezone()" class="btn-secondary"
+                    style="white-space: nowrap; padding: 0.5rem 1rem; border: 1px solid #ced4da; border-radius: 4px; background: #e9ecef; cursor: pointer;">
+                    <i class="fas fa-location-arrow"></i> Auto Detect
+                </button>
+                <button onclick="saveTimezone()" class="btn-primary"
+                    style="white-space: nowrap; padding: 0.5rem 1rem; border: none; border-radius: 4px; background: #007bff; color: white; cursor: pointer;">
+                    <i class="fas fa-save"></i> Save
+                </button>
+            </div>
+            <small class="text-muted">
+                Current Time: <span id="current-time-preview">-</span>
+            </small>
+        </div>
+    </div>
+
+    <div class="section">
         <h3>Database Configuration</h3>
         <div class="setting-item">
             <label>Database URL</label>
@@ -21,8 +45,7 @@
         <div class="setting-item">
             <label>Shodan API Key</label>
             <input type="password" class="form-control"
-                   value="{{ settings.shodan_api_key if settings.shodan_api_key else '' }}"
-                   readonly>
+                value="{{ settings.shodan_api_key if settings.shodan_api_key else '' }}" readonly>
             <small class="text-muted">
                 {% if settings.shodan_api_key %}
                 <i class="fas fa-check-circle" style="color: green;"></i> Configured
@@ -39,8 +62,7 @@
         <div class="setting-item">
             <label>Slack Webhook URL</label>
             <input type="password" class="form-control"
-                   value="{{ settings.slack_webhook_url if settings.slack_webhook_url else '' }}"
-                   readonly>
+                value="{{ settings.slack_webhook_url if settings.slack_webhook_url else '' }}" readonly>
             <small class="text-muted">
                 {% if settings.slack_webhook_url %}
                 <i class="fas fa-check-circle" style="color: green;"></i> Configured
@@ -53,8 +75,7 @@
         <div class="setting-item">
             <label>Discord Webhook URL</label>
             <input type="password" class="form-control"
-                   value="{{ settings.discord_webhook_url if settings.discord_webhook_url else '' }}"
-                   readonly>
+                value="{{ settings.discord_webhook_url if settings.discord_webhook_url else '' }}" readonly>
             <small class="text-muted">
                 {% if settings.discord_webhook_url %}
                 <i class="fas fa-check-circle" style="color: green;"></i> Configured
@@ -67,8 +88,7 @@
         <div class="setting-item">
             <label>Telegram Bot Token</label>
             <input type="password" class="form-control"
-                   value="{{ settings.telegram_bot_token if settings.telegram_bot_token else '' }}"
-                   readonly>
+                value="{{ settings.telegram_bot_token if settings.telegram_bot_token else '' }}" readonly>
             <small class="text-muted">
                 {% if settings.telegram_bot_token %}
                 <i class="fas fa-check-circle" style="color: green;"></i> Configured
@@ -81,8 +101,7 @@
         <div class="setting-item">
             <label>Telegram Chat ID</label>
             <input type="text" class="form-control"
-                   value="{{ settings.telegram_chat_id if settings.telegram_chat_id else '' }}"
-                   readonly>
+                value="{{ settings.telegram_chat_id if settings.telegram_chat_id else '' }}" readonly>
         </div>
     </div>
 
@@ -183,60 +202,176 @@
 </div>
 
 <style>
-.settings-page .section {
-    background: white;
-    border-radius: 8px;
-    padding: 1.5rem;
-    margin-bottom: 1.5rem;
-    box-shadow: 0 1px 3px rgba(0, 0, 0, 0.1);
-}
+    .settings-page .section {
+        background: white;
+        border-radius: 8px;
+        padding: 1.5rem;
+        margin-bottom: 1.5rem;
+        box-shadow: 0 1px 3px rgba(0, 0, 0, 0.1);
+    }
 
-.settings-page .section h3 {
-    margin-top: 0;
-    margin-bottom: 1.5rem;
-    color: #333;
-    border-bottom: 2px solid #007bff;
-    padding-bottom: 0.5rem;
-}
+    .settings-page .section h3 {
+        margin-top: 0;
+        margin-bottom: 1.5rem;
+        color: #333;
+        border-bottom: 2px solid #007bff;
+        padding-bottom: 0.5rem;
+    }
 
-.setting-item {
-    margin-bottom: 1.5rem;
-}
+    .setting-item {
+        margin-bottom: 1.5rem;
+    }
 
-.setting-item:last-child {
-    margin-bottom: 0;
-}
+    .setting-item:last-child {
+        margin-bottom: 0;
+    }
 
-.setting-item label {
-    display: block;
-    font-weight: 500;
-    margin-bottom: 0.5rem;
-    color: #555;
-}
+    .setting-item label {
+        display: block;
+        font-weight: 500;
+        margin-bottom: 0.5rem;
+        color: #555;
+    }
 
-.setting-item input[readonly] {
-    background-color: #f8f9fa;
-    cursor: not-allowed;
-}
+    .setting-item input[readonly] {
+        background-color: #f8f9fa;
+        cursor: not-allowed;
+    }
 
-.setting-item small {
-    display: block;
-    margin-top: 0.5rem;
-}
+    .setting-item small {
+        display: block;
+        margin-top: 0.5rem;
+    }
 
-.alert-info {
-    background-color: #e7f3ff;
-    border: 1px solid #b3d9ff;
-    border-radius: 4px;
-    padding: 1rem;
-    color: #004085;
-}
+    .alert-info {
+        background-color: #e7f3ff;
+        border: 1px solid #b3d9ff;
+        border-radius: 4px;
+        padding: 1rem;
+        color: #004085;
+    }
 
-.alert-info code {
-    background-color: #d1ecf1;
-    padding: 0.2rem 0.4rem;
-    border-radius: 3px;
-    font-size: 0.9em;
-}
+    .alert-info code {
+        background-color: #d1ecf1;
+        padding: 0.2rem 0.4rem;
+        border-radius: 3px;
+        font-size: 0.9em;
+    }
 </style>
+{% endblock %}
+
+{% block extra_js %}
+<script>
+    console.log("Settings Page Script Loaded");
+
+    document.addEventListener('DOMContentLoaded', () => {
+        const select = document.getElementById('timezone-select');
+        const preview = document.getElementById('current-time-preview');
+
+        // Wait for main.js if needed (though DOMContentLoaded should be enough)
+        // Check if getUserTimezone is available
+        if (typeof window.getUserTimezone !== 'function') {
+            console.error("getUserTimezone is not defined! Main.js might not be loaded properly.");
+            // Define fallback locally
+            window.getUserTimezone = () => localStorage.getItem('user_timezone') || Intl.DateTimeFormat().resolvedOptions().timeZone;
+        }
+
+        const currentTz = getUserTimezone();
+        console.log("Current Timezone:", currentTz);
+
+        // Fallback list
+        const TIMEZONES = [
+            "UTC",
+            "Asia/Jakarta",
+            "Asia/Tokyo",
+            "Asia/Singapore",
+            "Europe/London",
+            "America/New_York",
+            "America/Los_Angeles",
+            "Australia/Sydney"
+        ];
+
+        // Populate timezones
+        let tzList = [];
+        try {
+            if (Intl && Intl.supportedValuesOf) {
+                tzList = Intl.supportedValuesOf('timeZone');
+            }
+        } catch (e) {
+            console.warn("Intl.supportedValuesOf not supported, using fallback list", e);
+        }
+
+        if (tzList.length === 0) {
+            tzList = TIMEZONES;
+            // Ensure currentTz is in the list
+            if (!tzList.includes(currentTz)) {
+                tzList.push(currentTz);
+            }
+            tzList.sort();
+        }
+
+        // Add options
+        tzList.forEach(tz => {
+            const option = document.createElement('option');
+            option.value = tz;
+            option.textContent = tz.replace(/_/g, ' ');
+            if (tz === currentTz) option.selected = true;
+            select.appendChild(option);
+        });
+
+        // Update preview
+        function updatePreview() {
+            const now = new Date();
+            const tz = select.value;
+            if (!tz) return;
+
+            try {
+                preview.textContent = now.toLocaleString('default', {
+                    timeZone: tz,
+                    weekday: 'short',
+                    year: 'numeric',
+                    month: 'short',
+                    day: 'numeric',
+                    hour: '2-digit',
+                    minute: '2-digit',
+                    second: '2-digit',
+                    timeZoneName: 'short'
+                });
+            } catch (e) {
+                console.error("Error formatting date:", e);
+                preview.textContent = "Invalid Timezone";
+            }
+        }
+
+        select.addEventListener('change', updatePreview);
+        updatePreview(); // Initial
+        setInterval(updatePreview, 1000);
+    });
+
+    function saveTimezone() {
+        const select = document.getElementById('timezone-select');
+        if (typeof window.setUserTimezone === 'function') {
+            window.setUserTimezone(select.value);
+        } else {
+            // Fallback
+            localStorage.setItem('user_timezone', select.value);
+            location.reload();
+        }
+    }
+
+    function detectTimezone() {
+        const select = document.getElementById('timezone-select');
+        const tz = Intl.DateTimeFormat().resolvedOptions().timeZone;
+        select.value = tz;
+
+        // Trigger change event to update preview
+        select.dispatchEvent(new Event('change'));
+
+        if (window.showToast) {
+            window.showToast(`Detected timezone: ${tz}`, 'info');
+        } else {
+            alert(`Detected timezone: ${tz}`);
+        }
+    }
+</script>
 {% endblock %}

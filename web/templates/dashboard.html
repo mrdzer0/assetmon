@@ -82,18 +82,22 @@
                         <i class="fas fa-clock"></i>
                         <span>
                             {% if project.last_scan_at %}
+                            <span class="local-date" data-date="{{ project.last_scan_at.isoformat() }}">
                                 {{ project.last_scan_at.strftime('%Y-%m-%d %H:%M') }}
+                            </span>
                             {% else %}
-                                Never scanned
+                            Never scanned
                             {% endif %}
                         </span>
                     </div>
                 </div>
                 <div class="project-actions">
-                    <button class="btn btn-sm btn-primary" onclick="event.stopPropagation(); triggerScan({{ project.id }}, 'normal')">
+                    <button class="btn btn-sm btn-primary"
+                        onclick="event.stopPropagation(); triggerScan({{ project.id }}, 'normal')">
                         <i class="fas fa-play"></i> Scan
                     </button>
-                    <a href="/projects/{{ project.id }}/edit" class="btn btn-sm btn-secondary" onclick="event.stopPropagation()">
+                    <a href="/projects/{{ project.id }}/edit" class="btn btn-sm btn-secondary"
+                        onclick="event.stopPropagation()">
                         <i class="fas fa-edit"></i> Edit
                     </a>
                 </div>
@@ -135,19 +139,23 @@
                         <td><span class="badge badge-info">{{ scan.scan_mode }}</span></td>
                         <td>
                             {% if scan.status == 'completed' %}
-                                <span class="badge badge-success">{{ scan.status }}</span>
+                            <span class="badge badge-success">{{ scan.status }}</span>
                             {% elif scan.status == 'running' %}
-                                <span class="badge badge-warning">{{ scan.status }}</span>
+                            <span class="badge badge-warning">{{ scan.status }}</span>
                             {% else %}
-                                <span class="badge badge-danger">{{ scan.status }}</span>
+                            <span class="badge badge-danger">{{ scan.status }}</span>
                             {% endif %}
                         </td>
-                        <td>{{ scan.started_at.strftime('%Y-%m-%d %H:%M') }}</td>
+                        <td>
+                            <span class="local-date" data-date="{{ scan.started_at.isoformat() }}">
+                                {{ scan.started_at.strftime('%Y-%m-%d %H:%M') }}
+                            </span>
+                        </td>
                         <td>
                             {% if scan.completed_at %}
-                                {{ ((scan.completed_at - scan.started_at).total_seconds() / 60) | round(1) }} min
+                            {{ ((scan.completed_at - scan.started_at).total_seconds() / 60) | round(1) }} min
                             {% else %}
-                                -
+                            -
                             {% endif %}
                         </td>
                         <td>{{ scan.events_generated or 0 }}</td>
@@ -162,28 +170,28 @@
 
 {% block extra_js %}
 <script>
-function triggerScan(projectId, mode) {
-    if (!confirm(`Start ${mode} scan for project ${projectId}?`)) return;
+    function triggerScan(projectId, mode) {
+        if (!confirm(`Start ${mode} scan for project ${projectId}?`)) return;
 
-    showToast('Scan started...', 'info');
+        showToast('Scan started...', 'info');
 
-    fetch('/api/scans/trigger', {
-        method: 'POST',
-        headers: {'Content-Type': 'application/json'},
-        body: JSON.stringify({project_id: projectId, mode: mode})
-    })
-    .then(res => res.json())
-    .then(data => {
-        showToast('Scan started successfully!', 'success');
-        setTimeout(() => location.reload(), 2000);
-    })
-    .catch(err => {
-        showToast('Failed to start scan: ' + err.message, 'error');
-    });
-}
+        fetch('/api/scans/trigger', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ project_id: projectId, mode: mode })
+        })
+            .then(res => res.json())
+            .then(data => {
+                showToast('Scan started successfully!', 'success');
+                setTimeout(() => location.reload(), 2000);
+            })
+            .catch(err => {
+                showToast('Failed to start scan: ' + err.message, 'error');
+            });
+    }
 
-function refreshStats() {
-    location.reload();
-}
+    function refreshStats() {
+        location.reload();
+    }
 </script>
 {% endblock %}
