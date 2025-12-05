@@ -69,6 +69,7 @@ def project_detail(
     page: int = 1,
     per_page: int = 50,
     search: str = "",
+    exclude: str = "",
     status_filter: str = "",
     tech_filter: str = "",
     db: Session = Depends(get_db),
@@ -112,7 +113,20 @@ def project_detail(
         dns_data = latest_snapshots.get("dns", {}).data.get("dns_records", {}) if "dns" in latest_snapshots else {}
         http_data = latest_snapshots.get("http", {}).data.get("http_records", {}) if "http" in latest_snapshots else {}
 
+        # Parse exclude patterns
+        exclude_patterns = [p.strip().lower() for p in exclude.split(",") if p.strip()]
+
         for subdomain in all_subdomains:
+            # Check exclude patterns
+            if exclude_patterns:
+                should_exclude = False
+                for pattern in exclude_patterns:
+                    if pattern in subdomain.lower():
+                        should_exclude = True
+                        break
+                if should_exclude:
+                    continue
+
             # Get related data
             dns_record = dns_data.get(subdomain, {})
             http_url_https = f"https://{subdomain}"
@@ -187,7 +201,9 @@ def project_detail(
         "total_pages": total_pages,
         "showing_start": showing_start,
         "showing_end": showing_end,
+        "showing_end": showing_end,
         "search": search,
+        "exclude": exclude,
         "status_filter": status_filter,
         "tech_filter": tech_filter
     })
@@ -406,6 +422,7 @@ def get_project_endpoints(
     page: int = 1,
     per_page: int = 100,
     search: str = "",
+    exclude: str = "",
     category: str = "",
     status: str = "",
     db: Session = Depends(get_db),
@@ -436,64 +453,88 @@ def get_project_endpoints(
     js_files = set(endpoint_snapshot.data.get("js_files", []))
 
     # Build endpoint list
-    all_endpoints = []
-
     if enriched_urls:
-        for endpoint_data in enriched_urls:
-            url = endpoint_data.get("url", "")
-            if url not in js_files:
-                all_endpoints.append({
-                    "url": url,
-                    "status_code": endpoint_data.get("status_code"),
-                    "title": endpoint_data.get("title", ""),
-                    "categories": endpoint_data.get("categories", []),
-                    "is_sensitive": endpoint_data.get("is_sensitive", False)
-                })
+        # Use list comprehension for speed
+        all_endpoints = [
+            {
+                "url": e.get("url", ""),
+                "status_code": e.get("status_code"),
+                "title": e.get("title", ""),
+                "categories": e.get("categories", []),
+                "is_sensitive": e.get("is_sensitive", False)
+            }
+            for e in enriched_urls
+            if e.get("url", "") not in js_files
+        ]
     else:
-        for url in plain_urls:
-            if url not in js_files:
-                all_endpoints.append({
-                    "url": url,
-                    "status_code": None,
-                    "title": "",
-                    "categories": [],
-                    "is_sensitive": False
-                })
+        all_endpoints = [
+            {
+                "url": url,
+                "status_code": None,
+                "title": "",
+                "categories": [],
+                "is_sensitive": False
+            }
+            for url in plain_urls
+            if url not in js_files
+        ]
 
-    # Apply filters
-    filtered_endpoints = []
-    for endpoint in all_endpoints:
-        # Search filter
-        if search:
-            search_lower = search.lower()
-            if not (search_lower in endpoint["url"].lower() or
-                   search_lower in endpoint.get("title", "").lower()):
-                continue
-
-        # Category filter
-        if category:
-            if category == "sensitive" and not endpoint.get("is_sensitive"):
-                continue
-            elif category != "sensitive":
-                cat_names = [c.get("name", "").lower() for c in endpoint.get("categories", [])]
-                if category.lower() not in cat_names:
+    # Parse inputs
+    search_lower = search.lower() if search else ""
+    exclude_patterns = [p.strip().lower() for p in exclude.split(",") if p.strip()]
+    
+    # OPTIMIZATION: If no filters are active, skip the filtering loop
+    if not (search or exclude or category or status):
+         filtered_endpoints = all_endpoints
+    else:
+        filtered_endpoints = []
+        for endpoint in all_endpoints:
+            # Check exclude patterns
+            if exclude_patterns:
+                should_exclude = False
+                for pattern in exclude_patterns:
+                    if pattern in endpoint["url"].lower():
+                        should_exclude = True
+                        break
+                if should_exclude:
                     continue
 
-        # Status filter
-        if status:
-            status_code = endpoint.get("status_code")
-            if status == "200" and status_code != 200:
-                continue
-            elif status == "300" and (not status_code or status_code < 300 or status_code >= 400):
-                continue
-            elif status == "400" and (not status_code or status_code < 400 or status_code >= 500):
-                continue
-            elif status == "500" and (not status_code or status_code < 500):
-                continue
-            elif status == "none" and status_code is not None:
-                continue
+            # Search filter
+            if search:
+                title = endpoint.get("title")
+                title_lower = title.lower() if title else ""
+                
+                if not (search_lower in endpoint["url"].lower() or
+                        search_lower in title_lower):
+                    continue
 
-        filtered_endpoints.append(endpoint)
+            # Category filter
+            if category:
+                if category == "sensitive" and not endpoint.get("is_sensitive"):
+                    continue
+                # Add check for specific category names if needed
+                elif category != "sensitive":
+                     categories = [c['name'] for c in endpoint.get("categories", [])]
+                     if category not in categories:
+                         continue
+
+            # Status filter
+            if status:
+                status_code = endpoint.get("status_code")
+                if status == "active" and (not status_code or status_code >= 400):
+                    continue
+                elif status == "error" and (not status_code or status_code < 400):
+                    continue
+                elif status == "300" and (not status_code or not (300 <= status_code < 400)):
+                    continue
+                elif status == "400" and (not status_code or not (400 <= status_code < 500)):
+                    continue
+                elif status == "500" and (not status_code or status_code < 500):
+                    continue
+                elif status == "none" and status_code is not None:
+                    continue
+
+            filtered_endpoints.append(endpoint)
 
     # Calculate pagination
     total_endpoints = len(filtered_endpoints)
@@ -503,6 +544,7 @@ def get_project_endpoints(
     start_idx = (page - 1) * per_page
     end_idx = min(start_idx + per_page, total_endpoints)
     paginated_endpoints = filtered_endpoints[start_idx:end_idx]
+
 
     return {
         "endpoints": paginated_endpoints,
@@ -523,6 +565,7 @@ def get_project_jsfiles(
     page: int = 1,
     per_page: int = 100,
     search: str = "",
+    exclude: str = "",
     status_filter: str = "",
     secrets_filter: str = "",
     db: Session = Depends(get_db),
@@ -568,7 +611,20 @@ def get_project_jsfiles(
 
     # Apply filters
     filtered_js_files = []
+    # Parse exclude patterns
+    exclude_patterns = [p.strip().lower() for p in exclude.split(",") if p.strip()]
+
     for js_file in all_js_files:
+        # Check exclude patterns
+        if exclude_patterns:
+            should_exclude = False
+            for pattern in exclude_patterns:
+                if pattern in js_file["url"].lower():
+                    should_exclude = True
+                    break
+            if should_exclude:
+                continue
+
         # Search filter
         if search:
             if search.lower() not in js_file["url"].lower():
@@ -708,6 +764,7 @@ def get_project_events(
     page: int = 1,
     per_page: int = 50,
     search: str = "",
+    exclude: str = "",
     severity: str = "",
     event_type: str = "",
     days: int = 7,
@@ -740,6 +797,12 @@ def get_project_events(
     if search:
         search_pattern = f"%{search}%"
         query = query.filter(Event.summary.ilike(search_pattern))
+
+    # Exclude patterns (negative filter)
+    if exclude:
+        patterns = [p.strip() for p in exclude.split(",") if p.strip()]
+        for pattern in patterns:
+            query = query.filter(~Event.summary.ilike(f"%{pattern}%"))
 
     # Order by most recent
     query = query.order_by(Event.created_at.desc())

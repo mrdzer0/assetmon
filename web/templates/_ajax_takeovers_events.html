@@ -1,139 +1,139 @@
 <script>
-// ==================== TAKEOVERS SECTION ====================
+    // ==================== TAKEOVERS SECTION ====================
 
-const takeoversState = {
-    loaded: false,
-    currentPage: 1,
-    perPage: 50,
-    search: '',
-    severity: '',
-    service: '',
-    cachedData: null,
-    totalPages: 1
-};
+    const takeoversState = {
+        loaded: false,
+        currentPage: 1,
+        perPage: 50,
+        search: '',
+        severity: '',
+        service: '',
+        cachedData: null,
+        totalPages: 1
+    };
 
-async function loadTakeoversData(forceReload = false) {
-    if (takeoversState.loaded && !forceReload) {
-        renderTakeoversFromCache();
-        return;
-    }
-
-    const loadingEl = document.getElementById('takeovers-loading');
-    const contentEl = document.getElementById('takeovers-content');
-    const emptyEl = document.getElementById('takeovers-empty');
-
-    loadingEl.style.display = 'block';
-    contentEl.style.display = 'none';
-    emptyEl.style.display = 'none';
-
-    try {
-        const params = new URLSearchParams({
-            page: takeoversState.currentPage,
-            per_page: takeoversState.perPage,
-            search: takeoversState.search,
-            severity: takeoversState.severity,
-            service: takeoversState.service
-        });
-
-        const response = await fetch(`/api/projects/{{ project.id }}/takeovers?${params}`);
-        const data = await response.json();
-
-        takeoversState.cachedData = data;
-        takeoversState.loaded = true;
-        takeoversState.totalPages = data.total_pages || 1;
-
-        if (!data.has_data || data.total === 0) {
-            loadingEl.style.display = 'none';
-            emptyEl.style.display = 'block';
+    async function loadTakeoversData(forceReload = false) {
+        if (takeoversState.loaded && !forceReload) {
+            renderTakeoversFromCache();
             return;
         }
 
-        renderTakeoversFromCache();
+        const loadingEl = document.getElementById('takeovers-loading');
+        const contentEl = document.getElementById('takeovers-content');
+        const emptyEl = document.getElementById('takeovers-empty');
 
-    } catch (error) {
-        console.error('Error loading takeovers:', error);
+        loadingEl.style.display = 'block';
+        contentEl.style.display = 'none';
+        emptyEl.style.display = 'none';
+
+        try {
+            const params = new URLSearchParams({
+                page: takeoversState.currentPage,
+                per_page: takeoversState.perPage,
+                search: takeoversState.search,
+                severity: takeoversState.severity,
+                service: takeoversState.service
+            });
+
+            const response = await fetch(`/api/projects/{{ project.id }}/takeovers?${params}`);
+            const data = await response.json();
+
+            takeoversState.cachedData = data;
+            takeoversState.loaded = true;
+            takeoversState.totalPages = data.total_pages || 1;
+
+            if (!data.has_data || data.total === 0) {
+                loadingEl.style.display = 'none';
+                emptyEl.style.display = 'block';
+                return;
+            }
+
+            renderTakeoversFromCache();
+
+        } catch (error) {
+            console.error('Error loading takeovers:', error);
+            loadingEl.style.display = 'none';
+            emptyEl.style.display = 'block';
+        }
+    }
+
+    function renderTakeoversFromCache() {
+        const data = takeoversState.cachedData;
+        if (!data) return;
+
+        const loadingEl = document.getElementById('takeovers-loading');
+        const contentEl = document.getElementById('takeovers-content');
+
         loadingEl.style.display = 'none';
-        emptyEl.style.display = 'block';
+        contentEl.style.display = 'block';
+
+        // Update alert banner
+        const alertEl = document.getElementById('takeovers-alert');
+        const countEl = document.getElementById('takeovers-count');
+
+        if (data.total > 0) {
+            alertEl.style.display = 'flex';
+            countEl.textContent = data.total;
+        } else {
+            alertEl.style.display = 'none';
+        }
+
+        // Update last scan
+        if (data.snapshot_date) {
+            const date = new Date(data.snapshot_date);
+            document.getElementById('takeovers-last-scan').textContent = date.toLocaleString();
+        }
+
+        // Populate service filter dropdown
+        if (data.unique_services) {
+            const serviceSelect = document.getElementById('takeovers-service');
+            const currentValue = serviceSelect.value;
+            serviceSelect.innerHTML = '<option value="">All Services</option>';
+            data.unique_services.forEach(service => {
+                const option = document.createElement('option');
+                option.value = service;
+                option.textContent = service;
+                if (service === currentValue) option.selected = true;
+                serviceSelect.appendChild(option);
+            });
+        }
+
+        // Render table
+        renderTakeoversTable(data);
+
+        // Render pagination
+        renderTakeoversPagination(data);
+
+        // Update counts
+        document.getElementById('takeovers-count-display').textContent = `${data.total} finding${data.total !== 1 ? 's' : ''}`;
+        document.getElementById('takeovers-showing-start').textContent = data.showing_start;
+        document.getElementById('takeovers-showing-end').textContent = data.showing_end;
+        document.getElementById('takeovers-total').textContent = data.total;
     }
-}
 
-function renderTakeoversFromCache() {
-    const data = takeoversState.cachedData;
-    if (!data) return;
+    function renderTakeoversTable(data) {
+        const tbody = document.getElementById('takeovers-table-body');
+        tbody.innerHTML = '';
 
-    const loadingEl = document.getElementById('takeovers-loading');
-    const contentEl = document.getElementById('takeovers-content');
+        data.takeovers.forEach((takeover, index) => {
+            const row = document.createElement('tr');
+            row.style.borderBottom = '1px solid #e2e8f0';
+            row.style.transition = 'background-color 0.2s';
+            row.onmouseover = () => row.style.backgroundColor = '#fef2f2';
+            row.onmouseout = () => row.style.backgroundColor = 'white';
 
-    loadingEl.style.display = 'none';
-    contentEl.style.display = 'block';
+            const globalIndex = data.showing_start + index;
 
-    // Update alert banner
-    const alertEl = document.getElementById('takeovers-alert');
-    const countEl = document.getElementById('takeovers-count');
+            // Severity badge color
+            const severityColors = {
+                'critical': 'background: linear-gradient(135deg, #dc2626 0%, #991b1b 100%); color: white;',
+                'high': 'background: linear-gradient(135deg, #f59e0b 0%, #d97706 100%); color: white;',
+                'medium': 'background: linear-gradient(135deg, #eab308 0%, #ca8a04 100%); color: white;',
+                'low': 'background: linear-gradient(135deg, #22c55e 0%, #16a34a 100%); color: white;'
+            };
+            const severityStyle = severityColors[takeover.severity] || severityColors['medium'];
 
-    if (data.total > 0) {
-        alertEl.style.display = 'flex';
-        countEl.textContent = data.total;
-    } else {
-        alertEl.style.display = 'none';
-    }
-
-    // Update last scan
-    if (data.snapshot_date) {
-        const date = new Date(data.snapshot_date);
-        document.getElementById('takeovers-last-scan').textContent = date.toLocaleString();
-    }
-
-    // Populate service filter dropdown
-    if (data.unique_services) {
-        const serviceSelect = document.getElementById('takeovers-service');
-        const currentValue = serviceSelect.value;
-        serviceSelect.innerHTML = '<option value="">All Services</option>';
-        data.unique_services.forEach(service => {
-            const option = document.createElement('option');
-            option.value = service;
-            option.textContent = service;
-            if (service === currentValue) option.selected = true;
-            serviceSelect.appendChild(option);
-        });
-    }
-
-    // Render table
-    renderTakeoversTable(data);
-
-    // Render pagination
-    renderTakeoversPagination(data);
-
-    // Update counts
-    document.getElementById('takeovers-count-display').textContent = `${data.total} finding${data.total !== 1 ? 's' : ''}`;
-    document.getElementById('takeovers-showing-start').textContent = data.showing_start;
-    document.getElementById('takeovers-showing-end').textContent = data.showing_end;
-    document.getElementById('takeovers-total').textContent = data.total;
-}
-
-function renderTakeoversTable(data) {
-    const tbody = document.getElementById('takeovers-table-body');
-    tbody.innerHTML = '';
-
-    data.takeovers.forEach((takeover, index) => {
-        const row = document.createElement('tr');
-        row.style.borderBottom = '1px solid #e2e8f0';
-        row.style.transition = 'background-color 0.2s';
-        row.onmouseover = () => row.style.backgroundColor = '#fef2f2';
-        row.onmouseout = () => row.style.backgroundColor = 'white';
-
-        const globalIndex = data.showing_start + index;
-
-        // Severity badge color
-        const severityColors = {
-            'critical': 'background: linear-gradient(135deg, #dc2626 0%, #991b1b 100%); color: white;',
-            'high': 'background: linear-gradient(135deg, #f59e0b 0%, #d97706 100%); color: white;',
-            'medium': 'background: linear-gradient(135deg, #eab308 0%, #ca8a04 100%); color: white;',
-            'low': 'background: linear-gradient(135deg, #22c55e 0%, #16a34a 100%); color: white;'
-        };
-        const severityStyle = severityColors[takeover.severity] || severityColors['medium'];
-
-        row.innerHTML = `
+            row.innerHTML = `
             <td style="padding: 1rem; color: #64748b; font-weight: 600;">${globalIndex}</td>
             <td style="padding: 1rem;">
                 <span style="padding: 0.375rem 0.75rem; border-radius: 9999px; font-size: 0.75rem; font-weight: 600; ${severityStyle}">
@@ -163,209 +163,211 @@ function renderTakeoversTable(data) {
             </td>
         `;
 
-        tbody.appendChild(row);
-    });
-}
-
-function renderTakeoversPagination(data) {
-    const container = document.getElementById('takeovers-pagination');
-    container.innerHTML = '';
-
-    if (data.total_pages <= 1) return;
-
-    const currentPage = data.page;
-    const totalPages = data.total_pages;
-
-    // Previous button
-    const prevBtn = createPaginationButton('‹ Prev', currentPage > 1, () => gotoTakeoversPage(currentPage - 1));
-    container.appendChild(prevBtn);
-
-    // Page numbers
-    const pagesToShow = getPaginationRange(currentPage, totalPages);
-    pagesToShow.forEach(pageNum => {
-        if (pageNum === '...') {
-            const dots = document.createElement('span');
-            dots.textContent = '...';
-            dots.style.padding = '0.5rem';
-            dots.style.color = '#94a3b8';
-            container.appendChild(dots);
-        } else {
-            const pageBtn = createPaginationButton(
-                pageNum.toString(),
-                true,
-                () => gotoTakeoversPage(pageNum),
-                pageNum === currentPage
-            );
-            container.appendChild(pageBtn);
-        }
-    });
-
-    // Next button
-    const nextBtn = createPaginationButton('Next ›', currentPage < totalPages, () => gotoTakeoversPage(currentPage + 1));
-    container.appendChild(nextBtn);
-}
-
-function gotoTakeoversPage(page) {
-    takeoversState.currentPage = page;
-    document.getElementById('takeovers-content').scrollIntoView({ behavior: 'smooth', block: 'start' });
-    loadTakeoversData(true);
-}
-
-function applyTakeoversFilters() {
-    takeoversState.search = document.getElementById('takeovers-search').value;
-    takeoversState.severity = document.getElementById('takeovers-severity').value;
-    takeoversState.service = document.getElementById('takeovers-service').value;
-    takeoversState.perPage = parseInt(document.getElementById('takeovers-per-page').value);
-    takeoversState.currentPage = 1;
-    loadTakeoversData(true);
-}
-
-function resetTakeoversFilters() {
-    document.getElementById('takeovers-search').value = '';
-    document.getElementById('takeovers-severity').value = '';
-    document.getElementById('takeovers-service').value = '';
-    document.getElementById('takeovers-per-page').value = '50';
-    takeoversState.search = '';
-    takeoversState.severity = '';
-    takeoversState.service = '';
-    takeoversState.perPage = 50;
-    takeoversState.currentPage = 1;
-    loadTakeoversData(true);
-}
-
-// ==================== EVENTS SECTION ====================
-
-const eventsState = {
-    loaded: false,
-    currentPage: 1,
-    perPage: 50,
-    search: '',
-    severity: '',
-    type: '',
-    days: 7,
-    cachedData: null,
-    totalPages: 1
-};
-
-async function loadEventsData(forceReload = false) {
-    if (eventsState.loaded && !forceReload) {
-        renderEventsFromCache();
-        return;
+            tbody.appendChild(row);
+        });
     }
 
-    const loadingEl = document.getElementById('events-loading');
-    const contentEl = document.getElementById('events-content');
-    const emptyEl = document.getElementById('events-empty');
+    function renderTakeoversPagination(data) {
+        const container = document.getElementById('takeovers-pagination');
+        container.innerHTML = '';
 
-    loadingEl.style.display = 'block';
-    contentEl.style.display = 'none';
-    emptyEl.style.display = 'none';
+        if (data.total_pages <= 1) return;
 
-    try {
-        const params = new URLSearchParams({
-            page: eventsState.currentPage,
-            per_page: eventsState.perPage,
-            search: eventsState.search,
-            severity: eventsState.severity,
-            event_type: eventsState.type,
-            days: eventsState.days
+        const currentPage = data.page;
+        const totalPages = data.total_pages;
+
+        // Previous button
+        const prevBtn = createPaginationButton('‹ Prev', currentPage > 1, () => gotoTakeoversPage(currentPage - 1));
+        container.appendChild(prevBtn);
+
+        // Page numbers
+        const pagesToShow = getPaginationRange(currentPage, totalPages);
+        pagesToShow.forEach(pageNum => {
+            if (pageNum === '...') {
+                const dots = document.createElement('span');
+                dots.textContent = '...';
+                dots.style.padding = '0.5rem';
+                dots.style.color = '#94a3b8';
+                container.appendChild(dots);
+            } else {
+                const pageBtn = createPaginationButton(
+                    pageNum.toString(),
+                    true,
+                    () => gotoTakeoversPage(pageNum),
+                    pageNum === currentPage
+                );
+                container.appendChild(pageBtn);
+            }
         });
 
-        const response = await fetch(`/api/projects/{{ project.id }}/events?${params}`);
-        const data = await response.json();
+        // Next button
+        const nextBtn = createPaginationButton('Next ›', currentPage < totalPages, () => gotoTakeoversPage(currentPage + 1));
+        container.appendChild(nextBtn);
+    }
 
-        eventsState.cachedData = data;
-        eventsState.loaded = true;
-        eventsState.totalPages = data.total_pages || 1;
+    function gotoTakeoversPage(page) {
+        takeoversState.currentPage = page;
+        document.getElementById('takeovers-content').scrollIntoView({ behavior: 'smooth', block: 'start' });
+        loadTakeoversData(true);
+    }
 
-        if (!data.has_data || data.total === 0) {
-            loadingEl.style.display = 'none';
-            emptyEl.style.display = 'block';
+    function applyTakeoversFilters() {
+        takeoversState.search = document.getElementById('takeovers-search').value;
+        takeoversState.severity = document.getElementById('takeovers-severity').value;
+        takeoversState.service = document.getElementById('takeovers-service').value;
+        takeoversState.perPage = parseInt(document.getElementById('takeovers-per-page').value);
+        takeoversState.currentPage = 1;
+        loadTakeoversData(true);
+    }
+
+    function resetTakeoversFilters() {
+        document.getElementById('takeovers-search').value = '';
+        document.getElementById('takeovers-severity').value = '';
+        document.getElementById('takeovers-service').value = '';
+        document.getElementById('takeovers-per-page').value = '50';
+        takeoversState.search = '';
+        takeoversState.severity = '';
+        takeoversState.service = '';
+        takeoversState.perPage = 50;
+        takeoversState.currentPage = 1;
+        loadTakeoversData(true);
+    }
+
+    // ==================== EVENTS SECTION ====================
+
+    const eventsState = {
+        loaded: false,
+        currentPage: 1,
+        perPage: 50,
+        search: '',
+        exclude: '',
+        severity: '',
+        type: '',
+        days: 7,
+        cachedData: null,
+        totalPages: 1
+    };
+
+    async function loadEventsData(forceReload = false) {
+        if (eventsState.loaded && !forceReload) {
+            renderEventsFromCache();
             return;
         }
 
-        renderEventsFromCache();
+        const loadingEl = document.getElementById('events-loading');
+        const contentEl = document.getElementById('events-content');
+        const emptyEl = document.getElementById('events-empty');
 
-    } catch (error) {
-        console.error('Error loading events:', error);
+        loadingEl.style.display = 'block';
+        contentEl.style.display = 'none';
+        emptyEl.style.display = 'none';
+
+        try {
+            const params = new URLSearchParams({
+                page: eventsState.currentPage,
+                per_page: eventsState.perPage,
+                search: eventsState.search,
+                exclude: eventsState.exclude,
+                severity: eventsState.severity,
+                event_type: eventsState.type,
+                days: eventsState.days
+            });
+
+            const response = await fetch(`/api/projects/{{ project.id }}/events?${params}`);
+            const data = await response.json();
+
+            eventsState.cachedData = data;
+            eventsState.loaded = true;
+            eventsState.totalPages = data.total_pages || 1;
+
+            if (!data.has_data || data.total === 0) {
+                loadingEl.style.display = 'none';
+                emptyEl.style.display = 'block';
+                return;
+            }
+
+            renderEventsFromCache();
+
+        } catch (error) {
+            console.error('Error loading events:', error);
+            loadingEl.style.display = 'none';
+            emptyEl.style.display = 'block';
+        }
+    }
+
+    function renderEventsFromCache() {
+        const data = eventsState.cachedData;
+        if (!data) return;
+
+        const loadingEl = document.getElementById('events-loading');
+        const contentEl = document.getElementById('events-content');
+
         loadingEl.style.display = 'none';
-        emptyEl.style.display = 'block';
+        contentEl.style.display = 'block';
+
+        // Update severity counts
+        if (data.severity_counts) {
+            document.getElementById('events-critical-count').textContent = data.severity_counts.CRITICAL || 0;
+            document.getElementById('events-high-count').textContent = data.severity_counts.HIGH || 0;
+            document.getElementById('events-medium-count').textContent = data.severity_counts.MEDIUM || 0;
+            document.getElementById('events-info-count').textContent = (data.severity_counts.LOW || 0) + (data.severity_counts.INFO || 0);
+        }
+
+        // Update time range display
+        document.getElementById('events-timerange').textContent = eventsState.days === 0 ? 'all time' : `${eventsState.days} day${eventsState.days !== 1 ? 's' : ''}`;
+
+        // Populate type filter dropdown
+        if (data.unique_types) {
+            const typeSelect = document.getElementById('events-type');
+            const currentValue = typeSelect.value;
+            typeSelect.innerHTML = '<option value="">All Types</option>';
+            data.unique_types.forEach(type => {
+                const option = document.createElement('option');
+                option.value = type;
+                option.textContent = type;
+                if (type === currentValue) option.selected = true;
+                typeSelect.appendChild(option);
+            });
+        }
+
+        // Render table
+        renderEventsTable(data);
+
+        // Render pagination
+        renderEventsPagination(data);
+
+        // Update counts
+        document.getElementById('events-count-display').textContent = `${data.total} event${data.total !== 1 ? 's' : ''}`;
+        document.getElementById('events-showing-start').textContent = data.showing_start;
+        document.getElementById('events-showing-end').textContent = data.showing_end;
+        document.getElementById('events-total').textContent = data.total;
     }
-}
 
-function renderEventsFromCache() {
-    const data = eventsState.cachedData;
-    if (!data) return;
+    function renderEventsTable(data) {
+        const tbody = document.getElementById('events-table-body');
+        tbody.innerHTML = '';
 
-    const loadingEl = document.getElementById('events-loading');
-    const contentEl = document.getElementById('events-content');
+        data.events.forEach((event, index) => {
+            const row = document.createElement('tr');
+            row.style.borderBottom = '1px solid #e2e8f0';
+            row.style.transition = 'background-color 0.2s';
+            row.onmouseover = () => row.style.backgroundColor = '#faf5ff';
+            row.onmouseout = () => row.style.backgroundColor = 'white';
 
-    loadingEl.style.display = 'none';
-    contentEl.style.display = 'block';
+            // Severity badge color
+            const severityColors = {
+                'CRITICAL': 'background: linear-gradient(135deg, #dc2626 0%, #991b1b 100%); color: white;',
+                'HIGH': 'background: linear-gradient(135deg, #f59e0b 0%, #d97706 100%); color: white;',
+                'MEDIUM': 'background: linear-gradient(135deg, #eab308 0%, #ca8a04 100%); color: white;',
+                'LOW': 'background: linear-gradient(135deg, #3b82f6 0%, #2563eb 100%); color: white;',
+                'INFO': 'background: linear-gradient(135deg, #64748b 0%, #475569 100%); color: white;'
+            };
+            const severityStyle = severityColors[event.severity] || severityColors['INFO'];
 
-    // Update severity counts
-    if (data.severity_counts) {
-        document.getElementById('events-critical-count').textContent = data.severity_counts.CRITICAL || 0;
-        document.getElementById('events-high-count').textContent = data.severity_counts.HIGH || 0;
-        document.getElementById('events-medium-count').textContent = data.severity_counts.MEDIUM || 0;
-        document.getElementById('events-info-count').textContent = (data.severity_counts.LOW || 0) + (data.severity_counts.INFO || 0);
-    }
+            const created = new Date(event.created_at);
+            const timeStr = created.toLocaleDateString() + ' ' + created.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
 
-    // Update time range display
-    document.getElementById('events-timerange').textContent = eventsState.days === 0 ? 'all time' : `${eventsState.days} day${eventsState.days !== 1 ? 's' : ''}`;
-
-    // Populate type filter dropdown
-    if (data.unique_types) {
-        const typeSelect = document.getElementById('events-type');
-        const currentValue = typeSelect.value;
-        typeSelect.innerHTML = '<option value="">All Types</option>';
-        data.unique_types.forEach(type => {
-            const option = document.createElement('option');
-            option.value = type;
-            option.textContent = type;
-            if (type === currentValue) option.selected = true;
-            typeSelect.appendChild(option);
-        });
-    }
-
-    // Render table
-    renderEventsTable(data);
-
-    // Render pagination
-    renderEventsPagination(data);
-
-    // Update counts
-    document.getElementById('events-count-display').textContent = `${data.total} event${data.total !== 1 ? 's' : ''}`;
-    document.getElementById('events-showing-start').textContent = data.showing_start;
-    document.getElementById('events-showing-end').textContent = data.showing_end;
-    document.getElementById('events-total').textContent = data.total;
-}
-
-function renderEventsTable(data) {
-    const tbody = document.getElementById('events-table-body');
-    tbody.innerHTML = '';
-
-    data.events.forEach((event, index) => {
-        const row = document.createElement('tr');
-        row.style.borderBottom = '1px solid #e2e8f0';
-        row.style.transition = 'background-color 0.2s';
-        row.onmouseover = () => row.style.backgroundColor = '#faf5ff';
-        row.onmouseout = () => row.style.backgroundColor = 'white';
-
-        // Severity badge color
-        const severityColors = {
-            'CRITICAL': 'background: linear-gradient(135deg, #dc2626 0%, #991b1b 100%); color: white;',
-            'HIGH': 'background: linear-gradient(135deg, #f59e0b 0%, #d97706 100%); color: white;',
-            'MEDIUM': 'background: linear-gradient(135deg, #eab308 0%, #ca8a04 100%); color: white;',
-            'LOW': 'background: linear-gradient(135deg, #3b82f6 0%, #2563eb 100%); color: white;',
-            'INFO': 'background: linear-gradient(135deg, #64748b 0%, #475569 100%); color: white;'
-        };
-        const severityStyle = severityColors[event.severity] || severityColors['INFO'];
-
-        const created = new Date(event.created_at);
-        const timeStr = created.toLocaleDateString() + ' ' + created.toLocaleTimeString([], {hour: '2-digit', minute:'2-digit'});
-
-        row.innerHTML = `
+            row.innerHTML = `
             <td style="padding: 1rem;">
                 <span style="padding: 0.375rem 0.75rem; border-radius: 9999px; font-size: 0.75rem; font-weight: 600; ${severityStyle}">
                     ${event.severity}
@@ -376,7 +378,7 @@ function renderEventsTable(data) {
                     ${event.type}
                 </code>
             </td>
-            <td style="padding: 1rem; color: #1e293b; font-size: 0.875rem;">
+            <td style="padding: 1rem; color: #1e293b; font-size: 0.875rem; white-space: normal; word-break: break-word;">
                 ${event.summary}
             </td>
             <td style="padding: 1rem; color: #64748b; font-size: 0.875rem;">
@@ -394,101 +396,104 @@ function renderEventsTable(data) {
             </td>
         `;
 
-        tbody.appendChild(row);
-    });
-}
-
-function renderEventsPagination(data) {
-    const container = document.getElementById('events-pagination');
-    container.innerHTML = '';
-
-    if (data.total_pages <= 1) return;
-
-    const currentPage = data.page;
-    const totalPages = data.total_pages;
-
-    // Previous button
-    const prevBtn = createPaginationButton('‹ Prev', currentPage > 1, () => gotoEventsPage(currentPage - 1));
-    container.appendChild(prevBtn);
-
-    // Page numbers
-    const pagesToShow = getPaginationRange(currentPage, totalPages);
-    pagesToShow.forEach(pageNum => {
-        if (pageNum === '...') {
-            const dots = document.createElement('span');
-            dots.textContent = '...';
-            dots.style.padding = '0.5rem';
-            dots.style.color = '#94a3b8';
-            container.appendChild(dots);
-        } else {
-            const pageBtn = createPaginationButton(
-                pageNum.toString(),
-                true,
-                () => gotoEventsPage(pageNum),
-                pageNum === currentPage
-            );
-            container.appendChild(pageBtn);
-        }
-    });
-
-    // Next button
-    const nextBtn = createPaginationButton('Next ›', currentPage < totalPages, () => gotoEventsPage(currentPage + 1));
-    container.appendChild(nextBtn);
-}
-
-function gotoEventsPage(page) {
-    eventsState.currentPage = page;
-    document.getElementById('events-content').scrollIntoView({ behavior: 'smooth', block: 'start' });
-    loadEventsData(true);
-}
-
-function applyEventsFilters() {
-    eventsState.search = document.getElementById('events-search').value;
-    eventsState.severity = document.getElementById('events-severity').value;
-    eventsState.type = document.getElementById('events-type').value;
-    eventsState.days = parseInt(document.getElementById('events-days').value);
-    eventsState.perPage = parseInt(document.getElementById('events-per-page').value);
-    eventsState.currentPage = 1;
-    loadEventsData(true);
-}
-
-function resetEventsFilters() {
-    document.getElementById('events-search').value = '';
-    document.getElementById('events-severity').value = '';
-    document.getElementById('events-type').value = '';
-    document.getElementById('events-days').value = '7';
-    document.getElementById('events-per-page').value = '50';
-    eventsState.search = '';
-    eventsState.severity = '';
-    eventsState.type = '';
-    eventsState.days = 7;
-    eventsState.perPage = 50;
-    eventsState.currentPage = 1;
-    loadEventsData(true);
-}
-
-function showEventDetail(eventId, index) {
-    const data = eventsState.cachedData;
-    if (!data || !data.events[index]) return;
-
-    const event = data.events[index];
-    const modal = document.getElementById('event-detail-modal');
-    const content = document.getElementById('event-detail-content');
-
-    // Format details as JSON
-    let detailsHtml = '<div style="background: #f8fafc; padding: 1rem; border-radius: 8px; overflow-x: auto;">';
-
-    if (event.details) {
-        detailsHtml += '<pre style="margin: 0; white-space: pre-wrap; word-wrap: break-word; font-family: monospace; font-size: 0.875rem; color: #1e293b;">';
-        detailsHtml += JSON.stringify(event.details, null, 2);
-        detailsHtml += '</pre>';
-    } else {
-        detailsHtml += '<p style="color: #64748b; margin: 0;">No additional details available</p>';
+            tbody.appendChild(row);
+        });
     }
 
-    detailsHtml += '</div>';
+    function renderEventsPagination(data) {
+        const container = document.getElementById('events-pagination');
+        container.innerHTML = '';
 
-    content.innerHTML = `
+        if (data.total_pages <= 1) return;
+
+        const currentPage = data.page;
+        const totalPages = data.total_pages;
+
+        // Previous button
+        const prevBtn = createPaginationButton('‹ Prev', currentPage > 1, () => gotoEventsPage(currentPage - 1));
+        container.appendChild(prevBtn);
+
+        // Page numbers
+        const pagesToShow = getPaginationRange(currentPage, totalPages);
+        pagesToShow.forEach(pageNum => {
+            if (pageNum === '...') {
+                const dots = document.createElement('span');
+                dots.textContent = '...';
+                dots.style.padding = '0.5rem';
+                dots.style.color = '#94a3b8';
+                container.appendChild(dots);
+            } else {
+                const pageBtn = createPaginationButton(
+                    pageNum.toString(),
+                    true,
+                    () => gotoEventsPage(pageNum),
+                    pageNum === currentPage
+                );
+                container.appendChild(pageBtn);
+            }
+        });
+
+        // Next button
+        const nextBtn = createPaginationButton('Next ›', currentPage < totalPages, () => gotoEventsPage(currentPage + 1));
+        container.appendChild(nextBtn);
+    }
+
+    function gotoEventsPage(page) {
+        eventsState.currentPage = page;
+        document.getElementById('events-content').scrollIntoView({ behavior: 'smooth', block: 'start' });
+        loadEventsData(true);
+    }
+
+    function applyEventsFilters() {
+        eventsState.search = document.getElementById('events-search').value;
+        eventsState.exclude = document.getElementById('events-exclude').value;
+        eventsState.severity = document.getElementById('events-severity').value;
+        eventsState.type = document.getElementById('events-type').value;
+        eventsState.days = parseInt(document.getElementById('events-days').value);
+        eventsState.perPage = parseInt(document.getElementById('events-per-page').value);
+        eventsState.currentPage = 1;
+        loadEventsData(true);
+    }
+
+    function resetEventsFilters() {
+        document.getElementById('events-search').value = '';
+        document.getElementById('events-exclude').value = '';
+        document.getElementById('events-severity').value = '';
+        document.getElementById('events-type').value = '';
+        document.getElementById('events-days').value = '7';
+        document.getElementById('events-per-page').value = '50';
+        eventsState.search = '';
+        eventsState.exclude = '';
+        eventsState.severity = '';
+        eventsState.type = '';
+        eventsState.days = 7;
+        eventsState.perPage = 50;
+        eventsState.currentPage = 1;
+        loadEventsData(true);
+    }
+
+    function showEventDetail(eventId, index) {
+        const data = eventsState.cachedData;
+        if (!data || !data.events[index]) return;
+
+        const event = data.events[index];
+        const modal = document.getElementById('event-detail-modal');
+        const content = document.getElementById('event-detail-content');
+
+        // Format details as JSON
+        let detailsHtml = '<div style="background: #f8fafc; padding: 1rem; border-radius: 8px; overflow-x: auto;">';
+
+        if (event.details) {
+            detailsHtml += '<pre style="margin: 0; white-space: pre-wrap; word-wrap: break-word; font-family: monospace; font-size: 0.875rem; color: #1e293b;">';
+            detailsHtml += JSON.stringify(event.details, null, 2);
+            detailsHtml += '</pre>';
+        } else {
+            detailsHtml += '<p style="color: #64748b; margin: 0;">No additional details available</p>';
+        }
+
+        detailsHtml += '</div>';
+
+        content.innerHTML = `
         <div style="margin-bottom: 1rem;">
             <div style="font-size: 0.75rem; font-weight: 600; color: #64748b; text-transform: uppercase; letter-spacing: 0.5px; margin-bottom: 0.5rem;">Event ID</div>
             <div style="font-size: 1rem; color: #1e293b; font-weight: 600;">#${event.id}</div>
@@ -503,87 +508,87 @@ function showEventDetail(eventId, index) {
         </div>
     `;
 
-    modal.style.display = 'flex';
-}
-
-function closeEventDetail() {
-    document.getElementById('event-detail-modal').style.display = 'none';
-}
-
-// Close modal when clicking outside
-document.addEventListener('click', (e) => {
-    const modal = document.getElementById('event-detail-modal');
-    if (e.target === modal) {
-        closeEventDetail();
-    }
-});
-
-// ==================== SHARED PAGINATION UTILITIES ====================
-
-function createPaginationButton(label, enabled, onClick, isActive = false) {
-    const btn = document.createElement('button');
-    btn.textContent = label;
-    btn.onclick = onClick;
-
-    if (isActive) {
-        btn.style.cssText = 'padding: 0.5rem 0.75rem; background: linear-gradient(135deg, #8b5cf6 0%, #7c3aed 100%); color: white; border: none; border-radius: 6px; cursor: pointer; font-size: 0.875rem; font-weight: 600;';
-    } else if (enabled) {
-        btn.style.cssText = 'padding: 0.5rem 0.75rem; background: white; color: #64748b; border: 2px solid #e2e8f0; border-radius: 6px; cursor: pointer; font-size: 0.875rem; font-weight: 600; transition: all 0.2s;';
-        btn.onmouseover = () => {
-            btn.style.borderColor = '#8b5cf6';
-            btn.style.color = '#8b5cf6';
-        };
-        btn.onmouseout = () => {
-            btn.style.borderColor = '#e2e8f0';
-            btn.style.color = '#64748b';
-        };
-    } else {
-        btn.style.cssText = 'padding: 0.5rem 0.75rem; background: #f1f5f9; color: #cbd5e1; border: 2px solid #e2e8f0; border-radius: 6px; cursor: not-allowed; font-size: 0.875rem; font-weight: 600;';
-        btn.disabled = true;
+        modal.style.display = 'flex';
     }
 
-    return btn;
-}
-
-function getPaginationRange(currentPage, totalPages) {
-    const delta = 2;
-    const range = [];
-    const rangeWithDots = [];
-
-    for (let i = Math.max(2, currentPage - delta); i <= Math.min(totalPages - 1, currentPage + delta); i++) {
-        range.push(i);
+    function closeEventDetail() {
+        document.getElementById('event-detail-modal').style.display = 'none';
     }
 
-    if (currentPage - delta > 2) {
-        rangeWithDots.push(1, '...');
-    } else {
-        rangeWithDots.push(1);
+    // Close modal when clicking outside
+    document.addEventListener('click', (e) => {
+        const modal = document.getElementById('event-detail-modal');
+        if (e.target === modal) {
+            closeEventDetail();
+        }
+    });
+
+    // ==================== SHARED PAGINATION UTILITIES ====================
+
+    function createPaginationButton(label, enabled, onClick, isActive = false) {
+        const btn = document.createElement('button');
+        btn.textContent = label;
+        btn.onclick = onClick;
+
+        if (isActive) {
+            btn.style.cssText = 'padding: 0.5rem 0.75rem; background: linear-gradient(135deg, #8b5cf6 0%, #7c3aed 100%); color: white; border: none; border-radius: 6px; cursor: pointer; font-size: 0.875rem; font-weight: 600;';
+        } else if (enabled) {
+            btn.style.cssText = 'padding: 0.5rem 0.75rem; background: white; color: #64748b; border: 2px solid #e2e8f0; border-radius: 6px; cursor: pointer; font-size: 0.875rem; font-weight: 600; transition: all 0.2s;';
+            btn.onmouseover = () => {
+                btn.style.borderColor = '#8b5cf6';
+                btn.style.color = '#8b5cf6';
+            };
+            btn.onmouseout = () => {
+                btn.style.borderColor = '#e2e8f0';
+                btn.style.color = '#64748b';
+            };
+        } else {
+            btn.style.cssText = 'padding: 0.5rem 0.75rem; background: #f1f5f9; color: #cbd5e1; border: 2px solid #e2e8f0; border-radius: 6px; cursor: not-allowed; font-size: 0.875rem; font-weight: 600;';
+            btn.disabled = true;
+        }
+
+        return btn;
     }
 
-    rangeWithDots.push(...range);
+    function getPaginationRange(currentPage, totalPages) {
+        const delta = 2;
+        const range = [];
+        const rangeWithDots = [];
 
-    if (currentPage + delta < totalPages - 1) {
-        rangeWithDots.push('...', totalPages);
-    } else if (totalPages > 1) {
-        rangeWithDots.push(totalPages);
+        for (let i = Math.max(2, currentPage - delta); i <= Math.min(totalPages - 1, currentPage + delta); i++) {
+            range.push(i);
+        }
+
+        if (currentPage - delta > 2) {
+            rangeWithDots.push(1, '...');
+        } else {
+            rangeWithDots.push(1);
+        }
+
+        rangeWithDots.push(...range);
+
+        if (currentPage + delta < totalPages - 1) {
+            rangeWithDots.push('...', totalPages);
+        } else if (totalPages > 1) {
+            rangeWithDots.push(totalPages);
+        }
+
+        return rangeWithDots;
     }
 
-    return rangeWithDots;
-}
+    // Update the switchTab function to trigger lazy loading
+    const originalSwitchTab = window.switchTab;
+    window.switchTab = function (tabName) {
+        if (originalSwitchTab) {
+            originalSwitchTab(tabName);
+        }
 
-// Update the switchTab function to trigger lazy loading
-const originalSwitchTab = window.switchTab;
-window.switchTab = function(tabName) {
-    if (originalSwitchTab) {
-        originalSwitchTab(tabName);
-    }
-
-    // Handle lazy loading for heavy tabs
-    if (tabName === 'takeovers') {
-        loadTakeoversData();
-    } else if (tabName === 'events') {
-        loadEventsData();
-    }
-};
+        // Handle lazy loading for heavy tabs
+        if (tabName === 'takeovers') {
+            loadTakeoversData();
+        } else if (tabName === 'events') {
+            loadEventsData();
+        }
+    };
 
 </script>

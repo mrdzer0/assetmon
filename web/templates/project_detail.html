@@ -4,70 +4,70 @@
 
 {% block extra_css %}
 <style>
-.filter-bar {
-    display: flex;
-    gap: 1rem;
-    margin-bottom: 1rem;
-    flex-wrap: wrap;
-}
+    .filter-bar {
+        display: flex;
+        gap: 1rem;
+        margin-bottom: 1rem;
+        flex-wrap: wrap;
+    }
 
-.filter-bar input,
-.filter-bar select {
-    padding: 0.5rem;
-    border: 1px solid var(--border);
-    border-radius: 0.375rem;
-    font-size: 0.875rem;
-}
+    .filter-bar input,
+    .filter-bar select {
+        padding: 0.5rem;
+        border: 1px solid var(--border);
+        border-radius: 0.375rem;
+        font-size: 0.875rem;
+    }
 
-.filter-bar input {
-    flex: 1;
-    min-width: 200px;
-}
+    .filter-bar input {
+        flex: 1;
+        min-width: 200px;
+    }
 
-.filter-bar select {
-    min-width: 150px;
-}
+    .filter-bar select {
+        min-width: 150px;
+    }
 
-.asset-table {
-    width: 100%;
-    font-size: 0.875rem;
-}
+    .asset-table {
+        width: 100%;
+        font-size: 0.875rem;
+    }
 
-.asset-table td {
-    max-width: 200px;
-    overflow: hidden;
-    text-overflow: ellipsis;
-    white-space: nowrap;
-}
+    .asset-table td {
+        max-width: 200px;
+        overflow: hidden;
+        text-overflow: ellipsis;
+        white-space: nowrap;
+    }
 
-.asset-table td.expandable {
-    cursor: pointer;
-}
+    .asset-table td.expandable {
+        cursor: pointer;
+    }
 
-.asset-table td.expandable:hover {
-    background: #f8fafc;
-}
+    .asset-table td.expandable:hover {
+        background: #f8fafc;
+    }
 
-.badge-list {
-    display: flex;
-    gap: 0.25rem;
-    flex-wrap: wrap;
-}
+    .badge-list {
+        display: flex;
+        gap: 0.25rem;
+        flex-wrap: wrap;
+    }
 
-.status-new {
-    background: #dcfce7;
-    color: #166534;
-}
+    .status-new {
+        background: #dcfce7;
+        color: #166534;
+    }
 
-.status-deleted {
-    background: #fee2e2;
-    color: #991b1b;
-}
+    .status-deleted {
+        background: #fee2e2;
+        color: #991b1b;
+    }
 
-.status-unchanged {
-    background: #e2e8f0;
-    color: #475569;
-}
+    .status-unchanged {
+        background: #e2e8f0;
+        color: #475569;
+    }
 </style>
 {% endblock %}
 
@@ -106,9 +106,9 @@
             <h4><i class="fas fa-clock"></i> Last Scan</h4>
             <p>
                 {% if project.last_scan_at %}
-                    {{ project.last_scan_at.strftime('%Y-%m-%d %H:%M:%S') }}
+                {{ project.last_scan_at.strftime('%Y-%m-%d %H:%M:%S') }}
                 {% else %}
-                    Never scanned
+                Never scanned
                 {% endif %}
             </p>
         </div>
@@ -117,9 +117,9 @@
             <h4><i class="fas fa-chart-line"></i> Asset Count</h4>
             <p>
                 {% if latest_snapshots.subdomains %}
-                    {{ latest_snapshots.subdomains.data.subdomains|length }} subdomains
+                {{ latest_snapshots.subdomains.data.subdomains|length }} subdomains
                 {% else %}
-                    No data yet
+                No data yet
                 {% endif %}
             </p>
         </div>
@@ -132,7 +132,8 @@
         </button>
         <button class="tab-btn" onclick="switchTab('takeovers')">
             <i class="fas fa-exclamation-triangle"></i> Takeovers
-            {% if latest_snapshots.dns and latest_snapshots.dns.scan_metadata and latest_snapshots.dns.scan_metadata.takeover_findings %}
+            {% if latest_snapshots.dns and latest_snapshots.dns.scan_metadata and
+            latest_snapshots.dns.scan_metadata.takeover_findings %}
             ({{ latest_snapshots.dns.scan_metadata.takeover_findings|length }})
             {% endif %}
         </button>
@@ -156,38 +157,46 @@
             <h3>🌐 All Discovered Assets</h3>
 
             <!-- Filters -->
-            <form method="GET" action="/projects/{{ project.id }}" style="display: flex; gap: 0.75rem; flex-wrap: wrap; margin-bottom: 1.5rem; align-items: center;">
+            <form method="GET" action="/projects/{{ project.id }}"
+                style="display: flex; gap: 0.75rem; flex-wrap: wrap; margin-bottom: 1.5rem; align-items: center;">
                 <div style="flex: 1; min-width: 250px;">
                     <input type="text" name="search" value="{{ search }}"
-                           placeholder="🔍 Search URL, title, IP, or technology..."
-                           style="width: 100%; padding: 0.625rem 1rem; border: 2px solid #e2e8f0; border-radius: 8px; font-size: 0.875rem;">
+                        placeholder="🔍 Search URL, title, IP, or technology..."
+                        style="width: 100%; padding: 0.625rem 1rem; border: 2px solid #e2e8f0; border-radius: 8px; font-size: 0.875rem;">
+                </div>
+
+                <div style="flex: 1; min-width: 250px;">
+                    <input type="text" name="exclude" value="{{ exclude|default('', true) }}"
+                        placeholder="⛔ Exclude (e.g. cdn,img,css)"
+                        style="width: 100%; padding: 0.625rem 1rem; border: 2px solid #e2e8f0; border-radius: 8px; font-size: 0.875rem;"
+                        title="Comma-separated patterns to hide">
                 </div>
 
                 <select name="status_filter"
-                        style="padding: 0.625rem 1rem; border: 2px solid #e2e8f0; border-radius: 8px; font-size: 0.875rem; background: white;">
+                    style="padding: 0.625rem 1rem; border: 2px solid #e2e8f0; border-radius: 8px; font-size: 0.875rem; background: white;">
                     <option value="">📊 All Status</option>
-                    <option value="2" {% if status_filter == "2" %}selected{% endif %}>✅ 2xx Success</option>
-                    <option value="3" {% if status_filter == "3" %}selected{% endif %}>🔄 3xx Redirect</option>
-                    <option value="4" {% if status_filter == "4" %}selected{% endif %}>⚠️  4xx Client Error</option>
-                    <option value="5" {% if status_filter == "5" %}selected{% endif %}>❌ 5xx Server Error</option>
+                    <option value="2" {% if status_filter=="2" %}selected{% endif %}>✅ 2xx Success</option>
+                    <option value="3" {% if status_filter=="3" %}selected{% endif %}>🔄 3xx Redirect</option>
+                    <option value="4" {% if status_filter=="4" %}selected{% endif %}>⚠️ 4xx Client Error</option>
+                    <option value="5" {% if status_filter=="5" %}selected{% endif %}>❌ 5xx Server Error</option>
                 </select>
 
                 <select name="tech_filter"
-                        style="padding: 0.625rem 1rem; border: 2px solid #e2e8f0; border-radius: 8px; font-size: 0.875rem; background: white;">
+                    style="padding: 0.625rem 1rem; border: 2px solid #e2e8f0; border-radius: 8px; font-size: 0.875rem; background: white;">
                     <option value="">🔧 All Technologies</option>
                     {% if latest_snapshots.http %}
                     {% set all_technologies = [] %}
                     {% for url, record in latest_snapshots.http.data.http_records.items() %}
-                        {% if record.technologies %}
-                            {% for tech in record.technologies %}
-                                {% if tech not in all_technologies %}
-                                    {% set _ = all_technologies.append(tech) %}
-                                {% endif %}
-                            {% endfor %}
-                        {% endif %}
+                    {% if record.technologies %}
+                    {% for tech in record.technologies %}
+                    {% if tech not in all_technologies %}
+                    {% set _ = all_technologies.append(tech) %}
+                    {% endif %}
+                    {% endfor %}
+                    {% endif %}
                     {% endfor %}
                     {% for tech in all_technologies|sort %}
-                    <option value="{{ tech }}" {% if tech_filter == tech %}selected{% endif %}>{{ tech }}</option>
+                    <option value="{{ tech }}" {% if tech_filter==tech %}selected{% endif %}>{{ tech }}</option>
                     {% endfor %}
                     {% endif %}
                 </select>
@@ -195,120 +204,136 @@
                 <input type="hidden" name="per_page" value="{{ per_page }}">
 
                 <button type="submit" class="btn btn-sm btn-primary"
-                        style="padding: 0.625rem 1rem; border: none; border-radius: 8px; background: #667eea; color: white; cursor: pointer; font-size: 0.875rem; font-weight: 500;">
+                    style="padding: 0.625rem 1rem; border: none; border-radius: 8px; background: #667eea; color: white; cursor: pointer; font-size: 0.875rem; font-weight: 500;">
                     <i class="fas fa-filter"></i> Apply
                 </button>
 
                 <a href="/projects/{{ project.id }}" class="btn btn-sm btn-secondary"
-                   style="padding: 0.625rem 1rem; border: none; border-radius: 8px; background: #64748b; color: white; cursor: pointer; font-size: 0.875rem; font-weight: 500; text-decoration: none; display: inline-block;">
+                    style="padding: 0.625rem 1rem; border: none; border-radius: 8px; background: #64748b; color: white; cursor: pointer; font-size: 0.875rem; font-weight: 500; text-decoration: none; display: inline-block;">
                     <i class="fas fa-undo"></i> Reset
                 </a>
 
                 <button type="button" class="btn btn-sm btn-primary" onclick="exportAssetsToCSV()"
-                        style="padding: 0.625rem 1rem; border: none; border-radius: 8px; background: #10b981; color: white; cursor: pointer; font-size: 0.875rem; font-weight: 500;">
+                    style="padding: 0.625rem 1rem; border: none; border-radius: 8px; background: #10b981; color: white; cursor: pointer; font-size: 0.875rem; font-weight: 500;">
                     <i class="fas fa-download"></i> Export CSV
                 </button>
             </form>
 
             <!-- Stats Summary -->
-            <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(150px, 1fr)); gap: 1rem; margin-bottom: 1.5rem;">
+            <div
+                style="display: grid; grid-template-columns: repeat(auto-fit, minmax(150px, 1fr)); gap: 1rem; margin-bottom: 1.5rem;">
                 {% if latest_snapshots.subdomains %}
                 {% set all_subdomains = latest_snapshots.subdomains.data.subdomains %}
                 {% set dns_resolved = namespace(count=0) %}
                 {% set http_probed = namespace(count=0) %}
                 {% if latest_snapshots.dns %}
-                    {% for subdomain in all_subdomains %}
-                        {% set dns_rec = latest_snapshots.dns.data.dns_records.get(subdomain) %}
-                        {% if dns_rec and dns_rec.has_resolution %}
-                            {% set dns_resolved.count = dns_resolved.count + 1 %}
-                        {% endif %}
-                    {% endfor %}
+                {% for subdomain in all_subdomains %}
+                {% set dns_rec = latest_snapshots.dns.data.dns_records.get(subdomain) %}
+                {% if dns_rec and dns_rec.has_resolution %}
+                {% set dns_resolved.count = dns_resolved.count + 1 %}
+                {% endif %}
+                {% endfor %}
                 {% endif %}
                 {% if latest_snapshots.http %}
-                    {% set http_probed.count = latest_snapshots.http.data.http_records|length %}
+                {% set http_probed.count = latest_snapshots.http.data.http_records|length %}
                 {% endif %}
 
-                <div style="background: linear-gradient(135deg, #667eea 0%, #764ba2 100%); padding: 1rem; border-radius: 12px; color: white;">
+                <div
+                    style="background: linear-gradient(135deg, #667eea 0%, #764ba2 100%); padding: 1rem; border-radius: 12px; color: white;">
                     <div style="font-size: 2rem; font-weight: bold;">{{ all_subdomains|length }}</div>
                     <div style="font-size: 0.875rem; opacity: 0.9;">Total Subdomains</div>
                 </div>
 
-                <div style="background: linear-gradient(135deg, #10b981 0%, #059669 100%); padding: 1rem; border-radius: 12px; color: white;">
+                <div
+                    style="background: linear-gradient(135deg, #10b981 0%, #059669 100%); padding: 1rem; border-radius: 12px; color: white;">
                     <div style="font-size: 2rem; font-weight: bold;">{{ dns_resolved.count }}</div>
                     <div style="font-size: 0.875rem; opacity: 0.9;">DNS Resolved</div>
                 </div>
 
-                <div style="background: linear-gradient(135deg, #3b82f6 0%, #1d4ed8 100%); padding: 1rem; border-radius: 12px; color: white;">
+                <div
+                    style="background: linear-gradient(135deg, #3b82f6 0%, #1d4ed8 100%); padding: 1rem; border-radius: 12px; color: white;">
                     <div style="font-size: 2rem; font-weight: bold;">{{ http_probed.count }}</div>
                     <div style="font-size: 0.875rem; opacity: 0.9;">HTTP Probed</div>
                 </div>
 
-                <div style="background: linear-gradient(135deg, #8b5cf6 0%, #6d28d9 100%); padding: 1rem; border-radius: 12px; color: white;">
-                    <div style="font-size: 2rem; font-weight: bold;">{{ all_subdomains|length - dns_resolved.count }}</div>
+                <div
+                    style="background: linear-gradient(135deg, #8b5cf6 0%, #6d28d9 100%); padding: 1rem; border-radius: 12px; color: white;">
+                    <div style="font-size: 2rem; font-weight: bold;">{{ all_subdomains|length - dns_resolved.count }}
+                    </div>
                     <div style="font-size: 0.875rem; opacity: 0.9;">Unresolved</div>
                 </div>
                 {% endif %}
             </div>
 
             <!-- Assets Table -->
-            <div class="table-responsive" style="background: white; border-radius: 12px; box-shadow: 0 1px 3px rgba(0,0,0,0.1); overflow-x: auto;">
+            <div class="table-responsive"
+                style="background: white; border-radius: 12px; box-shadow: 0 1px 3px rgba(0,0,0,0.1); overflow-x: auto;">
                 <table class="table" id="assetsTable" style="margin: 0; width: 100%;">
                     <thead style="background: #f8fafc; border-bottom: 2px solid #e2e8f0;">
                         <tr>
                             <th style="padding: 1rem; font-weight: 600; color: #1e293b; font-size: 0.875rem;">#</th>
-                            <th style="padding: 1rem; font-weight: 600; color: #1e293b; font-size: 0.875rem;">Screenshot</th>
+                            <th style="padding: 1rem; font-weight: 600; color: #1e293b; font-size: 0.875rem;">Screenshot
+                            </th>
                             <th style="padding: 1rem; font-weight: 600; color: #1e293b; font-size: 0.875rem;">URL</th>
-                            <th style="padding: 1rem; font-weight: 600; color: #1e293b; font-size: 0.875rem;">Status</th>
+                            <th style="padding: 1rem; font-weight: 600; color: #1e293b; font-size: 0.875rem;">Status
+                            </th>
                             <th style="padding: 1rem; font-weight: 600; color: #1e293b; font-size: 0.875rem;">Title</th>
-                            <th style="padding: 1rem; font-weight: 600; color: #1e293b; font-size: 0.875rem;">Technologies</th>
-                            <th style="padding: 1rem; font-weight: 600; color: #1e293b; font-size: 0.875rem;">A Record</th>
+                            <th style="padding: 1rem; font-weight: 600; color: #1e293b; font-size: 0.875rem;">
+                                Technologies
+                            </th>
+                            <th style="padding: 1rem; font-weight: 600; color: #1e293b; font-size: 0.875rem;">A Record
+                            </th>
                             <th style="padding: 1rem; font-weight: 600; color: #1e293b; font-size: 0.875rem;">Ports</th>
-                            <th style="padding: 1rem; font-weight: 600; color: #1e293b; font-size: 0.875rem;">Vulnerabilities</th>
+                            <th style="padding: 1rem; font-weight: 600; color: #1e293b; font-size: 0.875rem;">
+                                Vulnerabilities</th>
                             <th style="padding: 1rem; font-weight: 600; color: #1e293b; font-size: 0.875rem;">CNAME</th>
-                            <th style="padding: 1rem; font-weight: 600; color: #1e293b; font-size: 0.875rem;">CDN/WAF</th>
+                            <th style="padding: 1rem; font-weight: 600; color: #1e293b; font-size: 0.875rem;">CDN/WAF
+                            </th>
                         </tr>
                     </thead>
                     <tbody id="assetsTableBody">
                         {% if paginated_subdomains %}
                         {% for subdomain in paginated_subdomains %}
-                        {% set dns_record = latest_snapshots.dns.data.dns_records.get(subdomain) if latest_snapshots.dns else none %}
+                        {% set dns_record = latest_snapshots.dns.data.dns_records.get(subdomain) if latest_snapshots.dns
+                        else none %}
                         {% set http_url_https = 'https://' + subdomain %}
                         {% set http_url_http = 'http://' + subdomain %}
-                        {% set http_record = latest_snapshots.http.data.http_records.get(http_url_https) if latest_snapshots.http else none %}
+                        {% set http_record = latest_snapshots.http.data.http_records.get(http_url_https) if
+                        latest_snapshots.http else none %}
                         {% if not http_record %}
-                            {% set http_record = latest_snapshots.http.data.http_records.get(http_url_http) if latest_snapshots.http else none %}
-                            {% set http_url_https = http_url_http if http_record else http_url_https %}
+                        {% set http_record = latest_snapshots.http.data.http_records.get(http_url_http) if
+                        latest_snapshots.http else none %}
+                        {% set http_url_https = http_url_http if http_record else http_url_https %}
                         {% endif %}
                         {# Get Shodan data for first IP that has data #}
                         {% set shodan_data = namespace(value=none) %}
                         {% if latest_snapshots.shodan and dns_record and dns_record.a %}
-                            {% for ip in dns_record.a %}
-                                {% if not shodan_data.value and latest_snapshots.shodan.data.shodan_results.get(ip) %}
-                                    {% set shodan_data.value = latest_snapshots.shodan.data.shodan_results.get(ip) %}
-                                {% endif %}
-                            {% endfor %}
+                        {% for ip in dns_record.a %}
+                        {% if not shodan_data.value and latest_snapshots.shodan.data.shodan_results.get(ip) %}
+                        {% set shodan_data.value = latest_snapshots.shodan.data.shodan_results.get(ip) %}
+                        {% endif %}
+                        {% endfor %}
                         {% endif %}
                         <tr class="asset-row" style="border-bottom: 1px solid #f1f5f9; transition: background 0.2s;"
-                            onmouseover="this.style.background='#f8fafc'"
-                            onmouseout="this.style.background='white'"
-                            data-url="{{ http_url_https }}"
-                            data-subdomain="{{ subdomain }}"
+                            onmouseover="this.style.background='#f8fafc'" onmouseout="this.style.background='white'"
+                            data-url="{{ http_url_https }}" data-subdomain="{{ subdomain }}"
                             data-status="{{ http_record.status_code if http_record else '' }}"
                             data-title="{{ http_record.title if http_record else '' }}"
                             data-ip="{{ http_record.ip if http_record else (dns_record.a[0] if dns_record and dns_record.a else '') }}"
                             data-technologies="{{ http_record.technologies|join(',') if http_record and http_record.technologies else '' }}"
                             data-cname="{{ dns_record.cname|join(',') if dns_record and dns_record.cname else '' }}">
-                            <td style="padding: 1rem; color: #64748b; font-size: 0.875rem;">{{ ((current_page - 1) * per_page) + loop.index }}</td>
+                            <td style="padding: 1rem; color: #64748b; font-size: 0.875rem;">{{ ((current_page - 1) *
+                                per_page) + loop.index }}</td>
                             <!-- Screenshot -->
                             <td style="padding: 1rem;">
                                 {% if http_record and http_record.screenshot %}
-                                <img src="data:image/png;base64,{{ http_record.screenshot }}"
-                                     alt="Screenshot"
-                                     style="width: 120px; height: 80px; object-fit: cover; border-radius: 8px; border: 2px solid #e2e8f0; cursor: pointer;"
-                                     onclick="showScreenshotModal('{{ http_url_https }}', this.src)"
-                                     title="Click to enlarge">
+                                <img src="data:image/png;base64,{{ http_record.screenshot }}" alt="Screenshot"
+                                    style="width: 120px; height: 80px; object-fit: cover; border-radius: 8px; border: 2px solid #e2e8f0; cursor: pointer;"
+                                    onclick="showScreenshotModal('{{ http_url_https }}', this.src)"
+                                    title="Click to enlarge">
                                 {% else %}
-                                <div style="width: 120px; height: 80px; background: #f1f5f9; border-radius: 8px; display: flex; align-items: center; justify-content: center; font-size: 0.75rem; color: #94a3b8;">
+                                <div
+                                    style="width: 120px; height: 80px; background: #f1f5f9; border-radius: 8px; display: flex; align-items: center; justify-content: center; font-size: 0.75rem; color: #94a3b8;">
                                     <i class="fas fa-image" style="font-size: 1.5rem;"></i>
                                 </div>
                                 {% endif %}
@@ -316,9 +341,9 @@
                             <!-- URL -->
                             <td style="padding: 1rem; white-space: nowrap;">
                                 <a href="{{ http_url_https }}" target="_blank"
-                                   style="color: #667eea; text-decoration: none; font-weight: 500; font-size: 0.875rem; display: inline-flex; align-items: center; gap: 0.25rem; white-space: nowrap;"
-                                   onmouseover="this.style.textDecoration='underline'"
-                                   onmouseout="this.style.textDecoration='none'">
+                                    style="color: #667eea; text-decoration: none; font-weight: 500; font-size: 0.875rem; display: inline-flex; align-items: center; gap: 0.25rem; white-space: nowrap;"
+                                    onmouseover="this.style.textDecoration='underline'"
+                                    onmouseout="this.style.textDecoration='none'">
                                     {{ subdomain }}
                                     <i class="fas fa-external-link-alt" style="font-size: 0.75rem; opacity: 0.6;"></i>
                                 </a>
@@ -326,28 +351,30 @@
                             <!-- HTTP Status -->
                             <td style="padding: 1rem;">
                                 {% if http_record and http_record.status_code %}
-                                {% if http_record.status_code < 300 %}
-                                <span style="padding: 0.25rem 0.75rem; border-radius: 9999px; font-size: 0.8125rem; font-weight: 600; background: #dcfce7; color: #166534;">
+                                {% if http_record.status_code < 300 %} <span
+                                    style="padding: 0.25rem 0.75rem; border-radius: 9999px; font-size: 0.8125rem; font-weight: 600; background: #dcfce7; color: #166534;">
                                     {{ http_record.status_code }}
-                                </span>
-                                {% elif http_record.status_code < 400 %}
-                                <span style="padding: 0.25rem 0.75rem; border-radius: 9999px; font-size: 0.8125rem; font-weight: 600; background: #fef3c7; color: #92400e;">
-                                    {{ http_record.status_code }}
-                                </span>
-                                {% else %}
-                                <span style="padding: 0.25rem 0.75rem; border-radius: 9999px; font-size: 0.8125rem; font-weight: 600; background: #fee2e2; color: #991b1b;">
-                                    {{ http_record.status_code }}
-                                </span>
-                                {% endif %}
-                                {% else %}
-                                <span style="color: #94a3b8;">-</span>
-                                {% endif %}
+                                    </span>
+                                    {% elif http_record.status_code < 400 %} <span
+                                        style="padding: 0.25rem 0.75rem; border-radius: 9999px; font-size: 0.8125rem; font-weight: 600; background: #fef3c7; color: #92400e;">
+                                        {{ http_record.status_code }}
+                                        </span>
+                                        {% else %}
+                                        <span
+                                            style="padding: 0.25rem 0.75rem; border-radius: 9999px; font-size: 0.8125rem; font-weight: 600; background: #fee2e2; color: #991b1b;">
+                                            {{ http_record.status_code }}
+                                        </span>
+                                        {% endif %}
+                                        {% else %}
+                                        <span style="color: #94a3b8;">-</span>
+                                        {% endif %}
                             </td>
                             <!-- Title -->
                             <td style="padding: 1rem; max-width: 250px;">
                                 {% if http_record and http_record.title %}
-                                <span style="color: #334155; font-size: 0.875rem; display: block; white-space: nowrap; overflow: hidden; text-overflow: ellipsis;"
-                                      title="{{ http_record.title }}">
+                                <span
+                                    style="color: #334155; font-size: 0.875rem; display: block; white-space: nowrap; overflow: hidden; text-overflow: ellipsis;"
+                                    title="{{ http_record.title }}">
                                     {{ http_record.title }}
                                 </span>
                                 {% else %}
@@ -359,12 +386,14 @@
                                 {% if http_record and http_record.technologies %}
                                 <div style="display: flex; flex-wrap: wrap; gap: 0.375rem; max-width: 200px;">
                                     {% for tech in http_record.technologies[:3] %}
-                                    <span style="padding: 0.25rem 0.625rem; border-radius: 6px; font-size: 0.75rem; font-weight: 500; background: #e0e7ff; color: #3730a3;">
+                                    <span
+                                        style="padding: 0.25rem 0.625rem; border-radius: 6px; font-size: 0.75rem; font-weight: 500; background: #e0e7ff; color: #3730a3;">
                                         {{ tech }}
                                     </span>
                                     {% endfor %}
                                     {% if http_record.technologies|length > 3 %}
-                                    <span style="padding: 0.25rem 0.625rem; border-radius: 6px; font-size: 0.75rem; font-weight: 500; background: #f1f5f9; color: #475569;">
+                                    <span
+                                        style="padding: 0.25rem 0.625rem; border-radius: 6px; font-size: 0.75rem; font-weight: 500; background: #f1f5f9; color: #475569;">
                                         +{{ http_record.technologies|length - 3 }}
                                     </span>
                                     {% endif %}
@@ -378,12 +407,14 @@
                                 {% if dns_record and dns_record.a %}
                                 <div style="display: flex; flex-wrap: wrap; gap: 0.375rem;">
                                     {% for ip in dns_record.a[:2] %}
-                                    <code style="padding: 0.25rem 0.5rem; border-radius: 4px; font-size: 0.75rem; background: #f8fafc; color: #475569; font-family: 'Courier New', monospace;">
+                                    <code
+                                        style="padding: 0.25rem 0.5rem; border-radius: 4px; font-size: 0.75rem; background: #f8fafc; color: #475569; font-family: 'Courier New', monospace;">
                                         {{ ip }}
                                     </code>
                                     {% endfor %}
                                     {% if dns_record.a|length > 2 %}
-                                    <span style="padding: 0.25rem 0.625rem; border-radius: 6px; font-size: 0.75rem; background: #f1f5f9; color: #475569;">
+                                    <span
+                                        style="padding: 0.25rem 0.625rem; border-radius: 6px; font-size: 0.75rem; background: #f1f5f9; color: #475569;">
                                         +{{ dns_record.a|length - 2 }}
                                     </span>
                                     {% endif %}
@@ -397,12 +428,14 @@
                                 {% if shodan_data.value and shodan_data.value.ports %}
                                 <div style="display: flex; flex-wrap: wrap; gap: 0.375rem;">
                                     {% for port in shodan_data.value.ports[:5] %}
-                                    <span style="padding: 0.25rem 0.625rem; border-radius: 6px; font-size: 0.75rem; font-weight: 500; background: #dbeafe; color: #1e40af; border: 1px solid #bfdbfe;">
+                                    <span
+                                        style="padding: 0.25rem 0.625rem; border-radius: 6px; font-size: 0.75rem; font-weight: 500; background: #dbeafe; color: #1e40af; border: 1px solid #bfdbfe;">
                                         <i class="fas fa-network-wired" style="font-size: 0.65rem;"></i> {{ port }}
                                     </span>
                                     {% endfor %}
                                     {% if shodan_data.value.ports|length > 5 %}
-                                    <span style="padding: 0.25rem 0.625rem; border-radius: 6px; font-size: 0.75rem; background: #f1f5f9; color: #475569;">
+                                    <span
+                                        style="padding: 0.25rem 0.625rem; border-radius: 6px; font-size: 0.75rem; background: #f1f5f9; color: #475569;">
                                         +{{ shodan_data.value.ports|length - 5 }}
                                     </span>
                                     {% endif %}
@@ -416,12 +449,15 @@
                                 {% if shodan_data.value and shodan_data.value.vulns %}
                                 <div style="display: flex; flex-wrap: wrap; gap: 0.375rem;">
                                     {% for vuln in shodan_data.value.vulns[:3] %}
-                                    <span style="padding: 0.25rem 0.625rem; border-radius: 6px; font-size: 0.75rem; font-weight: 600; background: #fee2e2; color: #991b1b; border: 1px solid #fecaca;">
-                                        <i class="fas fa-exclamation-triangle" style="font-size: 0.65rem;"></i> {{ vuln }}
+                                    <span
+                                        style="padding: 0.25rem 0.625rem; border-radius: 6px; font-size: 0.75rem; font-weight: 600; background: #fee2e2; color: #991b1b; border: 1px solid #fecaca;">
+                                        <i class="fas fa-exclamation-triangle" style="font-size: 0.65rem;"></i> {{ vuln
+                                        }}
                                     </span>
                                     {% endfor %}
                                     {% if shodan_data.value.vulns|length > 3 %}
-                                    <span style="padding: 0.25rem 0.625rem; border-radius: 6px; font-size: 0.75rem; font-weight: 600; background: #fee2e2; color: #991b1b;">
+                                    <span
+                                        style="padding: 0.25rem 0.625rem; border-radius: 6px; font-size: 0.75rem; font-weight: 600; background: #fee2e2; color: #991b1b;">
                                         +{{ shodan_data.value.vulns|length - 3 }}
                                     </span>
                                     {% endif %}
@@ -435,13 +471,15 @@
                                 {% if dns_record and dns_record.cname %}
                                 <div style="display: flex; flex-wrap: wrap; gap: 0.375rem;">
                                     {% for cname in dns_record.cname[:1] %}
-                                    <span style="color: #64748b; font-size: 0.75rem; display: block; white-space: nowrap; overflow: hidden; text-overflow: ellipsis;"
-                                          title="{{ cname }}">
+                                    <span
+                                        style="color: #64748b; font-size: 0.75rem; display: block; white-space: nowrap; overflow: hidden; text-overflow: ellipsis;"
+                                        title="{{ cname }}">
                                         {{ cname }}
                                     </span>
                                     {% endfor %}
                                     {% if dns_record.cname|length > 1 %}
-                                    <span style="padding: 0.25rem 0.625rem; border-radius: 6px; font-size: 0.75rem; background: #f1f5f9; color: #475569;">
+                                    <span
+                                        style="padding: 0.25rem 0.625rem; border-radius: 6px; font-size: 0.75rem; background: #f1f5f9; color: #475569;">
                                         +{{ dns_record.cname|length - 1 }}
                                     </span>
                                     {% endif %}
@@ -453,8 +491,10 @@
                             <!-- CDN/WAF -->
                             <td style="padding: 1rem;">
                                 {% if http_record and http_record.cdn %}
-                                <span style="padding: 0.25rem 0.625rem; border-radius: 6px; font-size: 0.75rem; font-weight: 500; background: #dbeafe; color: #1e40af;">
-                                    <i class="fas fa-cloud"></i> {{ http_record.cdn if http_record.cdn != true else 'CDN' }}
+                                <span
+                                    style="padding: 0.25rem 0.625rem; border-radius: 6px; font-size: 0.75rem; font-weight: 500; background: #dbeafe; color: #1e40af;">
+                                    <i class="fas fa-cloud"></i> {{ http_record.cdn if http_record.cdn != true else
+                                    'CDN' }}
                                 </span>
                                 {% else %}
                                 <span style="color: #94a3b8;">-</span>
@@ -466,9 +506,14 @@
                         <tr>
                             <td colspan="11" style="padding: 3rem; text-align: center;">
                                 <div style="color: #94a3b8;">
-                                    <i class="fas fa-search" style="font-size: 3rem; margin-bottom: 1rem; opacity: 0.5;"></i>
-                                    <h3 style="color: #64748b; font-size: 1.125rem; margin-bottom: 0.5rem;">No Subdomains Found</h3>
-                                    <p style="color: #94a3b8; font-size: 0.875rem;">Run a scan to discover subdomains and assets</p>
+                                    <i class="fas fa-search"
+                                        style="font-size: 3rem; margin-bottom: 1rem; opacity: 0.5;"></i>
+                                    <h3 style="color: #64748b; font-size: 1.125rem; margin-bottom: 0.5rem;">No
+                                        Subdomains
+                                        Found</h3>
+                                    <p style="color: #94a3b8; font-size: 0.875rem;">Run a scan to discover subdomains
+                                        and
+                                        assets</p>
                                 </div>
                             </td>
                         </tr>
@@ -478,23 +523,30 @@
             </div>
 
             <!-- Pagination Controls -->
-            <div style="margin-top: 1rem; display: flex; justify-content: space-between; align-items: center; flex-wrap: wrap; gap: 1rem;">
+            <div
+                style="margin-top: 1rem; display: flex; justify-content: space-between; align-items: center; flex-wrap: wrap; gap: 1rem;">
                 <!-- Stats -->
-                <div style="padding: 1rem; background: #f8fafc; border-radius: 8px; color: #64748b; font-size: 0.875rem; flex: 1; min-width: 200px;">
-                    Showing <span style="font-weight: 600; color: #475569;">{{ showing_start }}</span>-<span style="font-weight: 600; color: #475569;">{{ showing_end }}</span> of <span style="font-weight: 600; color: #475569;">{{ total_subdomains }}</span> assets
+                <div
+                    style="padding: 1rem; background: #f8fafc; border-radius: 8px; color: #64748b; font-size: 0.875rem; flex: 1; min-width: 200px;">
+                    Showing <span style="font-weight: 600; color: #475569;">{{ showing_start }}</span>-<span
+                        style="font-weight: 600; color: #475569;">{{ showing_end }}</span> of <span
+                        style="font-weight: 600; color: #475569;">{{ total_subdomains }}</span> assets
                     <span style="margin-left: 0.5rem;">•</span>
-                    <small style="color: #94a3b8; margin-left: 0.5rem;">Last scan: {{ latest_snapshots.subdomains.created_at.strftime('%Y-%m-%d %H:%M') if latest_snapshots.subdomains else 'Never' }}</small>
+                    <small style="color: #94a3b8; margin-left: 0.5rem;">Last scan: {{
+                        latest_snapshots.subdomains.created_at.strftime('%Y-%m-%d %H:%M') if latest_snapshots.subdomains
+                        else 'Never' }}</small>
                 </div>
 
                 <!-- Per Page Selector -->
                 <div style="display: flex; align-items: center; gap: 0.5rem;">
                     <label style="font-size: 0.875rem; color: #64748b;">Per page:</label>
-                    <select onchange="window.location.href='?page=1&per_page=' + this.value + '{{ ('&search=' + search) if search else '' }}{{ ('&status_filter=' + status_filter) if status_filter else '' }}{{ ('&tech_filter=' + tech_filter) if tech_filter else '' }}'"
-                            style="padding: 0.5rem 1rem; border: 2px solid #e2e8f0; border-radius: 8px; font-size: 0.875rem; background: white; cursor: pointer;">
-                        <option value="25" {% if per_page == 25 %}selected{% endif %}>25</option>
-                        <option value="50" {% if per_page == 50 %}selected{% endif %}>50</option>
-                        <option value="100" {% if per_page == 100 %}selected{% endif %}>100</option>
-                        <option value="500" {% if per_page == 500 %}selected{% endif %}>500</option>
+                    <select
+                        onchange="window.location.href='?page=1&per_page=' + this.value + '{{ ('&search=' + search) if search else '' }}{{ ('&status_filter=' + status_filter) if status_filter else '' }}{{ ('&tech_filter=' + tech_filter) if tech_filter else '' }}'"
+                        style="padding: 0.5rem 1rem; border: 2px solid #e2e8f0; border-radius: 8px; font-size: 0.875rem; background: white; cursor: pointer;">
+                        <option value="25" {% if per_page==25 %}selected{% endif %}>25</option>
+                        <option value="50" {% if per_page==50 %}selected{% endif %}>50</option>
+                        <option value="100" {% if per_page==100 %}selected{% endif %}>100</option>
+                        <option value="500" {% if per_page==500 %}selected{% endif %}>500</option>
                     </select>
                 </div>
 
@@ -502,408 +554,89 @@
                 <div style="display: flex; gap: 0.5rem; align-items: center;">
                     {% if current_page > 1 %}
                     <a href="?page=1&per_page={{ per_page }}{{ ('&search=' + search) if search else '' }}{{ ('&status_filter=' + status_filter) if status_filter else '' }}{{ ('&tech_filter=' + tech_filter) if tech_filter else '' }}"
-                       style="padding: 0.5rem 1rem; border: 2px solid #e2e8f0; border-radius: 8px; background: white; color: #475569; text-decoration: none; font-size: 0.875rem; cursor: pointer; transition: all 0.2s;"
-                       onmouseover="this.style.background='#f8fafc'; this.style.borderColor='#cbd5e1'"
-                       onmouseout="this.style.background='white'; this.style.borderColor='#e2e8f0'">
+                        style="padding: 0.5rem 1rem; border: 2px solid #e2e8f0; border-radius: 8px; background: white; color: #475569; text-decoration: none; font-size: 0.875rem; cursor: pointer; transition: all 0.2s;"
+                        onmouseover="this.style.background='#f8fafc'; this.style.borderColor='#cbd5e1'"
+                        onmouseout="this.style.background='white'; this.style.borderColor='#e2e8f0'">
                         <i class="fas fa-angle-double-left"></i> First
                     </a>
                     <a href="?page={{ current_page - 1 }}&per_page={{ per_page }}{{ ('&search=' + search) if search else '' }}{{ ('&status_filter=' + status_filter) if status_filter else '' }}{{ ('&tech_filter=' + tech_filter) if tech_filter else '' }}"
-                       style="padding: 0.5rem 1rem; border: 2px solid #e2e8f0; border-radius: 8px; background: white; color: #475569; text-decoration: none; font-size: 0.875rem; cursor: pointer; transition: all 0.2s;"
-                       onmouseover="this.style.background='#f8fafc'; this.style.borderColor='#cbd5e1'"
-                       onmouseout="this.style.background='white'; this.style.borderColor='#e2e8f0'">
+                        style="padding: 0.5rem 1rem; border: 2px solid #e2e8f0; border-radius: 8px; background: white; color: #475569; text-decoration: none; font-size: 0.875rem; cursor: pointer; transition: all 0.2s;"
+                        onmouseover="this.style.background='#f8fafc'; this.style.borderColor='#cbd5e1'"
+                        onmouseout="this.style.background='white'; this.style.borderColor='#e2e8f0'">
                         <i class="fas fa-angle-left"></i> Prev
                     </a>
                     {% else %}
-                    <span style="padding: 0.5rem 1rem; border: 2px solid #f1f5f9; border-radius: 8px; background: #f8fafc; color: #cbd5e1; font-size: 0.875rem; cursor: not-allowed;">
+                    <span
+                        style="padding: 0.5rem 1rem; border: 2px solid #f1f5f9; border-radius: 8px; background: #f8fafc; color: #cbd5e1; font-size: 0.875rem; cursor: not-allowed;">
                         <i class="fas fa-angle-double-left"></i> First
                     </span>
-                    <span style="padding: 0.5rem 1rem; border: 2px solid #f1f5f9; border-radius: 8px; background: #f8fafc; color: #cbd5e1; font-size: 0.875rem; cursor: not-allowed;">
+                    <span
+                        style="padding: 0.5rem 1rem; border: 2px solid #f1f5f9; border-radius: 8px; background: #f8fafc; color: #cbd5e1; font-size: 0.875rem; cursor: not-allowed;">
                         <i class="fas fa-angle-left"></i> Prev
                     </span>
                     {% endif %}
 
-                    <span style="padding: 0.5rem 1rem; background: #667eea; color: white; border-radius: 8px; font-weight: 600; font-size: 0.875rem;">
+                    <span
+                        style="padding: 0.5rem 1rem; background: #667eea; color: white; border-radius: 8px; font-weight: 600; font-size: 0.875rem;">
                         Page {{ current_page }} of {{ total_pages }}
                     </span>
 
-                    {% if current_page < total_pages %}
-                    <a href="?page={{ current_page + 1 }}&per_page={{ per_page }}{{ ('&search=' + search) if search else '' }}{{ ('&status_filter=' + status_filter) if status_filter else '' }}{{ ('&tech_filter=' + tech_filter) if tech_filter else '' }}"
-                       style="padding: 0.5rem 1rem; border: 2px solid #e2e8f0; border-radius: 8px; background: white; color: #475569; text-decoration: none; font-size: 0.875rem; cursor: pointer; transition: all 0.2s;"
-                       onmouseover="this.style.background='#f8fafc'; this.style.borderColor='#cbd5e1'"
-                       onmouseout="this.style.background='white'; this.style.borderColor='#e2e8f0'">
+                    {% if current_page < total_pages %} <a
+                        href="?page={{ current_page + 1 }}&per_page={{ per_page }}{{ ('&search=' + search) if search else '' }}{{ ('&status_filter=' + status_filter) if status_filter else '' }}{{ ('&tech_filter=' + tech_filter) if tech_filter else '' }}"
+                        style="padding: 0.5rem 1rem; border: 2px solid #e2e8f0; border-radius: 8px; background: white; color: #475569; text-decoration: none; font-size: 0.875rem; cursor: pointer; transition: all 0.2s;"
+                        onmouseover="this.style.background='#f8fafc'; this.style.borderColor='#cbd5e1'"
+                        onmouseout="this.style.background='white'; this.style.borderColor='#e2e8f0'">
                         Next <i class="fas fa-angle-right"></i>
-                    </a>
-                    <a href="?page={{ total_pages }}&per_page={{ per_page }}{{ ('&search=' + search) if search else '' }}{{ ('&status_filter=' + status_filter) if status_filter else '' }}{{ ('&tech_filter=' + tech_filter) if tech_filter else '' }}"
-                       style="padding: 0.5rem 1rem; border: 2px solid #e2e8f0; border-radius: 8px; background: white; color: #475569; text-decoration: none; font-size: 0.875rem; cursor: pointer; transition: all 0.2s;"
-                       onmouseover="this.style.background='#f8fafc'; this.style.borderColor='#cbd5e1'"
-                       onmouseout="this.style.background='white'; this.style.borderColor='#e2e8f0'">
-                        Last <i class="fas fa-angle-double-right"></i>
-                    </a>
-                    {% else %}
-                    <span style="padding: 0.5rem 1rem; border: 2px solid #f1f5f9; border-radius: 8px; background: #f8fafc; color: #cbd5e1; font-size: 0.875rem; cursor: not-allowed;">
-                        Next <i class="fas fa-angle-right"></i>
-                    </span>
-                    <span style="padding: 0.5rem 1rem; border: 2px solid #f1f5f9; border-radius: 8px; background: #f8fafc; color: #cbd5e1; font-size: 0.875rem; cursor: not-allowed;">
-                        Last <i class="fas fa-angle-double-right"></i>
-                    </span>
-                    {% endif %}
+                        </a>
+                        <a href="?page={{ total_pages }}&per_page={{ per_page }}{{ ('&search=' + search) if search else '' }}{{ ('&status_filter=' + status_filter) if status_filter else '' }}{{ ('&tech_filter=' + tech_filter) if tech_filter else '' }}"
+                            style="padding: 0.5rem 1rem; border: 2px solid #e2e8f0; border-radius: 8px; background: white; color: #475569; text-decoration: none; font-size: 0.875rem; cursor: pointer; transition: all 0.2s;"
+                            onmouseover="this.style.background='#f8fafc'; this.style.borderColor='#cbd5e1'"
+                            onmouseout="this.style.background='white'; this.style.borderColor='#e2e8f0'">
+                            Last <i class="fas fa-angle-double-right"></i>
+                        </a>
+                        {% else %}
+                        <span
+                            style="padding: 0.5rem 1rem; border: 2px solid #f1f5f9; border-radius: 8px; background: #f8fafc; color: #cbd5e1; font-size: 0.875rem; cursor: not-allowed;">
+                            Next <i class="fas fa-angle-right"></i>
+                        </span>
+                        <span
+                            style="padding: 0.5rem 1rem; border: 2px solid #f1f5f9; border-radius: 8px; background: #f8fafc; color: #cbd5e1; font-size: 0.875rem; cursor: not-allowed;">
+                            Last <i class="fas fa-angle-double-right"></i>
+                        </span>
+                        {% endif %}
                 </div>
             </div>
         </div>
     </div>
 
     <!-- Screenshot Modal -->
-    <div id="screenshotModal" style="display: none; position: fixed; z-index: 9999; left: 0; top: 0; width: 100%; height: 100%; background: rgba(0,0,0,0.9); padding: 2rem;" onclick="this.style.display='none'">
-        <div style="position: relative; width: 100%; height: 100%; display: flex; align-items: center; justify-content: center;">
+    <div id="screenshotModal"
+        style="display: none; position: fixed; z-index: 9999; left: 0; top: 0; width: 100%; height: 100%; background: rgba(0,0,0,0.9); padding: 2rem;"
+        onclick="this.style.display='none'">
+        <div
+            style="position: relative; width: 100%; height: 100%; display: flex; align-items: center; justify-content: center;">
             <button onclick="document.getElementById('screenshotModal').style.display='none'"
-                    style="position: absolute; top: 1rem; right: 1rem; background: white; border: none; border-radius: 50%; width: 40px; height: 40px; cursor: pointer; font-size: 1.25rem; color: #1e293b;">
+                style="position: absolute; top: 1rem; right: 1rem; background: white; border: none; border-radius: 50%; width: 40px; height: 40px; cursor: pointer; font-size: 1.25rem; color: #1e293b;">
                 ×
             </button>
-            <div style="max-width: 90%; max-height: 90%; overflow: auto; background: white; border-radius: 12px; padding: 1rem;">
-                <h3 id="modalTitle" style="margin-bottom: 1rem; color: #1e293b; font-size: 1.125rem; word-break: break-all;"></h3>
+            <div
+                style="max-width: 90%; max-height: 90%; overflow: auto; background: white; border-radius: 12px; padding: 1rem;">
+                <h3 id="modalTitle"
+                    style="margin-bottom: 1rem; color: #1e293b; font-size: 1.125rem; word-break: break-all;"></h3>
                 <img id="modalImage" src="" alt="Screenshot" style="width: 100%; height: auto; border-radius: 8px;">
             </div>
         </div>
     </div>
 
-{% include '_takeovers_tab.html' %}
+    {% include '_takeovers_tab.html' %}
 
-    <!-- Tab: Endpoints -->
-    <div id="tab-endpoints" class="tab-content">
-        <div class="section">
-            <!-- Loading State -->
-            <div id="endpoints-loading" style="text-align: center; padding: 4rem 2rem;">
-                <div style="display: inline-block; padding: 2rem; background: linear-gradient(135deg, #667eea 0%, #764ba2 100%); border-radius: 50%; margin-bottom: 1.5rem;">
-                    <i class="fas fa-spinner fa-spin" style="font-size: 3rem; color: white;"></i>
-                </div>
-                <h3 style="color: #1e293b; font-size: 1.5rem; margin-bottom: 0.5rem;">Loading Endpoints...</h3>
-                <p style="color: #64748b; font-size: 0.875rem;">Fetching endpoint data from the server</p>
-                <div style="width: 200px; height: 4px; background: #e2e8f0; border-radius: 4px; margin: 1.5rem auto; overflow: hidden;">
-                    <div style="width: 60%; height: 100%; background: linear-gradient(90deg, #667eea, #764ba2); animation: loading 1.5s ease-in-out infinite;"></div>
-                </div>
-            </div>
-
-            <!-- Main Content -->
-            <div id="endpoints-content" style="display: none;">
-                <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 1.5rem;">
-                    <h3 style="margin: 0; color: #1e293b; font-size: 1.25rem;">
-                        <i class="fas fa-link"></i> Discovered Endpoints
-                    </h3>
-                    <div style="color: #64748b; font-size: 0.875rem;">
-                        <i class="fas fa-clock"></i> Last scan: <span id="endpoints-last-scan">-</span>
-                    </div>
-                </div>
-
-                <!-- Filters Bar -->
-                <div style="background: white; padding: 1.25rem; border-radius: 12px; box-shadow: 0 1px 3px rgba(0,0,0,0.1); margin-bottom: 1.5rem;">
-                    <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)); gap: 1rem; margin-bottom: 1rem;">
-                        <!-- Search -->
-                        <div>
-                            <label style="display: block; font-size: 0.75rem; font-weight: 600; color: #475569; margin-bottom: 0.5rem; text-transform: uppercase; letter-spacing: 0.5px;">
-                                <i class="fas fa-search"></i> Search
-                            </label>
-                            <input type="text" id="endpoints-search" placeholder="Search URL or title..."
-                                   style="width: 100%; padding: 0.625rem 1rem; border: 2px solid #e2e8f0; border-radius: 8px; font-size: 0.875rem; transition: all 0.2s;"
-                                   onfocus="this.style.borderColor='#667eea'"
-                                   onblur="this.style.borderColor='#e2e8f0'">
-                        </div>
-
-                        <!-- Category Filter -->
-                        <div>
-                            <label style="display: block; font-size: 0.75rem; font-weight: 600; color: #475569; margin-bottom: 0.5rem; text-transform: uppercase; letter-spacing: 0.5px;">
-                                <i class="fas fa-filter"></i> Category
-                            </label>
-                            <select id="endpoints-category"
-                                    style="width: 100%; padding: 0.625rem 1rem; border: 2px solid #e2e8f0; border-radius: 8px; font-size: 0.875rem; background: white; cursor: pointer;">
-                                <option value="">All Categories</option>
-                                <option value="sensitive">🔥 Sensitive</option>
-                                <option value="backup">📦 Backup</option>
-                                <option value="dev">🛠️ Dev/Admin</option>
-                                <option value="file">📄 Documents</option>
-                                <option value="config">⚙️ Config</option>
-                                <option value="auth">🔐 Auth</option>
-                                <option value="api">🔌 API</option>
-                            </select>
-                        </div>
-
-                        <!-- Status Filter -->
-                        <div>
-                            <label style="display: block; font-size: 0.75rem; font-weight: 600; color: #475569; margin-bottom: 0.5rem; text-transform: uppercase; letter-spacing: 0.5px;">
-                                <i class="fas fa-signal"></i> Status
-                            </label>
-                            <select id="endpoints-status"
-                                    style="width: 100%; padding: 0.625rem 1rem; border: 2px solid #e2e8f0; border-radius: 8px; font-size: 0.875rem; background: white; cursor: pointer;">
-                                <option value="">All Status</option>
-                                <option value="200">✅ 200 OK</option>
-                                <option value="300">↪️ 3xx Redirect</option>
-                                <option value="400">⚠️ 4xx Error</option>
-                                <option value="500">❌ 5xx Error</option>
-                                <option value="none">⚪ No Data</option>
-                            </select>
-                        </div>
-
-                        <!-- Per Page -->
-                        <div>
-                            <label style="display: block; font-size: 0.75rem; font-weight: 600; color: #475569; margin-bottom: 0.5rem; text-transform: uppercase; letter-spacing: 0.5px;">
-                                <i class="fas fa-list"></i> Per Page
-                            </label>
-                            <select id="endpoints-per-page"
-                                    style="width: 100%; padding: 0.625rem 1rem; border: 2px solid #e2e8f0; border-radius: 8px; font-size: 0.875rem; background: white; cursor: pointer;">
-                                <option value="50">50</option>
-                                <option value="100" selected>100</option>
-                                <option value="250">250</option>
-                                <option value="500">500</option>
-                            </select>
-                        </div>
-                    </div>
-
-                    <!-- Filter Actions -->
-                    <div style="display: flex; gap: 0.75rem; align-items: center;">
-                        <button onclick="applyEndpointsFilters()"
-                                style="padding: 0.625rem 1.25rem; background: linear-gradient(135deg, #667eea 0%, #764ba2 100%); color: white; border: none; border-radius: 8px; cursor: pointer; font-size: 0.875rem; font-weight: 600; transition: transform 0.2s;"
-                                onmouseover="this.style.transform='translateY(-2px)'"
-                                onmouseout="this.style.transform='translateY(0)'">
-                            <i class="fas fa-filter"></i> Apply Filters
-                        </button>
-                        <button onclick="resetEndpointsFilters()"
-                                style="padding: 0.625rem 1.25rem; background: white; color: #64748b; border: 2px solid #e2e8f0; border-radius: 8px; cursor: pointer; font-size: 0.875rem; font-weight: 600;">
-                            <i class="fas fa-undo"></i> Reset
-                        </button>
-                        <div id="endpoints-filter-info" style="margin-left: auto; color: #64748b; font-size: 0.875rem; font-weight: 500;">
-                            <i class="fas fa-info-circle"></i> <span id="endpoints-count-display">0 endpoints</span>
-                        </div>
-                    </div>
-                </div>
-
-                <!-- Table -->
-                <div style="background: white; border-radius: 12px; box-shadow: 0 1px 3px rgba(0,0,0,0.1); overflow: hidden;">
-                    <div class="table-responsive">
-                        <table class="table" style="margin: 0;">
-                            <thead style="background: linear-gradient(135deg, #f8fafc 0%, #f1f5f9 100%); border-bottom: 2px solid #e2e8f0;">
-                                <tr>
-                                    <th style="padding: 1rem; font-weight: 600; color: #475569; font-size: 0.8125rem; text-transform: uppercase; letter-spacing: 0.5px;">#</th>
-                                    <th style="padding: 1rem; font-weight: 600; color: #475569; font-size: 0.8125rem; text-transform: uppercase; letter-spacing: 0.5px; width: 80px;">Status</th>
-                                    <th style="padding: 1rem; font-weight: 600; color: #475569; font-size: 0.8125rem; text-transform: uppercase; letter-spacing: 0.5px; width: 140px;">Categories</th>
-                                    <th style="padding: 1rem; font-weight: 600; color: #475569; font-size: 0.8125rem; text-transform: uppercase; letter-spacing: 0.5px;">URL</th>
-                                    <th style="padding: 1rem; font-weight: 600; color: #475569; font-size: 0.8125rem; text-transform: uppercase; letter-spacing: 0.5px; width: 220px;">Title</th>
-                                </tr>
-                            </thead>
-                            <tbody id="endpoints-table-body">
-                                <!-- Data loaded via AJAX -->
-                            </tbody>
-                        </table>
-                    </div>
-                </div>
-
-                <!-- Pagination -->
-                <div style="margin-top: 1.5rem; display: flex; justify-content: space-between; align-items: center; padding: 1rem; background: white; border-radius: 12px; box-shadow: 0 1px 3px rgba(0,0,0,0.1);">
-                    <div style="color: #64748b; font-size: 0.875rem; font-weight: 500;">
-                        Showing <span id="endpoints-showing-start" style="font-weight: 700; color: #475569;">0</span> -
-                        <span id="endpoints-showing-end" style="font-weight: 700; color: #475569;">0</span> of
-                        <span id="endpoints-total" style="font-weight: 700; color: #475569;">0</span> endpoints
-                    </div>
-                    <div id="endpoints-pagination" style="display: flex; gap: 0.5rem; align-items: center;">
-                        <!-- Pagination buttons loaded via JS -->
-                    </div>
-                </div>
-            </div>
-
-            <!-- Empty State -->
-            <div id="endpoints-empty" style="display: none; text-align: center; padding: 4rem 2rem;">
-                <div style="display: inline-block; padding: 2rem; background: #f8fafc; border-radius: 50%; margin-bottom: 1.5rem;">
-                    <i class="fas fa-link" style="font-size: 3rem; color: #94a3b8;"></i>
-                </div>
-                <h3 style="color: #64748b; font-size: 1.25rem; margin-bottom: 0.5rem;">No Endpoint Data</h3>
-                <p style="color: #94a3b8; font-size: 0.875rem;">Run a weekly scan to discover endpoints</p>
-            </div>
-        </div>
-    </div>
-
-<style>
-@keyframes loading {
-    0% { transform: translateX(-100%); }
-    100% { transform: translateX(300%); }
-}
-</style>
+    {% include '_endpoints_tab.html' %}
 
 
-    <!-- Tab: JS Files -->
-    <div id="tab-jsfiles" class="tab-content">
-        <div class="section">
-            <!-- Loading State -->
-            <div id="jsfiles-loading" style="text-align: center; padding: 4rem 2rem;">
-                <div style="display: inline-block; padding: 2rem; background: linear-gradient(135deg, #f59e0b 0%, #d97706 100%); border-radius: 50%; margin-bottom: 1.5rem;">
-                    <i class="fas fa-spinner fa-spin" style="font-size: 3rem; color: white;"></i>
-                </div>
-                <h3 style="color: #1e293b; font-size: 1.5rem; margin-bottom: 0.5rem;">Loading JavaScript Files...</h3>
-                <p style="color: #64748b; font-size: 0.875rem;">Fetching JS files data from the server</p>
-                <div style="width: 200px; height: 4px; background: #e2e8f0; border-radius: 4px; margin: 1.5rem auto; overflow: hidden;">
-                    <div style="width: 60%; height: 100%; background: linear-gradient(90deg, #f59e0b, #d97706); animation: loading 1.5s ease-in-out infinite;"></div>
-                </div>
-            </div>
-
-            <!-- Main Content -->
-            <div id="jsfiles-content" style="display: none;">
-                <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 1.5rem;">
-                    <h3 style="margin: 0; color: #1e293b; font-size: 1.25rem;">
-                        <i class="fas fa-file-code"></i> JavaScript Files
-                    </h3>
-                    <div style="color: #64748b; font-size: 0.875rem;">
-                        <i class="fas fa-clock"></i> Last scan: <span id="jsfiles-last-scan">-</span>
-                    </div>
-                </div>
-
-                <!-- Secrets Alert (if any) -->
-                <div id="jsfiles-secrets-alert" style="display: none; background: linear-gradient(135deg, #fef3c7 0%, #fde68a 100%); padding: 1rem 1.25rem; border-radius: 12px; border-left: 4px solid #f59e0b; margin-bottom: 1.5rem;">
-                    <div style="display: flex; align-items: center; gap: 1rem;">
-                        <i class="fas fa-exclamation-triangle" style="font-size: 1.5rem; color: #d97706;"></i>
-                        <div>
-                            <div style="font-weight: 600; color: #92400e; margin-bottom: 0.25rem;">
-                                <span id="jsfiles-secrets-count">0</span> file(s) with potential secrets detected
-                            </div>
-                            <div style="font-size: 0.875rem; color: #b45309;">
-                                Review these files immediately to prevent credential leakage
-                            </div>
-                        </div>
-                    </div>
-                </div>
-
-                <!-- Filters Bar -->
-                <div style="background: white; padding: 1.25rem; border-radius: 12px; box-shadow: 0 1px 3px rgba(0,0,0,0.1); margin-bottom: 1.5rem;">
-                    <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)); gap: 1rem; margin-bottom: 1rem;">
-                        <!-- Search -->
-                        <div>
-                            <label style="display: block; font-size: 0.75rem; font-weight: 600; color: #475569; margin-bottom: 0.5rem; text-transform: uppercase; letter-spacing: 0.5px;">
-                                <i class="fas fa-search"></i> Search
-                            </label>
-                            <input type="text" id="jsfiles-search" placeholder="Search JS file URL..."
-                                   style="width: 100%; padding: 0.625rem 1rem; border: 2px solid #e2e8f0; border-radius: 8px; font-size: 0.875rem; transition: all 0.2s;"
-                                   onfocus="this.style.borderColor='#f59e0b'"
-                                   onblur="this.style.borderColor='#e2e8f0'">
-                        </div>
-
-                        <!-- Status Filter -->
-                        <div>
-                            <label style="display: block; font-size: 0.75rem; font-weight: 600; color: #475569; margin-bottom: 0.5rem; text-transform: uppercase; letter-spacing: 0.5px;">
-                                <i class="fas fa-power-off"></i> Status
-                            </label>
-                            <select id="jsfiles-status"
-                                    style="width: 100%; padding: 0.625rem 1rem; border: 2px solid #e2e8f0; border-radius: 8px; font-size: 0.875rem; background: white; cursor: pointer;">
-                                <option value="">All Status</option>
-                                <option value="active">✅ Active (200 OK)</option>
-                                <option value="inactive">❌ Inactive</option>
-                                <option value="unknown">⚪ Unknown</option>
-                            </select>
-                        </div>
-
-                        <!-- Secrets Filter -->
-                        <div>
-                            <label style="display: block; font-size: 0.75rem; font-weight: 600; color: #475569; margin-bottom: 0.5rem; text-transform: uppercase; letter-spacing: 0.5px;">
-                                <i class="fas fa-key"></i> Secrets
-                            </label>
-                            <select id="jsfiles-secrets"
-                                    style="width: 100%; padding: 0.625rem 1rem; border: 2px solid #e2e8f0; border-radius: 8px; font-size: 0.875rem; background: white; cursor: pointer;">
-                                <option value="">All Files</option>
-                                <option value="suspicious">🔥 Has Secrets</option>
-                                <option value="clean">✅ Clean</option>
-                            </select>
-                        </div>
-
-                        <!-- Per Page -->
-                        <div>
-                            <label style="display: block; font-size: 0.75rem; font-weight: 600; color: #475569; margin-bottom: 0.5rem; text-transform: uppercase; letter-spacing: 0.5px;">
-                                <i class="fas fa-list"></i> Per Page
-                            </label>
-                            <select id="jsfiles-per-page"
-                                    style="width: 100%; padding: 0.625rem 1rem; border: 2px solid #e2e8f0; border-radius: 8px; font-size: 0.875rem; background: white; cursor: pointer;">
-                                <option value="50">50</option>
-                                <option value="100" selected>100</option>
-                                <option value="250">250</option>
-                                <option value="500">500</option>
-                            </select>
-                        </div>
-                    </div>
-
-                    <!-- Filter Actions -->
-                    <div style="display: flex; gap: 0.75rem; align-items: center;">
-                        <button onclick="applyJSFilesFilters()"
-                                style="padding: 0.625rem 1.25rem; background: linear-gradient(135deg, #f59e0b 0%, #d97706 100%); color: white; border: none; border-radius: 8px; cursor: pointer; font-size: 0.875rem; font-weight: 600; transition: transform 0.2s;"
-                                onmouseover="this.style.transform='translateY(-2px)'"
-                                onmouseout="this.style.transform='translateY(0)'">
-                            <i class="fas fa-filter"></i> Apply Filters
-                        </button>
-                        <button onclick="resetJSFilesFilters()"
-                                style="padding: 0.625rem 1.25rem; background: white; color: #64748b; border: 2px solid #e2e8f0; border-radius: 8px; cursor: pointer; font-size: 0.875rem; font-weight: 600;">
-                            <i class="fas fa-undo"></i> Reset
-                        </button>
-                        <div id="jsfiles-filter-info" style="margin-left: auto; color: #64748b; font-size: 0.875rem; font-weight: 500;">
-                            <i class="fas fa-info-circle"></i> <span id="jsfiles-count-display">0 files</span>
-                        </div>
-                    </div>
-                </div>
-
-                <!-- Table -->
-                <div style="background: white; border-radius: 12px; box-shadow: 0 1px 3px rgba(0,0,0,0.1); overflow: hidden;">
-                    <div class="table-responsive">
-                        <table class="table" style="margin: 0;">
-                            <thead style="background: linear-gradient(135deg, #fffbeb 0%, #fef3c7 100%); border-bottom: 2px solid #fde68a;">
-                                <tr>
-                                    <th style="padding: 1rem; font-weight: 600; color: #78350f; font-size: 0.8125rem; text-transform: uppercase; letter-spacing: 0.5px;">#</th>
-                                    <th style="padding: 1rem; font-weight: 600; color: #78350f; font-size: 0.8125rem; text-transform: uppercase; letter-spacing: 0.5px; width: 100px;">Status</th>
-                                    <th style="padding: 1rem; font-weight: 600; color: #78350f; font-size: 0.8125rem; text-transform: uppercase; letter-spacing: 0.5px;">URL</th>
-                                    <th style="padding: 1rem; font-weight: 600; color: #78350f; font-size: 0.8125rem; text-transform: uppercase; letter-spacing: 0.5px; width: 150px;">Secrets</th>
-                                    <th style="padding: 1rem; font-weight: 600; color: #78350f; font-size: 0.8125rem; text-transform: uppercase; letter-spacing: 0.5px; width: 120px;">Actions</th>
-                                </tr>
-                            </thead>
-                            <tbody id="jsfiles-table-body">
-                                <!-- Data loaded via AJAX -->
-                            </tbody>
-                        </table>
-                    </div>
-                </div>
-
-                <!-- Pagination -->
-                <div style="margin-top: 1.5rem; display: flex; justify-content: space-between; align-items: center; padding: 1rem; background: white; border-radius: 12px; box-shadow: 0 1px 3px rgba(0,0,0,0.1);">
-                    <div style="color: #64748b; font-size: 0.875rem; font-weight: 500;">
-                        Showing <span id="jsfiles-showing-start" style="font-weight: 700; color: #475569;">0</span> -
-                        <span id="jsfiles-showing-end" style="font-weight: 700; color: #475569;">0</span> of
-                        <span id="jsfiles-total" style="font-weight: 700; color: #475569;">0</span> files
-                    </div>
-                    <div id="jsfiles-pagination" style="display: flex; gap: 0.5rem; align-items: center;">
-                        <!-- Pagination buttons loaded via JS -->
-                    </div>
-                </div>
-
-                <!-- Info Box -->
-                <div style="margin-top: 1.5rem; padding: 1rem 1.25rem; background: #f8fafc; border-radius: 12px; border-left: 4px solid #3b82f6;">
-                    <div style="display: flex; align-items: start; gap: 1rem;">
-                        <i class="fas fa-info-circle" style="font-size: 1.25rem; color: #3b82f6; margin-top: 0.125rem;"></i>
-                        <div style="font-size: 0.875rem; color: #475569; line-height: 1.6;">
-                            <strong style="color: #1e293b;">Status</strong> indicates if file is accessible (HTTP 200 check).
-                            <strong style="color: #1e293b;">Secrets</strong> shows risk level based on pattern matching.
-                            High risk files should be reviewed immediately.
-                        </div>
-                    </div>
-                </div>
-            </div>
-
-            <!-- Empty State -->
-            <div id="jsfiles-empty" style="display: none; text-align: center; padding: 4rem 2rem;">
-                <div style="display: inline-block; padding: 2rem; background: #fffbeb; border-radius: 50%; margin-bottom: 1.5rem;">
-                    <i class="fas fa-file-code" style="font-size: 3rem; color: #f59e0b;"></i>
-                </div>
-                <h3 style="color: #64748b; font-size: 1.25rem; margin-bottom: 0.5rem;">No JavaScript Files</h3>
-                <p style="color: #94a3b8; font-size: 0.875rem; margin-bottom: 1.5rem;">Run a weekly scan to discover JavaScript files</p>
-                <button class="btn btn-primary" onclick="triggerScan({{ project.id }}, 'weekly')"
-                        style="padding: 0.75rem 1.5rem; background: linear-gradient(135deg, #667eea 0%, #764ba2 100%); color: white; border: none; border-radius: 8px; cursor: pointer; font-size: 0.875rem; font-weight: 600;">
-                    <i class="fas fa-calendar-week"></i> Run Weekly Scan
-                </button>
-            </div>
-        </div>
-    </div>
+    {% include '_jsfiles_tab.html' %}
 
 
-{% include '_events_tab.html' %}
+    {% include '_events_tab.html' %}
 
     <!-- Tab: Scans -->
     <div id="tab-scans" class="tab-content">
@@ -934,17 +667,17 @@
                             <td>{{ scan.started_at.strftime('%Y-%m-%d %H:%M') }}</td>
                             <td>
                                 {% if scan.completed_at %}
-                                    {{ scan.completed_at.strftime('%Y-%m-%d %H:%M') }}
+                                {{ scan.completed_at.strftime('%Y-%m-%d %H:%M') }}
                                 {% else %}
-                                    <span class="text-muted">-</span>
+                                <span class="text-muted">-</span>
                                 {% endif %}
                             </td>
                             <td>{{ scan.events_generated or 0 }}</td>
                             <td>
                                 {% if scan.completed_at and scan.started_at %}
-                                    {{ ((scan.completed_at - scan.started_at).total_seconds() / 60) | round(1) }} min
+                                {{ ((scan.completed_at - scan.started_at).total_seconds() / 60) | round(1) }} min
                                 {% else %}
-                                    <span class="text-muted">-</span>
+                                <span class="text-muted">-</span>
                                 {% endif %}
                             </td>
                         </tr>
@@ -966,823 +699,823 @@
 
 {% block extra_js %}
 <style>
-.event-detail-box {
-    background: #f8f9fa;
-    border-left: 4px solid #007bff;
-    padding: 1.5rem;
-    margin: 1rem 0;
-}
+    .event-detail-box {
+        background: #f8f9fa;
+        border-left: 4px solid #007bff;
+        padding: 1.5rem;
+        margin: 1rem 0;
+    }
 
-.event-detail-box h4 {
-    margin-top: 0;
-    color: #007bff;
-}
+    .event-detail-box h4 {
+        margin-top: 0;
+        color: #007bff;
+    }
 
-.detail-comparison {
-    display: grid;
-    grid-template-columns: 1fr 1fr;
-    gap: 1rem;
-    margin-top: 1rem;
-}
+    .detail-comparison {
+        display: grid;
+        grid-template-columns: 1fr 1fr;
+        gap: 1rem;
+        margin-top: 1rem;
+    }
 
-.detail-column {
-    background: white;
-    border: 1px solid #dee2e6;
-    border-radius: 4px;
-    padding: 1rem;
-}
+    .detail-column {
+        background: white;
+        border: 1px solid #dee2e6;
+        border-radius: 4px;
+        padding: 1rem;
+    }
 
-.detail-column h5 {
-    margin-top: 0;
-    padding-bottom: 0.5rem;
-    border-bottom: 2px solid #dee2e6;
-}
+    .detail-column h5 {
+        margin-top: 0;
+        padding-bottom: 0.5rem;
+        border-bottom: 2px solid #dee2e6;
+    }
 
-.detail-column.old-value h5 {
-    color: #dc3545;
-}
+    .detail-column.old-value h5 {
+        color: #dc3545;
+    }
 
-.detail-column.new-value h5 {
-    color: #28a745;
-}
+    .detail-column.new-value h5 {
+        color: #28a745;
+    }
 
-.detail-list {
-    list-style: none;
-    padding: 0;
-    margin: 0.5rem 0;
-}
+    .detail-list {
+        list-style: none;
+        padding: 0;
+        margin: 0.5rem 0;
+    }
 
-.detail-list li {
-    padding: 0.25rem 0;
-    font-family: monospace;
-}
+    .detail-list li {
+        padding: 0.25rem 0;
+        font-family: monospace;
+    }
 
-.detail-added {
-    color: #28a745;
-    font-weight: bold;
-}
+    .detail-added {
+        color: #28a745;
+        font-weight: bold;
+    }
 
-.detail-removed {
-    color: #dc3545;
-    font-weight: bold;
-}
+    .detail-removed {
+        color: #dc3545;
+        font-weight: bold;
+    }
 
-.detail-info {
-    background: #e7f3ff;
-    padding: 0.75rem;
-    border-radius: 4px;
-    margin-top: 1rem;
-}
+    .detail-info {
+        background: #e7f3ff;
+        padding: 0.75rem;
+        border-radius: 4px;
+        margin-top: 1rem;
+    }
 
-.detail-info strong {
-    color: #0056b3;
-}
+    .detail-info strong {
+        color: #0056b3;
+    }
 </style>
 
 <script>
-// Event detail display
-function showEventDetail(eventId) {
-    const detailRow = document.getElementById(`event-detail-${eventId}`);
-    const contentDiv = document.getElementById(`event-detail-content-${eventId}`);
+    // Event detail display
+    function showEventDetail(eventId) {
+        const detailRow = document.getElementById(`event-detail-${eventId}`);
+        const contentDiv = document.getElementById(`event-detail-content-${eventId}`);
 
-    // Toggle visibility
-    if (detailRow.style.display === 'none') {
-        // Load event details via API
-        fetch(`/api/events/${eventId}`)
-            .then(res => res.json())
-            .then(event => {
-                contentDiv.innerHTML = formatEventDetails(event);
-                detailRow.style.display = 'table-row';
-            })
-            .catch(err => {
-                contentDiv.innerHTML = '<p class="text-danger">Failed to load event details</p>';
-                detailRow.style.display = 'table-row';
-            });
-    } else {
-        detailRow.style.display = 'none';
-    }
-}
-
-function formatEventDetails(event) {
-    if (!event.details) {
-        return '<p>No additional details available</p>';
-    }
-
-    const details = event.details;
-    let html = '';
-
-    // DNS A Record Changes
-    if (details.change_type === 'a_record') {
-        html += '<div class="detail-comparison">';
-
-        // Old IPs
-        html += '<div class="detail-column old-value">';
-        html += '<h5><i class="fas fa-clock"></i> Previous A Records</h5>';
-        if (details.old_ips && details.old_ips.length > 0) {
-            html += '<ul class="detail-list">';
-            details.old_ips.forEach(ip => {
-                html += `<li><code>${ip}</code></li>`;
-            });
-            html += '</ul>';
+        // Toggle visibility
+        if (detailRow.style.display === 'none') {
+            // Load event details via API
+            fetch(`/api/events/${eventId}`)
+                .then(res => res.json())
+                .then(event => {
+                    contentDiv.innerHTML = formatEventDetails(event);
+                    detailRow.style.display = 'table-row';
+                })
+                .catch(err => {
+                    contentDiv.innerHTML = '<p class="text-danger">Failed to load event details</p>';
+                    detailRow.style.display = 'table-row';
+                });
         } else {
-            html += '<p class="text-muted">No records</p>';
+            detailRow.style.display = 'none';
         }
-        html += '</div>';
-
-        // New IPs
-        html += '<div class="detail-column new-value">';
-        html += '<h5><i class="fas fa-check-circle"></i> Current A Records</h5>';
-        if (details.new_ips && details.new_ips.length > 0) {
-            html += '<ul class="detail-list">';
-            details.new_ips.forEach(ip => {
-                html += `<li><code>${ip}</code></li>`;
-            });
-            html += '</ul>';
-        } else {
-            html += '<p class="text-muted">No records</p>';
-        }
-        html += '</div>';
-
-        html += '</div>';
-
-        // Summary of changes
-        html += '<div class="detail-info">';
-        if (details.added_ips && details.added_ips.length > 0) {
-            html += '<p class="detail-added"><i class="fas fa-plus-circle"></i> Added IPs: ' + details.added_ips.join(', ') + '</p>';
-        }
-        if (details.removed_ips && details.removed_ips.length > 0) {
-            html += '<p class="detail-removed"><i class="fas fa-minus-circle"></i> Removed IPs: ' + details.removed_ips.join(', ') + '</p>';
-        }
-        html += '</div>';
     }
 
-    // DNS CNAME Changes
-    else if (details.change_type === 'cname') {
-        html += '<div class="detail-comparison">';
-
-        // Old CNAMEs
-        html += '<div class="detail-column old-value">';
-        html += '<h5><i class="fas fa-clock"></i> Previous CNAME Records</h5>';
-        if (details.old_cnames && details.old_cnames.length > 0) {
-            html += '<ul class="detail-list">';
-            details.old_cnames.forEach(cname => {
-                html += `<li><code>${cname}</code></li>`;
-            });
-            html += '</ul>';
-        } else {
-            html += '<p class="text-muted">No records</p>';
-        }
-        html += '</div>';
-
-        // New CNAMEs
-        html += '<div class="detail-column new-value">';
-        html += '<h5><i class="fas fa-check-circle"></i> Current CNAME Records</h5>';
-        if (details.new_cnames && details.new_cnames.length > 0) {
-            html += '<ul class="detail-list">';
-            details.new_cnames.forEach(cname => {
-                html += `<li><code>${cname}</code></li>`;
-            });
-            html += '</ul>';
-        } else {
-            html += '<p class="text-muted">No records</p>';
-        }
-        html += '</div>';
-
-        html += '</div>';
-
-        // Summary of changes
-        html += '<div class="detail-info">';
-        if (details.added_cnames && details.added_cnames.length > 0) {
-            html += '<p class="detail-added"><i class="fas fa-plus-circle"></i> Added CNAMEs: ' + details.added_cnames.join(', ') + '</p>';
-        }
-        if (details.removed_cnames && details.removed_cnames.length > 0) {
-            html += '<p class="detail-removed"><i class="fas fa-minus-circle"></i> Removed CNAMEs: ' + details.removed_cnames.join(', ') + '</p>';
-        }
-        html += '</div>';
-    }
-
-    // HTTP Status Changes
-    else if (details.old_status !== undefined && details.new_status !== undefined) {
-        html += '<div class="detail-comparison">';
-
-        html += '<div class="detail-column old-value">';
-        html += '<h5><i class="fas fa-clock"></i> Previous Status</h5>';
-        html += `<p><code>${details.old_status}</code></p>`;
-        html += '</div>';
-
-        html += '<div class="detail-column new-value">';
-        html += '<h5><i class="fas fa-check-circle"></i> Current Status</h5>';
-        html += `<p><code>${details.new_status}</code></p>`;
-        html += '</div>';
-
-        html += '</div>';
-    }
-
-    // HTTP Title Changes
-    else if (details.old_title !== undefined && details.new_title !== undefined) {
-        html += '<div class="detail-comparison">';
-
-        html += '<div class="detail-column old-value">';
-        html += '<h5><i class="fas fa-clock"></i> Previous Title</h5>';
-        html += `<p>${details.old_title || '(empty)'}</p>`;
-        html += '</div>';
-
-        html += '<div class="detail-column new-value">';
-        html += '<h5><i class="fas fa-check-circle"></i> Current Title</h5>';
-        html += `<p>${details.new_title || '(empty)'}</p>`;
-        html += '</div>';
-
-        html += '</div>';
-    }
-
-    // New Port Detected (Shodan) - has hostnames field
-    else if (details.port !== undefined && details.ip && details.hostnames !== undefined) {
-        html += '<div class="detail-info">';
-        html += '<h5><i class="fas fa-network-wired"></i> New Port Discovered</h5>';
-        html += `<p><strong>IP Address:</strong> <code>${details.ip}</code></p>`;
-        html += `<p><strong>Port:</strong> <code>${details.port}</code></p>`;
-
-        if (details.subdomains && details.subdomains.length > 0) {
-            html += `<p><strong>Related Subdomains:</strong></p>`;
-            html += '<ul class="detail-list">';
-            details.subdomains.forEach(subdomain => {
-                html += `<li><code>${subdomain}</code></li>`;
-            });
-            html += '</ul>';
+    function formatEventDetails(event) {
+        if (!event.details) {
+            return '<p>No additional details available</p>';
         }
 
-        if (details.hostnames && details.hostnames.length > 0) {
-            html += `<p><strong>Shodan Hostnames:</strong> ${details.hostnames.map(h => `<code>${h}</code>`).join(', ')}</p>`;
-        }
-        html += '</div>';
-    }
+        const details = event.details;
+        let html = '';
 
-    // Port Removed (Shodan) - no hostnames field
-    else if (details.port !== undefined && details.ip && details.hostnames === undefined && !details.cve) {
-        html += '<div class="detail-info" style="border-left: 4px solid #6c757d;">';
-        html += '<h5 style="color: #6c757d;"><i class="fas fa-times-circle"></i> Port Closed</h5>';
-        html += `<p><strong>IP Address:</strong> <code>${details.ip}</code></p>`;
-        html += `<p><strong>Port:</strong> <code>${details.port}</code></p>`;
+        // DNS A Record Changes
+        if (details.change_type === 'a_record') {
+            html += '<div class="detail-comparison">';
 
-        if (details.subdomains && details.subdomains.length > 0) {
-            html += `<p><strong>Related Subdomains:</strong></p>`;
-            html += '<ul class="detail-list">';
-            details.subdomains.forEach(subdomain => {
-                html += `<li><code>${subdomain}</code></li>`;
-            });
-            html += '</ul>';
-        }
-        html += '</div>';
-    }
-
-    // Vulnerability Found (Shodan)
-    else if (details.cve !== undefined && details.ip) {
-        html += '<div class="detail-info" style="border-left: 4px solid #dc3545;">';
-        html += '<h5 style="color: #dc3545;"><i class="fas fa-bug"></i> Vulnerability Details</h5>';
-        html += `<p><strong>CVE ID:</strong> <code>${details.cve}</code></p>`;
-        html += `<p><strong>IP Address:</strong> <code>${details.ip}</code></p>`;
-
-        if (details.subdomains && details.subdomains.length > 0) {
-            html += `<p><strong>Affected Subdomains:</strong></p>`;
-            html += '<ul class="detail-list">';
-            details.subdomains.forEach(subdomain => {
-                html += `<li><code>${subdomain}</code></li>`;
-            });
-            html += '</ul>';
-        }
-
-        if (details.hostnames && details.hostnames.length > 0) {
-            html += `<p><strong>Shodan Hostnames:</strong> ${details.hostnames.map(h => `<code>${h}</code>`).join(', ')}</p>`;
-        }
-
-        html += `<p style="margin-top: 1rem;"><a href="https://nvd.nist.gov/vuln/detail/${details.cve}" target="_blank" class="btn btn-sm btn-danger">`;
-        html += '<i class="fas fa-external-link-alt"></i> View on NVD</a></p>';
-        html += '</div>';
-    }
-
-    // Generic details view
-    else {
-        html += '<div class="detail-info">';
-        html += '<pre>' + JSON.stringify(details, null, 2) + '</pre>';
-        html += '</div>';
-    }
-
-    // Show subdomain/URL if available
-    if (details.subdomain || details.url) {
-        html += '<div style="margin-top: 1rem;">';
-        html += '<strong><i class="fas fa-globe"></i> Target:</strong> ';
-        html += `<code>${details.subdomain || details.url}</code>`;
-        html += '</div>';
-    }
-
-    return html;
-}
-
-// Tab switching
-function switchTab(tabName) {
-    document.querySelectorAll('.tab-content').forEach(tab => {
-        tab.classList.remove('active');
-    });
-    document.querySelectorAll('.tab-btn').forEach(btn => {
-        btn.classList.remove('active');
-    });
-
-    document.getElementById('tab-' + tabName).classList.add('active');
-    event.target.classList.add('active');
-
-    // Handle lazy loading for heavy tabs
-    if (tabName === 'endpoints') {
-        loadEndpointsData();
-    } else if (tabName === 'jsfiles') {
-        loadJSFilesData();
-    } else if (tabName === 'takeovers') {
-        loadTakeoversData();
-    } else if (tabName === 'events') {
-        loadEventsData();
-    }
-}
-
-// Filter asset table
-function filterTable() {
-    const searchInput = document.getElementById('searchInput').value.toLowerCase();
-    const statusFilter = document.getElementById('statusFilter').value;
-    const changeFilter = document.getElementById('changeFilter').value;
-    const resolutionFilter = document.getElementById('resolutionFilter').value;
-
-    const table = document.getElementById('assetTable');
-    const rows = table.getElementsByTagName('tbody')[0].getElementsByTagName('tr');
-
-    let visibleCount = 0;
-    const totalCount = rows.length;
-
-    for (let row of rows) {
-        const cells = row.getElementsByTagName('td');
-        if (cells.length === 0) continue;
-
-        const subdomain = cells[1].textContent.toLowerCase();
-        const url = cells[2].textContent.toLowerCase();
-        const httpStatus = cells[3].textContent.trim();
-        const ip = cells[7].textContent.toLowerCase();
-        const cname = cells[9].textContent.toLowerCase();
-        const dnsStatus = cells[10].textContent.toLowerCase();
-        const changeStatus = cells[11].textContent.toLowerCase();
-
-        let show = true;
-
-        // Search filter
-        if (searchInput && !subdomain.includes(searchInput) && !ip.includes(searchInput) && !cname.includes(searchInput)) {
-            show = false;
-        }
-
-        // HTTP Status filter
-        if (statusFilter) {
-            if (statusFilter === 'none') {
-                if (httpStatus !== '-') show = false;
+            // Old IPs
+            html += '<div class="detail-column old-value">';
+            html += '<h5><i class="fas fa-clock"></i> Previous A Records</h5>';
+            if (details.old_ips && details.old_ips.length > 0) {
+                html += '<ul class="detail-list">';
+                details.old_ips.forEach(ip => {
+                    html += `<li><code>${ip}</code></li>`;
+                });
+                html += '</ul>';
             } else {
-                if (!httpStatus.startsWith(statusFilter)) show = false;
+                html += '<p class="text-muted">No records</p>';
             }
-        }
+            html += '</div>';
 
-        // Change filter
-        if (changeFilter && !changeStatus.includes(changeFilter)) {
-            show = false;
-        }
-
-        // Resolution filter
-        if (resolutionFilter) {
-            if (resolutionFilter === 'resolved' && !dnsStatus.includes('resolved')) {
-                show = false;
-            } else if (resolutionFilter === 'unresolved' && dnsStatus.includes('resolved')) {
-                show = false;
+            // New IPs
+            html += '<div class="detail-column new-value">';
+            html += '<h5><i class="fas fa-check-circle"></i> Current A Records</h5>';
+            if (details.new_ips && details.new_ips.length > 0) {
+                html += '<ul class="detail-list">';
+                details.new_ips.forEach(ip => {
+                    html += `<li><code>${ip}</code></li>`;
+                });
+                html += '</ul>';
+            } else {
+                html += '<p class="text-muted">No records</p>';
             }
+            html += '</div>';
+
+            html += '</div>';
+
+            // Summary of changes
+            html += '<div class="detail-info">';
+            if (details.added_ips && details.added_ips.length > 0) {
+                html += '<p class="detail-added"><i class="fas fa-plus-circle"></i> Added IPs: ' + details.added_ips.join(', ') + '</p>';
+            }
+            if (details.removed_ips && details.removed_ips.length > 0) {
+                html += '<p class="detail-removed"><i class="fas fa-minus-circle"></i> Removed IPs: ' + details.removed_ips.join(', ') + '</p>';
+            }
+            html += '</div>';
         }
 
-        row.style.display = show ? '' : 'none';
-        if (show) visibleCount++;
+        // DNS CNAME Changes
+        else if (details.change_type === 'cname') {
+            html += '<div class="detail-comparison">';
+
+            // Old CNAMEs
+            html += '<div class="detail-column old-value">';
+            html += '<h5><i class="fas fa-clock"></i> Previous CNAME Records</h5>';
+            if (details.old_cnames && details.old_cnames.length > 0) {
+                html += '<ul class="detail-list">';
+                details.old_cnames.forEach(cname => {
+                    html += `<li><code>${cname}</code></li>`;
+                });
+                html += '</ul>';
+            } else {
+                html += '<p class="text-muted">No records</p>';
+            }
+            html += '</div>';
+
+            // New CNAMEs
+            html += '<div class="detail-column new-value">';
+            html += '<h5><i class="fas fa-check-circle"></i> Current CNAME Records</h5>';
+            if (details.new_cnames && details.new_cnames.length > 0) {
+                html += '<ul class="detail-list">';
+                details.new_cnames.forEach(cname => {
+                    html += `<li><code>${cname}</code></li>`;
+                });
+                html += '</ul>';
+            } else {
+                html += '<p class="text-muted">No records</p>';
+            }
+            html += '</div>';
+
+            html += '</div>';
+
+            // Summary of changes
+            html += '<div class="detail-info">';
+            if (details.added_cnames && details.added_cnames.length > 0) {
+                html += '<p class="detail-added"><i class="fas fa-plus-circle"></i> Added CNAMEs: ' + details.added_cnames.join(', ') + '</p>';
+            }
+            if (details.removed_cnames && details.removed_cnames.length > 0) {
+                html += '<p class="detail-removed"><i class="fas fa-minus-circle"></i> Removed CNAMEs: ' + details.removed_cnames.join(', ') + '</p>';
+            }
+            html += '</div>';
+        }
+
+        // HTTP Status Changes
+        else if (details.old_status !== undefined && details.new_status !== undefined) {
+            html += '<div class="detail-comparison">';
+
+            html += '<div class="detail-column old-value">';
+            html += '<h5><i class="fas fa-clock"></i> Previous Status</h5>';
+            html += `<p><code>${details.old_status}</code></p>`;
+            html += '</div>';
+
+            html += '<div class="detail-column new-value">';
+            html += '<h5><i class="fas fa-check-circle"></i> Current Status</h5>';
+            html += `<p><code>${details.new_status}</code></p>`;
+            html += '</div>';
+
+            html += '</div>';
+        }
+
+        // HTTP Title Changes
+        else if (details.old_title !== undefined && details.new_title !== undefined) {
+            html += '<div class="detail-comparison">';
+
+            html += '<div class="detail-column old-value">';
+            html += '<h5><i class="fas fa-clock"></i> Previous Title</h5>';
+            html += `<p>${details.old_title || '(empty)'}</p>`;
+            html += '</div>';
+
+            html += '<div class="detail-column new-value">';
+            html += '<h5><i class="fas fa-check-circle"></i> Current Title</h5>';
+            html += `<p>${details.new_title || '(empty)'}</p>`;
+            html += '</div>';
+
+            html += '</div>';
+        }
+
+        // New Port Detected (Shodan) - has hostnames field
+        else if (details.port !== undefined && details.ip && details.hostnames !== undefined) {
+            html += '<div class="detail-info">';
+            html += '<h5><i class="fas fa-network-wired"></i> New Port Discovered</h5>';
+            html += `<p><strong>IP Address:</strong> <code>${details.ip}</code></p>`;
+            html += `<p><strong>Port:</strong> <code>${details.port}</code></p>`;
+
+            if (details.subdomains && details.subdomains.length > 0) {
+                html += `<p><strong>Related Subdomains:</strong></p>`;
+                html += '<ul class="detail-list">';
+                details.subdomains.forEach(subdomain => {
+                    html += `<li><code>${subdomain}</code></li>`;
+                });
+                html += '</ul>';
+            }
+
+            if (details.hostnames && details.hostnames.length > 0) {
+                html += `<p><strong>Shodan Hostnames:</strong> ${details.hostnames.map(h => `<code>${h}</code>`).join(', ')}</p>`;
+            }
+            html += '</div>';
+        }
+
+        // Port Removed (Shodan) - no hostnames field
+        else if (details.port !== undefined && details.ip && details.hostnames === undefined && !details.cve) {
+            html += '<div class="detail-info" style="border-left: 4px solid #6c757d;">';
+            html += '<h5 style="color: #6c757d;"><i class="fas fa-times-circle"></i> Port Closed</h5>';
+            html += `<p><strong>IP Address:</strong> <code>${details.ip}</code></p>`;
+            html += `<p><strong>Port:</strong> <code>${details.port}</code></p>`;
+
+            if (details.subdomains && details.subdomains.length > 0) {
+                html += `<p><strong>Related Subdomains:</strong></p>`;
+                html += '<ul class="detail-list">';
+                details.subdomains.forEach(subdomain => {
+                    html += `<li><code>${subdomain}</code></li>`;
+                });
+                html += '</ul>';
+            }
+            html += '</div>';
+        }
+
+        // Vulnerability Found (Shodan)
+        else if (details.cve !== undefined && details.ip) {
+            html += '<div class="detail-info" style="border-left: 4px solid #dc3545;">';
+            html += '<h5 style="color: #dc3545;"><i class="fas fa-bug"></i> Vulnerability Details</h5>';
+            html += `<p><strong>CVE ID:</strong> <code>${details.cve}</code></p>`;
+            html += `<p><strong>IP Address:</strong> <code>${details.ip}</code></p>`;
+
+            if (details.subdomains && details.subdomains.length > 0) {
+                html += `<p><strong>Affected Subdomains:</strong></p>`;
+                html += '<ul class="detail-list">';
+                details.subdomains.forEach(subdomain => {
+                    html += `<li><code>${subdomain}</code></li>`;
+                });
+                html += '</ul>';
+            }
+
+            if (details.hostnames && details.hostnames.length > 0) {
+                html += `<p><strong>Shodan Hostnames:</strong> ${details.hostnames.map(h => `<code>${h}</code>`).join(', ')}</p>`;
+            }
+
+            html += `<p style="margin-top: 1rem;"><a href="https://nvd.nist.gov/vuln/detail/${details.cve}" target="_blank" class="btn btn-sm btn-danger">`;
+            html += '<i class="fas fa-external-link-alt"></i> View on NVD</a></p>';
+            html += '</div>';
+        }
+
+        // Generic details view
+        else {
+            html += '<div class="detail-info">';
+            html += '<pre>' + JSON.stringify(details, null, 2) + '</pre>';
+            html += '</div>';
+        }
+
+        // Show subdomain/URL if available
+        if (details.subdomain || details.url) {
+            html += '<div style="margin-top: 1rem;">';
+            html += '<strong><i class="fas fa-globe"></i> Target:</strong> ';
+            html += `<code>${details.subdomain || details.url}</code>`;
+            html += '</div>';
+        }
+
+        return html;
     }
 
-    document.getElementById('visibleRows').textContent = visibleCount;
-    document.getElementById('totalRows').textContent = totalCount;
-}
-
-// Reset filters
-function resetFilters() {
-    document.getElementById('searchInput').value = '';
-    document.getElementById('statusFilter').value = '';
-    document.getElementById('changeFilter').value = '';
-    document.getElementById('resolutionFilter').value = '';
-    filterTable();
-}
-
-// Export to CSV
-function exportToCSV() {
-    const table = document.getElementById('assetTable');
-    const rows = table.querySelectorAll('tr');
-
-    let csv = [];
-    for (let row of rows) {
-        const cells = row.querySelectorAll('th, td');
-        const rowData = Array.from(cells).map(cell => {
-            let text = cell.textContent.trim();
-            text = text.replace(/"/g, '""'); // Escape quotes
-            return `"${text}"`;
+    // Tab switching
+    function switchTab(tabName) {
+        document.querySelectorAll('.tab-content').forEach(tab => {
+            tab.classList.remove('active');
         });
-        csv.push(rowData.join(','));
+        document.querySelectorAll('.tab-btn').forEach(btn => {
+            btn.classList.remove('active');
+        });
+
+        document.getElementById('tab-' + tabName).classList.add('active');
+        event.target.classList.add('active');
+
+        // Handle lazy loading for heavy tabs
+        if (tabName === 'endpoints') {
+            loadEndpointsData();
+        } else if (tabName === 'jsfiles') {
+            loadJSFilesData();
+        } else if (tabName === 'takeovers') {
+            loadTakeoversData();
+        } else if (tabName === 'events') {
+            loadEventsData();
+        }
     }
 
-    const csvContent = csv.join('\n');
-    const blob = new Blob([csvContent], { type: 'text/csv' });
-    const url = window.URL.createObjectURL(blob);
-    const a = document.createElement('a');
-    a.href = url;
-    a.download = 'assets_export_' + new Date().toISOString().split('T')[0] + '.csv';
-    a.click();
-    window.URL.revokeObjectURL(url);
-}
+    // Filter asset table
+    function filterTable() {
+        const searchInput = document.getElementById('searchInput').value.toLowerCase();
+        const statusFilter = document.getElementById('statusFilter').value;
+        const changeFilter = document.getElementById('changeFilter').value;
+        const resolutionFilter = document.getElementById('resolutionFilter').value;
 
-// ========== NEW ASSETS TAB FUNCTIONS ==========
+        const table = document.getElementById('assetTable');
+        const rows = table.getElementsByTagName('tbody')[0].getElementsByTagName('tr');
 
-// Export assets to CSV
-function exportAssetsToCSV() {
-    const table = document.getElementById('assetsTable');
-    const rows = table.querySelectorAll('tr');
+        let visibleCount = 0;
+        const totalCount = rows.length;
 
-    let csv = [];
-    for (let row of rows) {
-        const cells = row.querySelectorAll('th, td');
-        const rowData = Array.from(cells).map((cell, index) => {
-            // Skip screenshot column (index 1)
-            if (index === 1) return '';
+        for (let row of rows) {
+            const cells = row.getElementsByTagName('td');
+            if (cells.length === 0) continue;
 
-            let text = cell.textContent.trim().replace(/\s+/g, ' ');
-            text = text.replace(/"/g, '""');
-            return `"${text}"`;
-        }).filter(cell => cell !== '');
-        csv.push(rowData.join(','));
-    }
+            const subdomain = cells[1].textContent.toLowerCase();
+            const url = cells[2].textContent.toLowerCase();
+            const httpStatus = cells[3].textContent.trim();
+            const ip = cells[7].textContent.toLowerCase();
+            const cname = cells[9].textContent.toLowerCase();
+            const dnsStatus = cells[10].textContent.toLowerCase();
+            const changeStatus = cells[11].textContent.toLowerCase();
 
-    const csvContent = csv.join('\n');
-    const blob = new Blob([csvContent], { type: 'text/csv' });
-    const url = window.URL.createObjectURL(blob);
-    const a = document.createElement('a');
-    a.href = url;
-    a.download = 'http_assets_' + new Date().toISOString().split('T')[0] + '.csv';
-    a.click();
-    window.URL.revokeObjectURL(url);
-}
+            let show = true;
 
-// Show screenshot modal
-function showScreenshotModal(url, src) {
-    const modal = document.getElementById('screenshotModal');
-    const modalTitle = document.getElementById('modalTitle');
-    const modalImage = document.getElementById('modalImage');
+            // Search filter
+            if (searchInput && !subdomain.includes(searchInput) && !ip.includes(searchInput) && !cname.includes(searchInput)) {
+                show = false;
+            }
 
-    modalTitle.textContent = url;
-    modalImage.src = src;
-    modal.style.display = 'block';
-}
+            // HTTP Status filter
+            if (statusFilter) {
+                if (statusFilter === 'none') {
+                    if (httpStatus !== '-') show = false;
+                } else {
+                    if (!httpStatus.startsWith(statusFilter)) show = false;
+                }
+            }
 
-// Initialize assets table on page load
-document.addEventListener('DOMContentLoaded', function() {
-    filterAssets();
-});
+            // Change filter
+            if (changeFilter && !changeStatus.includes(changeFilter)) {
+                show = false;
+            }
 
-// ========== END NEW ASSETS TAB FUNCTIONS ==========
+            // Resolution filter
+            if (resolutionFilter) {
+                if (resolutionFilter === 'resolved' && !dnsStatus.includes('resolved')) {
+                    show = false;
+                } else if (resolutionFilter === 'unresolved' && dnsStatus.includes('resolved')) {
+                    show = false;
+                }
+            }
 
-// Endpoint Pagination State
-let endpointCurrentPage = 1;
-let endpointFilteredRows = [];
-
-// Filter endpoints
-function filterEndpoints() {
-    const searchInput = document.getElementById('endpointSearch').value.toLowerCase();
-    const typeFilter = document.getElementById('endpointTypeFilter').value;
-    const statusFilter = document.getElementById('endpointStatusFilter').value;
-
-    const rows = document.querySelectorAll('#endpointTableBody tr');
-    endpointFilteredRows = [];
-    let totalCount = 0;
-
-    for (let row of rows) {
-        totalCount++;
-        const url = row.querySelector('td:nth-child(4)').textContent.toLowerCase();
-        const type = row.getAttribute('data-type');
-        const categories = row.getAttribute('data-categories') || '';
-        const status = row.getAttribute('data-status') || '';
-
-        let show = true;
-
-        // Search filter
-        if (searchInput && !url.includes(searchInput)) {
-            show = false;
+            row.style.display = show ? '' : 'none';
+            if (show) visibleCount++;
         }
 
-        // Type filter (includes category filtering)
-        if (typeFilter) {
-            if (typeFilter === 'sensitive') {
-                if (type !== 'sensitive') show = false;
-            } else if (typeFilter === 'api' || typeFilter === 'other') {
-                if (type !== typeFilter) show = false;
-            } else {
-                // Category-specific filter (backup, dev, file, config, etc.)
-                if (!categories.includes(typeFilter)) show = false;
+        document.getElementById('visibleRows').textContent = visibleCount;
+        document.getElementById('totalRows').textContent = totalCount;
+    }
+
+    // Reset filters
+    function resetFilters() {
+        document.getElementById('searchInput').value = '';
+        document.getElementById('statusFilter').value = '';
+        document.getElementById('changeFilter').value = '';
+        document.getElementById('resolutionFilter').value = '';
+        filterTable();
+    }
+
+    // Export to CSV
+    function exportToCSV() {
+        const table = document.getElementById('assetTable');
+        const rows = table.querySelectorAll('tr');
+
+        let csv = [];
+        for (let row of rows) {
+            const cells = row.querySelectorAll('th, td');
+            const rowData = Array.from(cells).map(cell => {
+                let text = cell.textContent.trim();
+                text = text.replace(/"/g, '""'); // Escape quotes
+                return `"${text}"`;
+            });
+            csv.push(rowData.join(','));
+        }
+
+        const csvContent = csv.join('\n');
+        const blob = new Blob([csvContent], { type: 'text/csv' });
+        const url = window.URL.createObjectURL(blob);
+        const a = document.createElement('a');
+        a.href = url;
+        a.download = 'assets_export_' + new Date().toISOString().split('T')[0] + '.csv';
+        a.click();
+        window.URL.revokeObjectURL(url);
+    }
+
+    // ========== NEW ASSETS TAB FUNCTIONS ==========
+
+    // Export assets to CSV
+    function exportAssetsToCSV() {
+        const table = document.getElementById('assetsTable');
+        const rows = table.querySelectorAll('tr');
+
+        let csv = [];
+        for (let row of rows) {
+            const cells = row.querySelectorAll('th, td');
+            const rowData = Array.from(cells).map((cell, index) => {
+                // Skip screenshot column (index 1)
+                if (index === 1) return '';
+
+                let text = cell.textContent.trim().replace(/\s+/g, ' ');
+                text = text.replace(/"/g, '""');
+                return `"${text}"`;
+            }).filter(cell => cell !== '');
+            csv.push(rowData.join(','));
+        }
+
+        const csvContent = csv.join('\n');
+        const blob = new Blob([csvContent], { type: 'text/csv' });
+        const url = window.URL.createObjectURL(blob);
+        const a = document.createElement('a');
+        a.href = url;
+        a.download = 'http_assets_' + new Date().toISOString().split('T')[0] + '.csv';
+        a.click();
+        window.URL.revokeObjectURL(url);
+    }
+
+    // Show screenshot modal
+    function showScreenshotModal(url, src) {
+        const modal = document.getElementById('screenshotModal');
+        const modalTitle = document.getElementById('modalTitle');
+        const modalImage = document.getElementById('modalImage');
+
+        modalTitle.textContent = url;
+        modalImage.src = src;
+        modal.style.display = 'block';
+    }
+
+    // Initialize assets table on page load
+    document.addEventListener('DOMContentLoaded', function () {
+        filterAssets();
+    });
+
+    // ========== END NEW ASSETS TAB FUNCTIONS ==========
+
+    // Endpoint Pagination State
+    let endpointCurrentPage = 1;
+    let endpointFilteredRows = [];
+
+    // Filter endpoints
+    function filterEndpoints() {
+        const searchInput = document.getElementById('endpointSearch').value.toLowerCase();
+        const typeFilter = document.getElementById('endpointTypeFilter').value;
+        const statusFilter = document.getElementById('endpointStatusFilter').value;
+
+        const rows = document.querySelectorAll('#endpointTableBody tr');
+        endpointFilteredRows = [];
+        let totalCount = 0;
+
+        for (let row of rows) {
+            totalCount++;
+            const url = row.querySelector('td:nth-child(4)').textContent.toLowerCase();
+            const type = row.getAttribute('data-type');
+            const categories = row.getAttribute('data-categories') || '';
+            const status = row.getAttribute('data-status') || '';
+
+            let show = true;
+
+            // Search filter
+            if (searchInput && !url.includes(searchInput)) {
+                show = false;
+            }
+
+            // Type filter (includes category filtering)
+            if (typeFilter) {
+                if (typeFilter === 'sensitive') {
+                    if (type !== 'sensitive') show = false;
+                } else if (typeFilter === 'api' || typeFilter === 'other') {
+                    if (type !== typeFilter) show = false;
+                } else {
+                    // Category-specific filter (backup, dev, file, config, etc.)
+                    if (!categories.includes(typeFilter)) show = false;
+                }
+            }
+
+            // Status filter
+            if (statusFilter) {
+                if (statusFilter === 'none') {
+                    if (status !== '') show = false;
+                } else if (statusFilter === '200') {
+                    if (status !== '200') show = false;
+                } else if (statusFilter === '300') {
+                    if (!status.startsWith('3')) show = false;
+                } else if (statusFilter === '400') {
+                    if (!status.startsWith('4')) show = false;
+                } else if (statusFilter === '500') {
+                    if (!status.startsWith('5')) show = false;
+                }
+            }
+
+            if (show) {
+                endpointFilteredRows.push(row);
             }
         }
 
-        // Status filter
-        if (statusFilter) {
-            if (statusFilter === 'none') {
-                if (status !== '') show = false;
-            } else if (statusFilter === '200') {
-                if (status !== '200') show = false;
-            } else if (statusFilter === '300') {
-                if (!status.startsWith('3')) show = false;
-            } else if (statusFilter === '400') {
-                if (!status.startsWith('4')) show = false;
-            } else if (statusFilter === '500') {
-                if (!status.startsWith('5')) show = false;
-            }
-        }
+        // Update stats
+        document.getElementById('endpointVisibleCount').textContent = endpointFilteredRows.length;
+        document.getElementById('endpointTotalCount').textContent = totalCount;
 
-        if (show) {
-            endpointFilteredRows.push(row);
-        }
+        // Reset to page 1 when filters change
+        endpointCurrentPage = 1;
+        updateEndpointPagination();
     }
 
-    // Update stats
-    document.getElementById('endpointVisibleCount').textContent = endpointFilteredRows.length;
-    document.getElementById('endpointTotalCount').textContent = totalCount;
+    // Update endpoint pagination
+    function updateEndpointPagination() {
+        const pageSize = document.getElementById('endpointPageSize').value;
+        const totalRows = endpointFilteredRows.length;
 
-    // Reset to page 1 when filters change
-    endpointCurrentPage = 1;
-    updateEndpointPagination();
-}
+        // Hide all rows first
+        const allRows = document.querySelectorAll('#endpointTableBody tr');
+        allRows.forEach(row => row.style.display = 'none');
 
-// Update endpoint pagination
-function updateEndpointPagination() {
-    const pageSize = document.getElementById('endpointPageSize').value;
-    const totalRows = endpointFilteredRows.length;
+        let displayRows = endpointFilteredRows;
+        let totalPages = 1;
+        let start = 0;
+        let end = totalRows;
 
-    // Hide all rows first
-    const allRows = document.querySelectorAll('#endpointTableBody tr');
-    allRows.forEach(row => row.style.display = 'none');
+        if (pageSize !== 'all') {
+            const size = parseInt(pageSize);
+            totalPages = Math.ceil(totalRows / size);
 
-    let displayRows = endpointFilteredRows;
-    let totalPages = 1;
-    let start = 0;
-    let end = totalRows;
+            // Ensure current page is valid
+            if (endpointCurrentPage > totalPages) endpointCurrentPage = totalPages;
+            if (endpointCurrentPage < 1) endpointCurrentPage = 1;
 
-    if (pageSize !== 'all') {
-        const size = parseInt(pageSize);
-        totalPages = Math.ceil(totalRows / size);
+            start = (endpointCurrentPage - 1) * size;
+            end = Math.min(start + size, totalRows);
+            displayRows = endpointFilteredRows.slice(start, end);
+        }
 
-        // Ensure current page is valid
-        if (endpointCurrentPage > totalPages) endpointCurrentPage = totalPages;
-        if (endpointCurrentPage < 1) endpointCurrentPage = 1;
+        // Show paginated rows
+        displayRows.forEach(row => row.style.display = '');
 
-        start = (endpointCurrentPage - 1) * size;
-        end = Math.min(start + size, totalRows);
-        displayRows = endpointFilteredRows.slice(start, end);
+        // Update pagination info
+        document.getElementById('endpointShowingStart').textContent = totalRows > 0 ? start + 1 : 0;
+        document.getElementById('endpointShowingEnd').textContent = end;
+        document.getElementById('endpointShowingTotal').textContent = totalRows;
+        document.getElementById('endpointPageInfo').textContent = `Page ${endpointCurrentPage} of ${totalPages}`;
+
+        // Update button states
+        document.getElementById('endpointPrevBtn').disabled = endpointCurrentPage <= 1;
+        document.getElementById('endpointNextBtn').disabled = endpointCurrentPage >= totalPages;
     }
 
-    // Show paginated rows
-    displayRows.forEach(row => row.style.display = '');
+    // Change endpoint page
+    function changeEndpointPage(delta) {
+        endpointCurrentPage += delta;
+        updateEndpointPagination();
+    }
 
-    // Update pagination info
-    document.getElementById('endpointShowingStart').textContent = totalRows > 0 ? start + 1 : 0;
-    document.getElementById('endpointShowingEnd').textContent = end;
-    document.getElementById('endpointShowingTotal').textContent = totalRows;
-    document.getElementById('endpointPageInfo').textContent = `Page ${endpointCurrentPage} of ${totalPages}`;
-
-    // Update button states
-    document.getElementById('endpointPrevBtn').disabled = endpointCurrentPage <= 1;
-    document.getElementById('endpointNextBtn').disabled = endpointCurrentPage >= totalPages;
-}
-
-// Change endpoint page
-function changeEndpointPage(delta) {
-    endpointCurrentPage += delta;
-    updateEndpointPagination();
-}
-
-// Reset endpoint filters
-function resetEndpointFilters() {
-    document.getElementById('endpointSearch').value = '';
-    document.getElementById('endpointTypeFilter').value = '';
-    document.getElementById('endpointStatusFilter').value = '';
-    document.getElementById('endpointPageSize').value = '50';
-    filterEndpoints();
-}
-
-// Initialize endpoint filters on page load
-document.addEventListener('DOMContentLoaded', function() {
-    if (document.getElementById('endpointTableBody')) {
+    // Reset endpoint filters
+    function resetEndpointFilters() {
+        document.getElementById('endpointSearch').value = '';
+        document.getElementById('endpointTypeFilter').value = '';
+        document.getElementById('endpointStatusFilter').value = '';
+        document.getElementById('endpointPageSize').value = '50';
         filterEndpoints();
     }
-});
 
-// JS Files Pagination State
-let jsFileCurrentPage = 1;
-let jsFileFilteredRows = [];
-
-// Filter JS Files
-function filterJSFiles() {
-    const searchInput = document.getElementById('jsFileSearch').value.toLowerCase();
-    const statusFilter = document.getElementById('jsFileStatusFilter').value;
-    const secretsFilter = document.getElementById('jsFileSecretsFilter').value;
-
-    const rows = document.querySelectorAll('#jsFileTableBody tr');
-    jsFileFilteredRows = [];
-    let totalCount = 0;
-    let secretsCount = 0;
-
-    for (let row of rows) {
-        totalCount++;
-        const url = row.querySelector('td:nth-child(3)').textContent.toLowerCase();
-        const status = row.getAttribute('data-status');
-        const secrets = row.getAttribute('data-secrets');
-
-        let show = true;
-
-        if (searchInput && !url.includes(searchInput)) {
-            show = false;
+    // Initialize endpoint filters on page load
+    document.addEventListener('DOMContentLoaded', function () {
+        if (document.getElementById('endpointTableBody')) {
+            filterEndpoints();
         }
-
-        if (statusFilter && status !== statusFilter) {
-            show = false;
-        }
-
-        if (secretsFilter && secrets !== secretsFilter) {
-            show = false;
-        }
-
-        if (show) {
-            jsFileFilteredRows.push(row);
-            if (secrets === 'suspicious') secretsCount++;
-        }
-    }
-
-    // Update stats
-    document.getElementById('jsFileVisibleCount').textContent = jsFileFilteredRows.length;
-    document.getElementById('jsFileTotalCount').textContent = totalCount;
-
-    const secretsCountEl = document.getElementById('jsFileSecretsCount');
-    if (secretsCount > 0) {
-        secretsCountEl.innerHTML = `(<i class="fas fa-exclamation-triangle"></i> ${secretsCount} with secrets)`;
-    } else {
-        secretsCountEl.innerHTML = '';
-    }
-
-    // Reset to page 1 when filters change
-    jsFileCurrentPage = 1;
-    updateJSFilePagination();
-}
-
-// Update JS file pagination
-function updateJSFilePagination() {
-    const pageSize = document.getElementById('jsFilePageSize').value;
-    const totalRows = jsFileFilteredRows.length;
-
-    // Hide all rows first
-    const allRows = document.querySelectorAll('#jsFileTableBody tr');
-    allRows.forEach(row => row.style.display = 'none');
-
-    let displayRows = jsFileFilteredRows;
-    let totalPages = 1;
-    let start = 0;
-    let end = totalRows;
-
-    if (pageSize !== 'all') {
-        const size = parseInt(pageSize);
-        totalPages = Math.ceil(totalRows / size);
-
-        // Ensure current page is valid
-        if (jsFileCurrentPage > totalPages) jsFileCurrentPage = totalPages;
-        if (jsFileCurrentPage < 1) jsFileCurrentPage = 1;
-
-        start = (jsFileCurrentPage - 1) * size;
-        end = Math.min(start + size, totalRows);
-        displayRows = jsFileFilteredRows.slice(start, end);
-    }
-
-    // Show paginated rows
-    displayRows.forEach(row => row.style.display = '');
-
-    // Update pagination info
-    document.getElementById('jsFileShowingStart').textContent = totalRows > 0 ? start + 1 : 0;
-    document.getElementById('jsFileShowingEnd').textContent = end;
-    document.getElementById('jsFileShowingTotal').textContent = totalRows;
-    document.getElementById('jsFilePageInfo').textContent = `Page ${jsFileCurrentPage} of ${totalPages}`;
-
-    // Update button states
-    document.getElementById('jsFilePrevBtn').disabled = jsFileCurrentPage <= 1;
-    document.getElementById('jsFileNextBtn').disabled = jsFileCurrentPage >= totalPages;
-}
-
-// Change JS file page
-function changeJSFilePage(delta) {
-    jsFileCurrentPage += delta;
-    updateJSFilePagination();
-}
-
-// Reset JS file filters
-function resetJSFileFilters() {
-    document.getElementById('jsFileSearch').value = '';
-    document.getElementById('jsFileStatusFilter').value = '';
-    document.getElementById('jsFileSecretsFilter').value = '';
-    document.getElementById('jsFilePageSize').value = '50';
-    filterJSFiles();
-}
-
-// Initialize JS file filters on page load
-document.addEventListener('DOMContentLoaded', function() {
-    if (document.getElementById('jsFileTableBody')) {
-        filterJSFiles();
-    }
-});
-
-// Analyze JS File
-function analyzeJSFile(url) {
-    showToast('Opening JS file analysis...', 'info');
-    // You can integrate with a service like JSNice, or download and analyze locally
-    window.open(url, '_blank');
-}
-
-// Copy to clipboard
-function copyToClipboard(text) {
-    navigator.clipboard.writeText(text).then(() => {
-        showToast('URL copied to clipboard!', 'success');
-    }).catch(err => {
-        showToast('Failed to copy URL', 'error');
-        console.error('Copy failed:', err);
     });
-}
 
-// Show secret details
-function showSecretDetails(button) {
-    const row = button.closest('tr');
-    const url = row.querySelector('td:nth-child(3) a').href;
-    const secretsInfo = JSON.parse(row.getAttribute('data-secrets-info') || '{}');
+    // JS Files Pagination State
+    let jsFileCurrentPage = 1;
+    let jsFileFilteredRows = [];
 
-    // Create modal to show secret findings
-    const modal = document.createElement('div');
-    modal.style.cssText = 'position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: rgba(0,0,0,0.7); z-index: 9999; display: flex; align-items: center; justify-content: center;';
+    // Filter JS Files
+    function filterJSFiles() {
+        const searchInput = document.getElementById('jsFileSearch').value.toLowerCase();
+        const statusFilter = document.getElementById('jsFileStatusFilter').value;
+        const secretsFilter = document.getElementById('jsFileSecretsFilter').value;
 
-    const content = document.createElement('div');
-    content.style.cssText = 'background: white; padding: 2rem; border-radius: 8px; max-width: 700px; max-height: 80vh; overflow-y: auto;';
+        const rows = document.querySelectorAll('#jsFileTableBody tr');
+        jsFileFilteredRows = [];
+        let totalCount = 0;
+        let secretsCount = 0;
 
-    // Build secrets found section
-    let secretsFoundHTML = '';
-    if (secretsInfo.secrets_found && secretsInfo.secrets_found.length > 0) {
-        secretsFoundHTML = '<h4 style="color: #dc3545; margin-top: 1rem;"><i class="fas fa-exclamation-triangle"></i> Secrets Detected</h4>';
-        secretsFoundHTML += '<table class="table" style="margin-top: 0.5rem;">';
-        secretsFoundHTML += '<thead><tr><th>Type</th><th>Count</th><th>Severity</th></tr></thead><tbody>';
+        for (let row of rows) {
+            totalCount++;
+            const url = row.querySelector('td:nth-child(3)').textContent.toLowerCase();
+            const status = row.getAttribute('data-status');
+            const secrets = row.getAttribute('data-secrets');
 
-        secretsInfo.secrets_found.forEach(secret => {
-            let severity = 'HIGH';
-            let severityColor = '#dc3545';
+            let show = true;
 
-            if (secret.type.includes('generic') || secret.type.includes('authorization')) {
-                severity = 'MEDIUM';
-                severityColor = '#ffc107';
+            if (searchInput && !url.includes(searchInput)) {
+                show = false;
             }
 
-            secretsFoundHTML += `
+            if (statusFilter && status !== statusFilter) {
+                show = false;
+            }
+
+            if (secretsFilter && secrets !== secretsFilter) {
+                show = false;
+            }
+
+            if (show) {
+                jsFileFilteredRows.push(row);
+                if (secrets === 'suspicious') secretsCount++;
+            }
+        }
+
+        // Update stats
+        document.getElementById('jsFileVisibleCount').textContent = jsFileFilteredRows.length;
+        document.getElementById('jsFileTotalCount').textContent = totalCount;
+
+        const secretsCountEl = document.getElementById('jsFileSecretsCount');
+        if (secretsCount > 0) {
+            secretsCountEl.innerHTML = `(<i class="fas fa-exclamation-triangle"></i> ${secretsCount} with secrets)`;
+        } else {
+            secretsCountEl.innerHTML = '';
+        }
+
+        // Reset to page 1 when filters change
+        jsFileCurrentPage = 1;
+        updateJSFilePagination();
+    }
+
+    // Update JS file pagination
+    function updateJSFilePagination() {
+        const pageSize = document.getElementById('jsFilePageSize').value;
+        const totalRows = jsFileFilteredRows.length;
+
+        // Hide all rows first
+        const allRows = document.querySelectorAll('#jsFileTableBody tr');
+        allRows.forEach(row => row.style.display = 'none');
+
+        let displayRows = jsFileFilteredRows;
+        let totalPages = 1;
+        let start = 0;
+        let end = totalRows;
+
+        if (pageSize !== 'all') {
+            const size = parseInt(pageSize);
+            totalPages = Math.ceil(totalRows / size);
+
+            // Ensure current page is valid
+            if (jsFileCurrentPage > totalPages) jsFileCurrentPage = totalPages;
+            if (jsFileCurrentPage < 1) jsFileCurrentPage = 1;
+
+            start = (jsFileCurrentPage - 1) * size;
+            end = Math.min(start + size, totalRows);
+            displayRows = jsFileFilteredRows.slice(start, end);
+        }
+
+        // Show paginated rows
+        displayRows.forEach(row => row.style.display = '');
+
+        // Update pagination info
+        document.getElementById('jsFileShowingStart').textContent = totalRows > 0 ? start + 1 : 0;
+        document.getElementById('jsFileShowingEnd').textContent = end;
+        document.getElementById('jsFileShowingTotal').textContent = totalRows;
+        document.getElementById('jsFilePageInfo').textContent = `Page ${jsFileCurrentPage} of ${totalPages}`;
+
+        // Update button states
+        document.getElementById('jsFilePrevBtn').disabled = jsFileCurrentPage <= 1;
+        document.getElementById('jsFileNextBtn').disabled = jsFileCurrentPage >= totalPages;
+    }
+
+    // Change JS file page
+    function changeJSFilePage(delta) {
+        jsFileCurrentPage += delta;
+        updateJSFilePagination();
+    }
+
+    // Reset JS file filters
+    function resetJSFileFilters() {
+        document.getElementById('jsFileSearch').value = '';
+        document.getElementById('jsFileStatusFilter').value = '';
+        document.getElementById('jsFileSecretsFilter').value = '';
+        document.getElementById('jsFilePageSize').value = '50';
+        filterJSFiles();
+    }
+
+    // Initialize JS file filters on page load
+    document.addEventListener('DOMContentLoaded', function () {
+        if (document.getElementById('jsFileTableBody')) {
+            filterJSFiles();
+        }
+    });
+
+    // Analyze JS File
+    function analyzeJSFile(url) {
+        showToast('Opening JS file analysis...', 'info');
+        // You can integrate with a service like JSNice, or download and analyze locally
+        window.open(url, '_blank');
+    }
+
+    // Copy to clipboard
+    function copyToClipboard(text) {
+        navigator.clipboard.writeText(text).then(() => {
+            showToast('URL copied to clipboard!', 'success');
+        }).catch(err => {
+            showToast('Failed to copy URL', 'error');
+            console.error('Copy failed:', err);
+        });
+    }
+
+    // Show secret details
+    function showSecretDetails(button) {
+        const row = button.closest('tr');
+        const url = row.querySelector('td:nth-child(3) a').href;
+        const secretsInfo = JSON.parse(row.getAttribute('data-secrets-info') || '{}');
+
+        // Create modal to show secret findings
+        const modal = document.createElement('div');
+        modal.style.cssText = 'position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: rgba(0,0,0,0.7); z-index: 9999; display: flex; align-items: center; justify-content: center;';
+
+        const content = document.createElement('div');
+        content.style.cssText = 'background: white; padding: 2rem; border-radius: 8px; max-width: 700px; max-height: 80vh; overflow-y: auto;';
+
+        // Build secrets found section
+        let secretsFoundHTML = '';
+        if (secretsInfo.secrets_found && secretsInfo.secrets_found.length > 0) {
+            secretsFoundHTML = '<h4 style="color: #dc3545; margin-top: 1rem;"><i class="fas fa-exclamation-triangle"></i> Secrets Detected</h4>';
+            secretsFoundHTML += '<table class="table" style="margin-top: 0.5rem;">';
+            secretsFoundHTML += '<thead><tr><th>Type</th><th>Count</th><th>Severity</th></tr></thead><tbody>';
+
+            secretsInfo.secrets_found.forEach(secret => {
+                let severity = 'HIGH';
+                let severityColor = '#dc3545';
+
+                if (secret.type.includes('generic') || secret.type.includes('authorization')) {
+                    severity = 'MEDIUM';
+                    severityColor = '#ffc107';
+                }
+
+                secretsFoundHTML += `
                 <tr>
                     <td><code>${secret.type.replace(/_/g, ' ').toUpperCase()}</code></td>
                     <td><strong>${secret.count}</strong></td>
                     <td><span style="color: ${severityColor}; font-weight: bold;">${severity}</span></td>
                 </tr>
             `;
-        });
+            });
 
-        secretsFoundHTML += '</tbody></table>';
-    }
+            secretsFoundHTML += '</tbody></table>';
+        }
 
-    // Build suspicious keywords section
-    let keywordsHTML = '';
-    if (secretsInfo.suspicious_keywords && secretsInfo.suspicious_keywords.length > 0) {
-        keywordsHTML = '<h4 style="color: #ffc107; margin-top: 1rem;"><i class="fas fa-search"></i> Suspicious Keywords</h4>';
-        keywordsHTML += '<div style="display: flex; flex-wrap: wrap; gap: 0.5rem; margin-top: 0.5rem;">';
+        // Build suspicious keywords section
+        let keywordsHTML = '';
+        if (secretsInfo.suspicious_keywords && secretsInfo.suspicious_keywords.length > 0) {
+            keywordsHTML = '<h4 style="color: #ffc107; margin-top: 1rem;"><i class="fas fa-search"></i> Suspicious Keywords</h4>';
+            keywordsHTML += '<div style="display: flex; flex-wrap: wrap; gap: 0.5rem; margin-top: 0.5rem;">';
 
-        secretsInfo.suspicious_keywords.forEach(keyword => {
-            keywordsHTML += `<span class="badge badge-warning">${keyword}</span>`;
-        });
+            secretsInfo.suspicious_keywords.forEach(keyword => {
+                keywordsHTML += `<span class="badge badge-warning">${keyword}</span>`;
+            });
 
-        keywordsHTML += '</div>';
-    }
+            keywordsHTML += '</div>';
+        }
 
-    // Risk level badge
-    let riskBadge = '';
-    if (secretsInfo.risk_level === 'high') {
-        riskBadge = '<span class="badge badge-danger" style="font-size: 1rem; padding: 0.5rem 1rem;">🔴 HIGH RISK</span>';
-    } else if (secretsInfo.risk_level === 'medium') {
-        riskBadge = '<span class="badge badge-warning" style="font-size: 1rem; padding: 0.5rem 1rem;">🟠 MEDIUM RISK</span>';
-    } else if (secretsInfo.risk_level === 'low') {
-        riskBadge = '<span class="badge badge-info" style="font-size: 1rem; padding: 0.5rem 1rem;">🟡 LOW RISK</span>';
-    }
+        // Risk level badge
+        let riskBadge = '';
+        if (secretsInfo.risk_level === 'high') {
+            riskBadge = '<span class="badge badge-danger" style="font-size: 1rem; padding: 0.5rem 1rem;">🔴 HIGH RISK</span>';
+        } else if (secretsInfo.risk_level === 'medium') {
+            riskBadge = '<span class="badge badge-warning" style="font-size: 1rem; padding: 0.5rem 1rem;">🟠 MEDIUM RISK</span>';
+        } else if (secretsInfo.risk_level === 'low') {
+            riskBadge = '<span class="badge badge-info" style="font-size: 1rem; padding: 0.5rem 1rem;">🟡 LOW RISK</span>';
+        }
 
-    content.innerHTML = `
+        content.innerHTML = `
         <div style="display: flex; justify-content: space-between; align-items: start; margin-bottom: 1rem;">
             <h3 style="margin: 0; color: #dc3545;">
                 <i class="fas fa-key"></i> Secret Detection Report
@@ -1826,550 +1559,48 @@ function showSecretDetails(button) {
         </div>
     `;
 
-    modal.appendChild(content);
-    document.body.appendChild(modal);
+        modal.appendChild(content);
+        document.body.appendChild(modal);
 
-    // Close on background click
-    modal.addEventListener('click', (e) => {
-        if (e.target === modal) {
-            modal.remove();
-        }
-    });
-}
-
-// Trigger scan
-function triggerScan(projectId, mode) {
-    if (!confirm(`Start ${mode} scan?`)) return;
-
-    showToast('Starting scan...', 'info');
-
-    fetch('/api/scans/trigger', {
-        method: 'POST',
-        headers: {'Content-Type': 'application/json'},
-        body: JSON.stringify({project_id: projectId, mode: mode})
-    })
-    .then(res => res.json())
-    .then(data => {
-        showToast('Scan started successfully! Check back in a few minutes.', 'success');
-        setTimeout(() => location.reload(), 3000);
-    })
-    .catch(err => {
-        showToast('Failed to start scan: ' + err.message, 'error');
-    });
-}
-
-// Initialize stats on page load
-document.addEventListener('DOMContentLoaded', () => {
-    filterTable(); // Initialize counts for JS Files table
-    // All Assets pagination is now handled server-side
-});
-
-
-// ========== AJAX LOADING FOR ENDPOINTS & JS FILES ==========
-// State management for Endpoints and JS Files tabs
-const endpointsState = {
-    loaded: false,
-    currentPage: 1,
-    perPage: 100,
-    search: '',
-    category: '',
-    status: ''
-};
-
-const jsfilesState = {
-    loaded: false,
-    currentPage: 1,
-    perPage: 100,
-    search: '',
-    statusFilter: '',
-    secretsFilter: ''
-};
-
-// Load Endpoints data via AJAX
-async function loadEndpointsData() {
-    if (endpointsState.loaded) {
-        document.getElementById('endpoints-loading').style.display = 'none';
-        document.getElementById('endpoints-content').style.display = 'block';
-        return;
-    }
-
-    const params = new URLSearchParams({
-        page: endpointsState.currentPage,
-        per_page: endpointsState.perPage,
-        search: endpointsState.search,
-        category: endpointsState.category,
-        status: endpointsState.status
-    });
-
-    try {
-        const response = await fetch(`/api/projects/{{ project.id }}/endpoints?${params}`);
-        const data = await response.json();
-
-        if (!data.has_data) {
-            document.getElementById('endpoints-loading').style.display = 'none';
-            document.getElementById('endpoints-empty').style.display = 'block';
-            return;
-        }
-
-        renderEndpointsTable(data);
-        renderEndpointsPagination(data);
-
-        // Update last scan date
-        if (data.snapshot_date) {
-            const date = new Date(data.snapshot_date);
-            document.getElementById('endpoints-last-scan').textContent = date.toLocaleString();
-        }
-
-        document.getElementById('endpoints-loading').style.display = 'none';
-        document.getElementById('endpoints-content').style.display = 'block';
-
-        endpointsState.loaded = true;
-    } catch (error) {
-        console.error('Error loading endpoints:', error);
-        document.getElementById('endpoints-loading').innerHTML = `
-            <div style="text-align: center; padding: 3rem;">
-                <i class="fas fa-exclamation-triangle" style="font-size: 3rem; color: #dc2626; margin-bottom: 1rem;"></i>
-                <h3 style="color: #64748b;">Failed to Load Endpoints</h3>
-                <p style="color: #94a3b8;">${error.message}</p>
-                <button onclick="loadEndpointsData()" style="margin-top: 1rem; padding: 0.625rem 1.25rem; background: #667eea; color: white; border: none; border-radius: 8px; cursor: pointer;">
-                    <i class="fas fa-redo"></i> Retry
-                </button>
-            </div>
-        `;
-    }
-}
-
-// Render Endpoints table
-function renderEndpointsTable(data) {
-    const tbody = document.getElementById('endpoints-table-body');
-    tbody.innerHTML = '';
-
-    if (data.endpoints.length === 0) {
-        tbody.innerHTML = `
-            <tr>
-                <td colspan="5" style="padding: 3rem; text-align: center; color: #94a3b8;">
-                    <i class="fas fa-search" style="font-size: 2rem; margin-bottom: 0.5rem; display: block;"></i>
-                    No endpoints found matching your filters
-                </td>
-            </tr>
-        `;
-        document.getElementById('endpoints-count-display').textContent = '0 endpoints';
-        return;
-    }
-
-    data.endpoints.forEach((endpoint, index) => {
-        const row = document.createElement('tr');
-        row.style.borderBottom = '1px solid #f1f5f9';
-        row.style.transition = 'background 0.2s';
-        row.onmouseover = () => row.style.background = '#f8fafc';
-        row.onmouseout = () => row.style.background = 'white';
-
-        const startIndex = (data.page - 1) * data.per_page + index + 1;
-
-        // Status badge
-        let statusBadge = '<span style="padding: 0.25rem 0.625rem; border-radius: 9999px; font-size: 0.75rem; font-weight: 600; background: #f1f5f9; color: #64748b;">-</span>';
-        if (endpoint.status_code) {
-            if (endpoint.status_code < 300) {
-                statusBadge = `<span style="padding: 0.25rem 0.625rem; border-radius: 9999px; font-size: 0.75rem; font-weight: 600; background: #dcfce7; color: #166534;">${endpoint.status_code}</span>`;
-            } else if (endpoint.status_code < 400) {
-                statusBadge = `<span style="padding: 0.25rem 0.625rem; border-radius: 9999px; font-size: 0.75rem; font-weight: 600; background: #dbeafe; color: #1e40af;">${endpoint.status_code}</span>`;
-            } else if (endpoint.status_code < 500) {
-                statusBadge = `<span style="padding: 0.25rem 0.625rem; border-radius: 9999px; font-size: 0.75rem; font-weight: 600; background: #fef3c7; color: #92400e;">${endpoint.status_code}</span>`;
-            } else {
-                statusBadge = `<span style="padding: 0.25rem 0.625rem; border-radius: 9999px; font-size: 0.75rem; font-weight: 600; background: #fee2e2; color: #991b1b;">${endpoint.status_code}</span>`;
+        // Close on background click
+        modal.addEventListener('click', (e) => {
+            if (e.target === modal) {
+                modal.remove();
             }
-        }
+        });
+    }
 
-        // Categories badges
-        let categoriesBadges = '<span style="color: #94a3b8;">-</span>';
-        if (endpoint.categories && endpoint.categories.length > 0) {
-            categoriesBadges = endpoint.categories.map(cat =>
-                `<span style="padding: 0.25rem 0.5rem; border-radius: 6px; font-size: 0.7rem; font-weight: 600; background-color: ${cat.color}; color: white; margin: 2px; display: inline-block;">
-                    <i class="fas ${cat.icon}"></i> ${cat.name}
-                </span>`
-            ).join('');
-        }
+    // Trigger scan
+    function triggerScan(projectId, mode) {
+        if (!confirm(`Start ${mode} scan?`)) return;
 
-        row.innerHTML = `
-            <td style="padding: 1rem; color: #64748b; font-size: 0.875rem;">${startIndex}</td>
-            <td style="padding: 1rem;">${statusBadge}</td>
-            <td style="padding: 1rem;">${categoriesBadges}</td>
-            <td style="padding: 1rem;">
-                <a href="${endpoint.url}" target="_blank" style="color: #667eea; text-decoration: none; font-family: monospace; font-size: 0.875rem; word-break: break-all; display: inline-flex; align-items: center; gap: 0.25rem;"
-                   onmouseover="this.style.textDecoration='underline'"
-                   onmouseout="this.style.textDecoration='none'">
-                    ${endpoint.url}
-                    <i class="fas fa-external-link-alt" style="font-size: 0.7rem; opacity: 0.6;"></i>
-                </a>
-            </td>
-            <td style="padding: 1rem; max-width: 220px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap;" title="${endpoint.title || ''}">
-                ${endpoint.title || '<span style="color: #94a3b8;">-</span>'}
-            </td>
-        `;
+        showToast('Starting scan...', 'info');
 
-        tbody.appendChild(row);
+        fetch('/api/scans/trigger', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ project_id: projectId, mode: mode })
+        })
+            .then(res => res.json())
+            .then(data => {
+                showToast('Scan started successfully! Check back in a few minutes.', 'success');
+                setTimeout(() => location.reload(), 3000);
+            })
+            .catch(err => {
+                showToast('Failed to start scan: ' + err.message, 'error');
+            });
+    }
+
+    // Initialize stats on page load
+    document.addEventListener('DOMContentLoaded', () => {
+        filterTable(); // Initialize counts for JS Files table
+        // All Assets pagination is now handled server-side
     });
 
-    // Update counters
-    document.getElementById('endpoints-count-display').textContent = `${data.total} endpoint${data.total !== 1 ? 's' : ''}`;
-    document.getElementById('endpoints-showing-start').textContent = data.showing_start;
-    document.getElementById('endpoints-showing-end').textContent = data.showing_end;
-    document.getElementById('endpoints-total').textContent = data.total;
-}
 
-// Render Endpoints pagination
-function renderEndpointsPagination(data) {
-    const container = document.getElementById('endpoints-pagination');
-    container.innerHTML = '';
-
-    if (data.total_pages <= 1) return;
-
-    // Previous button
-    const prevBtn = document.createElement('button');
-    prevBtn.innerHTML = '<i class="fas fa-chevron-left"></i> Prev';
-    prevBtn.style.cssText = 'padding: 0.5rem 1rem; border: 2px solid #e2e8f0; border-radius: 8px; background: white; color: #475569; cursor: pointer; font-size: 0.875rem; font-weight: 600; transition: all 0.2s;';
-    prevBtn.disabled = data.page === 1;
-    if (prevBtn.disabled) {
-        prevBtn.style.opacity = '0.5';
-        prevBtn.style.cursor = 'not-allowed';
-    }
-    prevBtn.onclick = () => gotoEndpointsPage(data.page - 1);
-    container.appendChild(prevBtn);
-
-    // Page numbers
-    const maxPages = 5;
-    let startPage = Math.max(1, data.page - Math.floor(maxPages / 2));
-    let endPage = Math.min(data.total_pages, startPage + maxPages - 1);
-
-    if (endPage - startPage < maxPages - 1) {
-        startPage = Math.max(1, endPage - maxPages + 1);
-    }
-
-    for (let i = startPage; i <= endPage; i++) {
-        const pageBtn = document.createElement('button');
-        pageBtn.textContent = i;
-        pageBtn.style.cssText = 'padding: 0.5rem 0.875rem; border: 2px solid #e2e8f0; border-radius: 8px; cursor: pointer; font-size: 0.875rem; font-weight: 600; transition: all 0.2s;';
-
-        if (i === data.page) {
-            pageBtn.style.background = 'linear-gradient(135deg, #667eea 0%, #764ba2 100%)';
-            pageBtn.style.color = 'white';
-            pageBtn.style.borderColor = '#667eea';
-        } else {
-            pageBtn.style.background = 'white';
-            pageBtn.style.color = '#475569';
-        }
-
-        pageBtn.onclick = () => gotoEndpointsPage(i);
-        container.appendChild(pageBtn);
-    }
-
-    // Next button
-    const nextBtn = document.createElement('button');
-    nextBtn.innerHTML = 'Next <i class="fas fa-chevron-right"></i>';
-    nextBtn.style.cssText = 'padding: 0.5rem 1rem; border: 2px solid #e2e8f0; border-radius: 8px; background: white; color: #475569; cursor: pointer; font-size: 0.875rem; font-weight: 600; transition: all 0.2s;';
-    nextBtn.disabled = data.page === data.total_pages;
-    if (nextBtn.disabled) {
-        nextBtn.style.opacity = '0.5';
-        nextBtn.style.cursor = 'not-allowed';
-    }
-    nextBtn.onclick = () => gotoEndpointsPage(data.page + 1);
-    container.appendChild(nextBtn);
-}
-
-// Navigate to Endpoints page
-function gotoEndpointsPage(page) {
-    endpointsState.currentPage = page;
-    endpointsState.loaded = false;
-    loadEndpointsData();
-}
-
-// Apply Endpoints filters
-function applyEndpointsFilters() {
-    endpointsState.search = document.getElementById('endpoints-search').value;
-    endpointsState.category = document.getElementById('endpoints-category').value;
-    endpointsState.status = document.getElementById('endpoints-status').value;
-    endpointsState.perPage = parseInt(document.getElementById('endpoints-per-page').value);
-    endpointsState.currentPage = 1;
-    endpointsState.loaded = false;
-
-    // Show loading
-    document.getElementById('endpoints-content').style.display = 'none';
-    document.getElementById('endpoints-loading').style.display = 'block';
-    document.getElementById('endpoints-loading').innerHTML = `
-        <div style="text-align: center; padding: 3rem;">
-            <div style="display: inline-block; padding: 2rem; background: linear-gradient(135deg, #667eea 0%, #764ba2 100%); border-radius: 50%; margin-bottom: 1.5rem;">
-                <i class="fas fa-spinner fa-spin" style="font-size: 3rem; color: white;"></i>
-            </div>
-            <h3 style="color: #1e293b;">Applying Filters...</h3>
-        </div>
-    `;
-
-    loadEndpointsData();
-}
-
-// Reset Endpoints filters
-function resetEndpointsFilters() {
-    document.getElementById('endpoints-search').value = '';
-    document.getElementById('endpoints-category').value = '';
-    document.getElementById('endpoints-status').value = '';
-    document.getElementById('endpoints-per-page').value = '100';
-    applyEndpointsFilters();
-}
-
-// Load JS Files data via AJAX
-async function loadJSFilesData() {
-    if (jsfilesState.loaded) {
-        document.getElementById('jsfiles-loading').style.display = 'none';
-        document.getElementById('jsfiles-content').style.display = 'block';
-        return;
-    }
-
-    const params = new URLSearchParams({
-        page: jsfilesState.currentPage,
-        per_page: jsfilesState.perPage,
-        search: jsfilesState.search,
-        status_filter: jsfilesState.statusFilter,
-        secrets_filter: jsfilesState.secretsFilter
-    });
-
-    try {
-        const response = await fetch(`/api/projects/{{ project.id }}/jsfiles?${params}`);
-        const data = await response.json();
-
-        if (!data.has_data) {
-            document.getElementById('jsfiles-loading').style.display = 'none';
-            document.getElementById('jsfiles-empty').style.display = 'block';
-            return;
-        }
-
-        renderJSFilesTable(data);
-        renderJSFilesPagination(data);
-
-        // Update last scan date
-        if (data.snapshot_date) {
-            const date = new Date(data.snapshot_date);
-            document.getElementById('jsfiles-last-scan').textContent = date.toLocaleString();
-        }
-
-        // Show secrets alert if any
-        if (data.secrets_count > 0) {
-            document.getElementById('jsfiles-secrets-count').textContent = data.secrets_count;
-            document.getElementById('jsfiles-secrets-alert').style.display = 'block';
-        } else {
-            document.getElementById('jsfiles-secrets-alert').style.display = 'none';
-        }
-
-        document.getElementById('jsfiles-loading').style.display = 'none';
-        document.getElementById('jsfiles-content').style.display = 'block';
-
-        jsfilesState.loaded = true;
-    } catch (error) {
-        console.error('Error loading JS files:', error);
-        document.getElementById('jsfiles-loading').innerHTML = `
-            <div style="text-align: center; padding: 3rem;">
-                <i class="fas fa-exclamation-triangle" style="font-size: 3rem; color: #dc2626; margin-bottom: 1rem;"></i>
-                <h3 style="color: #64748b;">Failed to Load JS Files</h3>
-                <p style="color: #94a3b8;">${error.message}</p>
-                <button onclick="loadJSFilesData()" style="margin-top: 1rem; padding: 0.625rem 1.25rem; background: #f59e0b; color: white; border: none; border-radius: 8px; cursor: pointer;">
-                    <i class="fas fa-redo"></i> Retry
-                </button>
-            </div>
-        `;
-    }
-}
-
-// Render JS Files table
-function renderJSFilesTable(data) {
-    const tbody = document.getElementById('jsfiles-table-body');
-    tbody.innerHTML = '';
-
-    if (data.js_files.length === 0) {
-        tbody.innerHTML = `
-            <tr>
-                <td colspan="5" style="padding: 3rem; text-align: center; color: #94a3b8;">
-                    <i class="fas fa-search" style="font-size: 2rem; margin-bottom: 0.5rem; display: block;"></i>
-                    No JS files found matching your filters
-                </td>
-            </tr>
-        `;
-        document.getElementById('jsfiles-count-display').textContent = '0 files';
-        return;
-    }
-
-    data.js_files.forEach((file, index) => {
-        const row = document.createElement('tr');
-        row.style.borderBottom = '1px solid #fef3c7';
-        row.style.transition = 'background 0.2s';
-        row.onmouseover = () => row.style.background = '#fffbeb';
-        row.onmouseout = () => row.style.background = 'white';
-
-        const startIndex = (data.page - 1) * data.per_page + index + 1;
-
-        // Status badge
-        let statusBadge = '';
-        if (file.status === 'active') {
-            statusBadge = '<span style="padding: 0.25rem 0.625rem; border-radius: 9999px; font-size: 0.75rem; font-weight: 600; background: #dcfce7; color: #166534;"><i class="fas fa-check-circle"></i> Active</span>';
-        } else if (file.status === 'inactive') {
-            statusBadge = '<span style="padding: 0.25rem 0.625rem; border-radius: 9999px; font-size: 0.75rem; font-weight: 600; background: #fee2e2; color: #991b1b;"><i class="fas fa-times-circle"></i> Inactive</span>';
-        } else {
-            statusBadge = '<span style="padding: 0.25rem 0.625rem; border-radius: 9999px; font-size: 0.75rem; font-weight: 600; background: #f1f5f9; color: #64748b;"><i class="fas fa-question-circle"></i> Unknown</span>';
-        }
-
-        // Secrets badge
-        let secretsBadge = '';
-        if (file.has_secrets) {
-            if (file.risk_level === 'high') {
-                secretsBadge = '<span style="padding: 0.25rem 0.625rem; border-radius: 9999px; font-size: 0.75rem; font-weight: 600; background: #fee2e2; color: #991b1b;"><i class="fas fa-skull-crossbones"></i> High Risk</span>';
-            } else if (file.risk_level === 'medium') {
-                secretsBadge = '<span style="padding: 0.25rem 0.625rem; border-radius: 9999px; font-size: 0.75rem; font-weight: 600; background: #fef3c7; color: #92400e;"><i class="fas fa-exclamation-triangle"></i> Medium</span>';
-            } else {
-                secretsBadge = '<span style="padding: 0.25rem 0.625rem; border-radius: 9999px; font-size: 0.75rem; font-weight: 600; background: #fed7aa; color: #78350f;"><i class="fas fa-exclamation-circle"></i> Low Risk</span>';
-            }
-        } else {
-            secretsBadge = '<span style="padding: 0.25rem 0.625rem; border-radius: 9999px; font-size: 0.75rem; font-weight: 600; background: #dcfce7; color: #166534;"><i class="fas fa-shield-check"></i> Clean</span>';
-        }
-
-        row.innerHTML = `
-            <td style="padding: 1rem; color: #64748b; font-size: 0.875rem;">${startIndex}</td>
-            <td style="padding: 1rem;">${statusBadge}</td>
-            <td style="padding: 1rem;">
-                <a href="${file.url}" target="_blank" style="color: #f59e0b; text-decoration: none; font-family: monospace; font-size: 0.875rem; word-break: break-all; display: inline-flex; align-items: center; gap: 0.25rem;"
-                   onmouseover="this.style.textDecoration='underline'"
-                   onmouseout="this.style.textDecoration='none'">
-                    ${file.url}
-                    <i class="fas fa-external-link-alt" style="font-size: 0.7rem; opacity: 0.6;"></i>
-                </a>
-            </td>
-            <td style="padding: 1rem;">${secretsBadge}</td>
-            <td style="padding: 1rem;">
-                <button onclick="copyToClipboard('${file.url.replace(/'/g, "\\'")}') "
-                        style="padding: 0.375rem 0.75rem; background: white; border: 2px solid #e2e8f0; border-radius: 6px; cursor: pointer; font-size: 0.75rem; font-weight: 600; color: #475569; transition: all 0.2s;"
-                        onmouseover="this.style.borderColor='#f59e0b'; this.style.color='#f59e0b'"
-                        onmouseout="this.style.borderColor='#e2e8f0'; this.style.color='#475569'"
-                        title="Copy URL">
-                    <i class="fas fa-copy"></i>
-                </button>
-            </td>
-        `;
-
-        tbody.appendChild(row);
-    });
-
-    // Update counters
-    document.getElementById('jsfiles-count-display').textContent = `${data.total} file${data.total !== 1 ? 's' : ''}`;
-    document.getElementById('jsfiles-showing-start').textContent = data.showing_start;
-    document.getElementById('jsfiles-showing-end').textContent = data.showing_end;
-    document.getElementById('jsfiles-total').textContent = data.total;
-}
-
-// Render JS Files pagination
-function renderJSFilesPagination(data) {
-    const container = document.getElementById('jsfiles-pagination');
-    container.innerHTML = '';
-
-    if (data.total_pages <= 1) return;
-
-    // Previous button
-    const prevBtn = document.createElement('button');
-    prevBtn.innerHTML = '<i class="fas fa-chevron-left"></i> Prev';
-    prevBtn.style.cssText = 'padding: 0.5rem 1rem; border: 2px solid #fde68a; border-radius: 8px; background: white; color: #78350f; cursor: pointer; font-size: 0.875rem; font-weight: 600; transition: all 0.2s;';
-    prevBtn.disabled = data.page === 1;
-    if (prevBtn.disabled) {
-        prevBtn.style.opacity = '0.5';
-        prevBtn.style.cursor = 'not-allowed';
-    }
-    prevBtn.onclick = () => gotoJSFilesPage(data.page - 1);
-    container.appendChild(prevBtn);
-
-    // Page numbers
-    const maxPages = 5;
-    let startPage = Math.max(1, data.page - Math.floor(maxPages / 2));
-    let endPage = Math.min(data.total_pages, startPage + maxPages - 1);
-
-    if (endPage - startPage < maxPages - 1) {
-        startPage = Math.max(1, endPage - maxPages + 1);
-    }
-
-    for (let i = startPage; i <= endPage; i++) {
-        const pageBtn = document.createElement('button');
-        pageBtn.textContent = i;
-        pageBtn.style.cssText = 'padding: 0.5rem 0.875rem; border: 2px solid #fde68a; border-radius: 8px; cursor: pointer; font-size: 0.875rem; font-weight: 600; transition: all 0.2s;';
-
-        if (i === data.page) {
-            pageBtn.style.background = 'linear-gradient(135deg, #f59e0b 0%, #d97706 100%)';
-            pageBtn.style.color = 'white';
-            pageBtn.style.borderColor = '#f59e0b';
-        } else {
-            pageBtn.style.background = 'white';
-            pageBtn.style.color = '#78350f';
-        }
-
-        pageBtn.onclick = () => gotoJSFilesPage(i);
-        container.appendChild(pageBtn);
-    }
-
-    // Next button
-    const nextBtn = document.createElement('button');
-    nextBtn.innerHTML = 'Next <i class="fas fa-chevron-right"></i>';
-    nextBtn.style.cssText = 'padding: 0.5rem 1rem; border: 2px solid #fde68a; border-radius: 8px; background: white; color: #78350f; cursor: pointer; font-size: 0.875rem; font-weight: 600; transition: all 0.2s;';
-    nextBtn.disabled = data.page === data.total_pages;
-    if (nextBtn.disabled) {
-        nextBtn.style.opacity = '0.5';
-        nextBtn.style.cursor = 'not-allowed';
-    }
-    nextBtn.onclick = () => gotoJSFilesPage(data.page + 1);
-    container.appendChild(nextBtn);
-}
-
-// Navigate to JS Files page
-function gotoJSFilesPage(page) {
-    jsfilesState.currentPage = page;
-    jsfilesState.loaded = false;
-    loadJSFilesData();
-}
-
-// Apply JS Files filters
-function applyJSFilesFilters() {
-    jsfilesState.search = document.getElementById('jsfiles-search').value;
-    jsfilesState.statusFilter = document.getElementById('jsfiles-status').value;
-    jsfilesState.secretsFilter = document.getElementById('jsfiles-secrets').value;
-    jsfilesState.perPage = parseInt(document.getElementById('jsfiles-per-page').value);
-    jsfilesState.currentPage = 1;
-    jsfilesState.loaded = false;
-
-    // Show loading
-    document.getElementById('jsfiles-content').style.display = 'none';
-    document.getElementById('jsfiles-loading').style.display = 'block';
-    document.getElementById('jsfiles-loading').innerHTML = `
-        <div style="text-align: center; padding: 3rem;">
-            <div style="display: inline-block; padding: 2rem; background: linear-gradient(135deg, #f59e0b 0%, #d97706 100%); border-radius: 50%; margin-bottom: 1.5rem;">
-                <i class="fas fa-spinner fa-spin" style="font-size: 3rem; color: white;"></i>
-            </div>
-            <h3 style="color: #1e293b;">Applying Filters...</h3>
-        </div>
-    `;
-
-    loadJSFilesData();
-}
-
-// Reset JS Files filters
-function resetJSFilesFilters() {
-    document.getElementById('jsfiles-search').value = '';
-    document.getElementById('jsfiles-status').value = '';
-    document.getElementById('jsfiles-secrets').value = '';
-    document.getElementById('jsfiles-per-page').value = '100';
-    applyJSFilesFilters();
-}
-
-// Copy to clipboard utility
-function copyToClipboard(text) {
-    navigator.clipboard.writeText(text).then(() => {
-        showToast('URL copied to clipboard!', 'success');
-    }).catch(() => {
-        showToast('Failed to copy URL', 'error');
-    });
-}
 </script>
+
+{% include '_ajax_endpoints_jsfiles.html' %}
 
 {% include '_ajax_takeovers_events.html' %}
 

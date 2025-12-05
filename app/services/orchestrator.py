@@ -485,8 +485,9 @@ class ScanOrchestrator:
             new_urls = [url for url in result["urls"] if url not in http_data]
 
             if new_urls:
-                # Limit to 500 URLs to avoid long scan times
-                sample_urls = new_urls[:500] if len(new_urls) > 500 else new_urls
+                # Limit to 2000 URLs (increased from 500) to avoid long scan times but capture more data
+                limit = 2000
+                sample_urls = new_urls[:limit] if len(new_urls) > limit else new_urls
                 logger.info(f"Probing {len(sample_urls)} new endpoints (out of {len(new_urls)} total new)")
 
                 try:

@@ -22,6 +22,7 @@ def list_events(
     seen: Optional[bool] = None,
     acknowledged: Optional[bool] = None,
     days: Optional[int] = Query(7, description="Number of days to look back"),
+    exclude: Optional[str] = Query(None, description="Comma-separated patterns to exclude"),
     skip: int = 0,
     limit: int = 100,
     db: Session = Depends(get_db)
@@ -36,10 +37,18 @@ def list_events(
         seen: Filter by seen status
         acknowledged: Filter by acknowledged status
         days: Number of days to look back (default: 7)
+        exclude: Comma-separated patterns to exclude from summary
         skip: Pagination offset
         limit: Pagination limit
     """
     query = db.query(Event)
+
+    # Exclude patterns
+    if exclude:
+        patterns = [p.strip() for p in exclude.split(",") if p.strip()]
+        for pattern in patterns:
+            # Filter out events where summary contains the pattern (case-insensitive)
+            query = query.filter(~Event.summary.ilike(f"%{pattern}%"))
 
     # Filters
     if project_id:

@@ -1,80 +1,94 @@
+<style>
+    @keyframes skeleton {
+        0% {
+            background-position: 200% 0;
+        }
+
+        100% {
+            background-position: -200% 0;
+        }
+    }
+</style>
 <script>
-// State management for Endpoints and JS Files tabs
-const endpointsState = {
-    loaded: false,
-    currentPage: 1,
-    perPage: 100,
-    clientPerPage: 100,  // Items per page on client-side
-    search: '',
-    category: '',
-    status: '',
-    cachedData: null,  // Cache all loaded endpoints
-    totalPages: 1
-};
+    // State management for Endpoints and JS Files tabs
+    const endpointsState = {
+        loaded: false,
+        currentPage: 1,
+        perPage: 100,
+        clientPerPage: 100,  // Items per page on client-side
+        search: '',
+        exclude: '',
+        category: '',
+        status: '',
+        cachedData: null,  // Cache all loaded endpoints
+        totalPages: 1
+    };
 
-const jsfilesState = {
-    loaded: false,
-    currentPage: 1,
-    perPage: 100,
-    clientPerPage: 100,
-    search: '',
-    statusFilter: '',
-    secretsFilter: '',
-    cachedData: null,
-    totalPages: 1
-};
+    const jsfilesState = {
+        loaded: false,
+        currentPage: 1,
+        perPage: 100,
+        clientPerPage: 100,
+        search: '',
+        exclude: '',
+        statusFilter: '',
+        secretsFilter: '',
+        cachedData: null,
+        totalPages: 1
+    };
 
-// Load Endpoints data via AJAX (loads 500 items for better pagination performance)
-async function loadEndpointsData(forceReload = false) {
-    // If already loaded and not forcing reload, just render from cache
-    if (endpointsState.loaded && !forceReload) {
-        renderEndpointsFromCache();
-        return;
-    }
+    // Load Endpoints data via AJAX
+    async function loadEndpointsData(forceReload = false) {
+        // Show loading header if first load
+        if (!endpointsState.loaded) {
+            showEndpointsLoading();
+        } else {
+            // If navigating, show loading overlay or keep content but opacity reduced
+            document.getElementById('endpoints-content').style.opacity = '0.5';
+        }
 
-    // Show loading with skeleton
-    if (!endpointsState.loaded) {
-        showEndpointsLoading();
-    }
+        const params = new URLSearchParams({
+            page: endpointsState.currentPage,
+            per_page: endpointsState.perPage,
+            search: endpointsState.search,
+            exclude: endpointsState.exclude,
+            category: endpointsState.category,
+            status: endpointsState.status
+        });
 
-    const params = new URLSearchParams({
-        page: 1,
-        per_page: 500,  // Load 500 items at once for smooth client-side pagination
-        search: endpointsState.search,
-        category: endpointsState.category,
-        status: endpointsState.status
-    });
+        try {
+            const response = await fetch(`/api/projects/{{ project.id }}/endpoints?${params}`);
+            const data = await response.json();
 
-    try {
-        const response = await fetch(`/api/projects/{{ project.id }}/endpoints?${params}`);
-        const data = await response.json();
+            document.getElementById('endpoints-content').style.opacity = '1.0';
 
-        if (!data.has_data) {
+            if (!data.has_data) {
+                document.getElementById('endpoints-loading').style.display = 'none';
+                document.getElementById('endpoints-empty').style.display = 'block';
+                return;
+            }
+
+            // Update state total pages from server calculation
+            endpointsState.totalPages = data.total_pages;
+
+            // Update last scan date
+            if (data.snapshot_date) {
+                const date = new Date(data.snapshot_date);
+                document.getElementById('endpoints-last-scan').textContent = date.toLocaleString();
+            }
+
+            // Render table directly with server data
+            renderEndpointsTable(data);
+            renderEndpointsPagination(data);
+
             document.getElementById('endpoints-loading').style.display = 'none';
-            document.getElementById('endpoints-empty').style.display = 'block';
-            return;
-        }
+            document.getElementById('endpoints-content').style.display = 'block';
 
-        // Cache all loaded data
-        endpointsState.cachedData = data;
-        endpointsState.totalPages = Math.ceil(data.total / endpointsState.clientPerPage);
-
-        // Update last scan date
-        if (data.snapshot_date) {
-            const date = new Date(data.snapshot_date);
-            document.getElementById('endpoints-last-scan').textContent = date.toLocaleString();
-        }
-
-        // Render first page from cache
-        renderEndpointsFromCache();
-
-        document.getElementById('endpoints-loading').style.display = 'none';
-        document.getElementById('endpoints-content').style.display = 'block';
-
-        endpointsState.loaded = true;
-    } catch (error) {
-        console.error('Error loading endpoints:', error);
-        document.getElementById('endpoints-loading').innerHTML = `
+            endpointsState.loaded = true;
+        } catch (error) {
+            console.error('Error loading endpoints:', error);
+            document.getElementById('endpoints-content').style.opacity = '1.0';
+            document.getElementById('endpoints-loading').innerHTML = `
             <div style="text-align: center; padding: 3rem;">
                 <i class="fas fa-exclamation-triangle" style="font-size: 3rem; color: #dc2626; margin-bottom: 1rem;"></i>
                 <h3 style="color: #64748b;">Failed to Load Endpoints</h3>
@@ -84,49 +98,28 @@ async function loadEndpointsData(forceReload = false) {
                 </button>
             </div>
         `;
+        }
     }
-}
 
-// Render endpoints from cached data (instant pagination)
-function renderEndpointsFromCache() {
-    if (!endpointsState.cachedData) return;
+    // Render endpoints from cached data (DEPRECATED - Removed in favor of Server Side Pagination)
+    // kept as empty function if referenced elsewhere, but logic moved to renderEndpointsTable
+    function renderEndpointsFromCache() {
+        // This function is no longer used as pagination is now server-side.
+        // Its previous logic has been integrated directly into loadEndpointsData.
+    }
 
-    const data = endpointsState.cachedData;
-    const clientPerPage = endpointsState.clientPerPage;
-    const currentPage = endpointsState.currentPage;
-
-    // Client-side pagination
-    const startIdx = (currentPage - 1) * clientPerPage;
-    const endIdx = Math.min(startIdx + clientPerPage, data.endpoints.length);
-    const pageData = data.endpoints.slice(startIdx, endIdx);
-
-    // Create data object for rendering
-    const renderData = {
-        endpoints: pageData,
-        page: currentPage,
-        per_page: clientPerPage,
-        total: data.endpoints.length,
-        total_pages: Math.ceil(data.endpoints.length / clientPerPage),
-        showing_start: startIdx + 1,
-        showing_end: endIdx
-    };
-
-    renderEndpointsTable(renderData, startIdx);
-    renderEndpointsPagination(renderData);
-}
-
-// Show loading with skeleton effect
-function showEndpointsLoading() {
-    const loadingEl = document.getElementById('endpoints-loading');
-    loadingEl.style.display = 'block';
-    loadingEl.innerHTML = `
+    // Show loading with skeleton effect
+    function showEndpointsLoading() {
+        const loadingEl = document.getElementById('endpoints-loading');
+        loadingEl.style.display = 'block';
+        loadingEl.innerHTML = `
         <div style="padding: 2rem;">
             <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 1.5rem;">
                 <div style="height: 24px; width: 200px; background: linear-gradient(90deg, #f1f5f9 25%, #e2e8f0 50%, #f1f5f9 75%); background-size: 200% 100%; animation: skeleton 1.5s ease-in-out infinite; border-radius: 4px;"></div>
                 <div style="height: 20px; width: 150px; background: linear-gradient(90deg, #f1f5f9 25%, #e2e8f0 50%, #f1f5f9 75%); background-size: 200% 100%; animation: skeleton 1.5s ease-in-out infinite; border-radius: 4px;"></div>
             </div>
             <div style="background: white; border-radius: 12px; padding: 1.5rem; box-shadow: 0 1px 3px rgba(0,0,0,0.1);">
-                ${[1,2,3,4,5].map(() => `
+                ${[1, 2, 3, 4, 5].map(() => `
                     <div style="display: flex; gap: 1rem; padding: 1rem 0; border-bottom: 1px solid #f1f5f9;">
                         <div style="height: 20px; width: 40px; background: linear-gradient(90deg, #f1f5f9 25%, #e2e8f0 50%, #f1f5f9 75%); background-size: 200% 100%; animation: skeleton 1.5s ease-in-out infinite; border-radius: 4px;"></div>
                         <div style="height: 20px; width: 80px; background: linear-gradient(90deg, #f1f5f9 25%, #e2e8f0 50%, #f1f5f9 75%); background-size: 200% 100%; animation: skeleton 1.5s ease-in-out infinite; border-radius: 4px;"></div>
@@ -137,22 +130,17 @@ function showEndpointsLoading() {
             </div>
         </div>
     `;
-}
+    }
 
-<style>
-@keyframes skeleton {
-    0% { background-position: 200% 0; }
-    100% { background-position: -200% 0; }
-}
-</style>
 
-// Render Endpoints table
-function renderEndpointsTable(data, baseIndex = 0) {
-    const tbody = document.getElementById('endpoints-table-body');
-    tbody.innerHTML = '';
 
-    if (data.endpoints.length === 0) {
-        tbody.innerHTML = `
+    // Render Endpoints table
+    function renderEndpointsTable(data, baseIndex = 0) {
+        const tbody = document.getElementById('endpoints-table-body');
+        tbody.innerHTML = '';
+
+        if (data.endpoints.length === 0) {
+            tbody.innerHTML = `
             <tr>
                 <td colspan="5" style="padding: 3rem; text-align: center; color: #94a3b8;">
                     <i class="fas fa-search" style="font-size: 2rem; margin-bottom: 0.5rem; display: block;"></i>
@@ -160,44 +148,44 @@ function renderEndpointsTable(data, baseIndex = 0) {
                 </td>
             </tr>
         `;
-        document.getElementById('endpoints-count-display').textContent = '0 endpoints';
-        return;
-    }
-
-    data.endpoints.forEach((endpoint, index) => {
-        const row = document.createElement('tr');
-        row.style.borderBottom = '1px solid #f1f5f9';
-        row.style.transition = 'background 0.2s';
-        row.onmouseover = () => row.style.background = '#f8fafc';
-        row.onmouseout = () => row.style.background = 'white';
-
-        const startIndex = baseIndex + index + 1;
-
-        // Status badge
-        let statusBadge = '<span style="padding: 0.25rem 0.625rem; border-radius: 9999px; font-size: 0.75rem; font-weight: 600; background: #f1f5f9; color: #64748b;">-</span>';
-        if (endpoint.status_code) {
-            if (endpoint.status_code < 300) {
-                statusBadge = `<span style="padding: 0.25rem 0.625rem; border-radius: 9999px; font-size: 0.75rem; font-weight: 600; background: #dcfce7; color: #166534;">${endpoint.status_code}</span>`;
-            } else if (endpoint.status_code < 400) {
-                statusBadge = `<span style="padding: 0.25rem 0.625rem; border-radius: 9999px; font-size: 0.75rem; font-weight: 600; background: #dbeafe; color: #1e40af;">${endpoint.status_code}</span>`;
-            } else if (endpoint.status_code < 500) {
-                statusBadge = `<span style="padding: 0.25rem 0.625rem; border-radius: 9999px; font-size: 0.75rem; font-weight: 600; background: #fef3c7; color: #92400e;">${endpoint.status_code}</span>`;
-            } else {
-                statusBadge = `<span style="padding: 0.25rem 0.625rem; border-radius: 9999px; font-size: 0.75rem; font-weight: 600; background: #fee2e2; color: #991b1b;">${endpoint.status_code}</span>`;
-            }
+            document.getElementById('endpoints-count-display').textContent = '0 endpoints';
+            return;
         }
 
-        // Categories badges
-        let categoriesBadges = '<span style="color: #94a3b8;">-</span>';
-        if (endpoint.categories && endpoint.categories.length > 0) {
-            categoriesBadges = endpoint.categories.map(cat =>
-                `<span style="padding: 0.25rem 0.5rem; border-radius: 6px; font-size: 0.7rem; font-weight: 600; background-color: ${cat.color}; color: white; margin: 2px; display: inline-block;">
+        data.endpoints.forEach((endpoint, index) => {
+            const row = document.createElement('tr');
+            row.style.borderBottom = '1px solid #f1f5f9';
+            row.style.transition = 'background 0.2s';
+            row.onmouseover = () => row.style.background = '#f8fafc';
+            row.onmouseout = () => row.style.background = 'white';
+
+            const startIndex = (data.page - 1) * data.per_page + index + 1;
+
+            // Status badge
+            let statusBadge = '<span style="padding: 0.25rem 0.625rem; border-radius: 9999px; font-size: 0.75rem; font-weight: 600; background: #f1f5f9; color: #64748b;">-</span>';
+            if (endpoint.status_code) {
+                if (endpoint.status_code < 300) {
+                    statusBadge = `<span style="padding: 0.25rem 0.625rem; border-radius: 9999px; font-size: 0.75rem; font-weight: 600; background: #dcfce7; color: #166534;">${endpoint.status_code}</span>`;
+                } else if (endpoint.status_code < 400) {
+                    statusBadge = `<span style="padding: 0.25rem 0.625rem; border-radius: 9999px; font-size: 0.75rem; font-weight: 600; background: #dbeafe; color: #1e40af;">${endpoint.status_code}</span>`;
+                } else if (endpoint.status_code < 500) {
+                    statusBadge = `<span style="padding: 0.25rem 0.625rem; border-radius: 9999px; font-size: 0.75rem; font-weight: 600; background: #fef3c7; color: #92400e;">${endpoint.status_code}</span>`;
+                } else {
+                    statusBadge = `<span style="padding: 0.25rem 0.625rem; border-radius: 9999px; font-size: 0.75rem; font-weight: 600; background: #fee2e2; color: #991b1b;">${endpoint.status_code}</span>`;
+                }
+            }
+
+            // Categories badges
+            let categoriesBadges = '<span style="color: #94a3b8;">-</span>';
+            if (endpoint.categories && endpoint.categories.length > 0) {
+                categoriesBadges = endpoint.categories.map(cat =>
+                    `<span style="padding: 0.25rem 0.5rem; border-radius: 6px; font-size: 0.7rem; font-weight: 600; background-color: ${cat.color}; color: white; margin: 2px; display: inline-block;">
                     <i class="fas ${cat.icon}"></i> ${cat.name}
                 </span>`
-            ).join('');
-        }
+                ).join('');
+            }
 
-        row.innerHTML = `
+            row.innerHTML = `
             <td style="padding: 1rem; color: #64748b; font-size: 0.875rem;">${startIndex}</td>
             <td style="padding: 1rem;">${statusBadge}</td>
             <td style="padding: 1rem;">${categoriesBadges}</td>
@@ -214,162 +202,172 @@ function renderEndpointsTable(data, baseIndex = 0) {
             </td>
         `;
 
-        tbody.appendChild(row);
-    });
+            tbody.appendChild(row);
+        });
 
-    // Update counters
-    document.getElementById('endpoints-count-display').textContent = `${data.total} endpoint${data.total !== 1 ? 's' : ''}`;
-    document.getElementById('endpoints-showing-start').textContent = data.showing_start;
-    document.getElementById('endpoints-showing-end').textContent = data.showing_end;
-    document.getElementById('endpoints-total').textContent = data.total;
-}
-
-// Render Endpoints pagination
-function renderEndpointsPagination(data) {
-    const container = document.getElementById('endpoints-pagination');
-    container.innerHTML = '';
-
-    if (data.total_pages <= 1) return;
-
-    // Previous button
-    const prevBtn = document.createElement('button');
-    prevBtn.innerHTML = '<i class="fas fa-chevron-left"></i> Prev';
-    prevBtn.style.cssText = 'padding: 0.5rem 1rem; border: 2px solid #e2e8f0; border-radius: 8px; background: white; color: #475569; cursor: pointer; font-size: 0.875rem; font-weight: 600; transition: all 0.2s;';
-    prevBtn.disabled = data.page === 1;
-    if (prevBtn.disabled) {
-        prevBtn.style.opacity = '0.5';
-        prevBtn.style.cursor = 'not-allowed';
-    }
-    prevBtn.onclick = () => gotoEndpointsPage(data.page - 1);
-    container.appendChild(prevBtn);
-
-    // Page numbers
-    const maxPages = 5;
-    let startPage = Math.max(1, data.page - Math.floor(maxPages / 2));
-    let endPage = Math.min(data.total_pages, startPage + maxPages - 1);
-
-    if (endPage - startPage < maxPages - 1) {
-        startPage = Math.max(1, endPage - maxPages + 1);
-    }
-
-    for (let i = startPage; i <= endPage; i++) {
-        const pageBtn = document.createElement('button');
-        pageBtn.textContent = i;
-        pageBtn.style.cssText = 'padding: 0.5rem 0.875rem; border: 2px solid #e2e8f0; border-radius: 8px; cursor: pointer; font-size: 0.875rem; font-weight: 600; transition: all 0.2s;';
-
-        if (i === data.page) {
-            pageBtn.style.background = 'linear-gradient(135deg, #667eea 0%, #764ba2 100%)';
-            pageBtn.style.color = 'white';
-            pageBtn.style.borderColor = '#667eea';
+        // Update counters
+        // Update counters
+        // Force update using querySelector for robustness
+        const countDisplay = document.querySelector('#endpoints-count-display');
+        if (countDisplay) {
+            countDisplay.innerText = `${data.total} endpoint${data.total !== 1 ? 's' : ''}`;
         } else {
-            pageBtn.style.background = 'white';
-            pageBtn.style.color = '#475569';
+            console.error('Could not find endpoints-count-display');
+        }
+        document.getElementById('endpoints-showing-start').textContent = data.showing_start;
+        document.getElementById('endpoints-showing-end').textContent = data.showing_end;
+        document.getElementById('endpoints-total').textContent = data.total;
+    }
+
+    // Render Endpoints pagination
+    function renderEndpointsPagination(data) {
+        const container = document.getElementById('endpoints-pagination');
+        container.innerHTML = '';
+
+        if (data.total_pages <= 1) return;
+
+        // Previous button
+        const prevBtn = document.createElement('button');
+        prevBtn.innerHTML = '<i class="fas fa-chevron-left"></i> Prev';
+        prevBtn.style.cssText = 'padding: 0.5rem 1rem; border: 2px solid #e2e8f0; border-radius: 8px; background: white; color: #475569; cursor: pointer; font-size: 0.875rem; font-weight: 600; transition: all 0.2s;';
+        prevBtn.disabled = data.page === 1;
+        if (prevBtn.disabled) {
+            prevBtn.style.opacity = '0.5';
+            prevBtn.style.cursor = 'not-allowed';
+        }
+        prevBtn.onclick = () => gotoEndpointsPage(data.page - 1);
+        container.appendChild(prevBtn);
+
+        // Page numbers
+        const maxPages = 5;
+        let startPage = Math.max(1, data.page - Math.floor(maxPages / 2));
+        let endPage = Math.min(data.total_pages, startPage + maxPages - 1);
+
+        if (endPage - startPage < maxPages - 1) {
+            startPage = Math.max(1, endPage - maxPages + 1);
         }
 
-        pageBtn.onclick = () => gotoEndpointsPage(i);
-        container.appendChild(pageBtn);
+        for (let i = startPage; i <= endPage; i++) {
+            const pageBtn = document.createElement('button');
+            pageBtn.textContent = i;
+            pageBtn.style.cssText = 'padding: 0.5rem 0.875rem; border: 2px solid #e2e8f0; border-radius: 8px; cursor: pointer; font-size: 0.875rem; font-weight: 600; transition: all 0.2s;';
+
+            if (i === data.page) {
+                pageBtn.style.background = 'linear-gradient(135deg, #667eea 0%, #764ba2 100%)';
+                pageBtn.style.color = 'white';
+                pageBtn.style.borderColor = '#667eea';
+            } else {
+                pageBtn.style.background = 'white';
+                pageBtn.style.color = '#475569';
+            }
+
+            pageBtn.onclick = () => gotoEndpointsPage(i);
+            container.appendChild(pageBtn);
+        }
+
+        // Next button
+        const nextBtn = document.createElement('button');
+        nextBtn.innerHTML = 'Next <i class="fas fa-chevron-right"></i>';
+        nextBtn.style.cssText = 'padding: 0.5rem 1rem; border: 2px solid #e2e8f0; border-radius: 8px; background: white; color: #475569; cursor: pointer; font-size: 0.875rem; font-weight: 600; transition: all 0.2s;';
+        nextBtn.disabled = data.page === data.total_pages;
+        if (nextBtn.disabled) {
+            nextBtn.style.opacity = '0.5';
+            nextBtn.style.cursor = 'not-allowed';
+        }
+        nextBtn.onclick = () => gotoEndpointsPage(data.page + 1);
+        container.appendChild(nextBtn);
     }
 
-    // Next button
-    const nextBtn = document.createElement('button');
-    nextBtn.innerHTML = 'Next <i class="fas fa-chevron-right"></i>';
-    nextBtn.style.cssText = 'padding: 0.5rem 1rem; border: 2px solid #e2e8f0; border-radius: 8px; background: white; color: #475569; cursor: pointer; font-size: 0.875rem; font-weight: 600; transition: all 0.2s;';
-    nextBtn.disabled = data.page === data.total_pages;
-    if (nextBtn.disabled) {
-        nextBtn.style.opacity = '0.5';
-        nextBtn.style.cursor = 'not-allowed';
-    }
-    nextBtn.onclick = () => gotoEndpointsPage(data.page + 1);
-    container.appendChild(nextBtn);
-}
+    // Navigate to Endpoints page
+    function gotoEndpointsPage(page) {
+        endpointsState.currentPage = page;
 
-// Navigate to Endpoints page (instant with cached data)
-function gotoEndpointsPage(page) {
-    endpointsState.currentPage = page;
+        // Smooth scroll to top of table
+        document.getElementById('endpoints-content').scrollIntoView({ behavior: 'smooth', block: 'start' });
 
-    // Smooth scroll to top of table
-    document.getElementById('endpoints-content').scrollIntoView({ behavior: 'smooth', block: 'start' });
-
-    // Render from cache instantly
-    renderEndpointsFromCache();
-}
-
-// Apply Endpoints filters
-function applyEndpointsFilters() {
-    endpointsState.search = document.getElementById('endpoints-search').value;
-    endpointsState.category = document.getElementById('endpoints-category').value;
-    endpointsState.status = document.getElementById('endpoints-status').value;
-    endpointsState.clientPerPage = parseInt(document.getElementById('endpoints-per-page').value);
-    endpointsState.currentPage = 1;
-    endpointsState.loaded = false;
-    endpointsState.cachedData = null;  // Clear cache to reload with new filters
-
-    // Show loading
-    document.getElementById('endpoints-content').style.display = 'none';
-    showEndpointsLoading();
-
-    loadEndpointsData();
-}
-
-// Reset Endpoints filters
-function resetEndpointsFilters() {
-    document.getElementById('endpoints-search').value = '';
-    document.getElementById('endpoints-category').value = '';
-    document.getElementById('endpoints-status').value = '';
-    document.getElementById('endpoints-per-page').value = '100';
-    applyEndpointsFilters();
-}
-
-// Load JS Files data via AJAX
-async function loadJSFilesData() {
-    if (jsfilesState.loaded) {
-        document.getElementById('jsfiles-loading').style.display = 'none';
-        document.getElementById('jsfiles-content').style.display = 'block';
-        return;
+        loadEndpointsData();
     }
 
-    const params = new URLSearchParams({
-        page: jsfilesState.currentPage,
-        per_page: jsfilesState.perPage,
-        search: jsfilesState.search,
-        status_filter: jsfilesState.statusFilter,
-        secrets_filter: jsfilesState.secretsFilter
-    });
+    // Apply Endpoints filters
+    function applyEndpointsFilters() {
+        endpointsState.search = document.getElementById('endpoints-search').value.trim();
+        endpointsState.exclude = document.getElementById('endpoints-exclude').value.trim();
+        endpointsState.category = document.getElementById('endpoints-category').value;
+        endpointsState.status = document.getElementById('endpoints-status').value;
+        endpointsState.clientPerPage = parseInt(document.getElementById('endpoints-per-page').value);
+        endpointsState.currentPage = 1;
+        endpointsState.loaded = false;
+        endpointsState.cachedData = null;  // Clear cache to reload with new filters
 
-    try {
-        const response = await fetch(`/api/projects/{{ project.id }}/jsfiles?${params}`);
-        const data = await response.json();
+        // Show loading
+        document.getElementById('endpoints-content').style.display = 'none';
+        showEndpointsLoading();
 
-        if (!data.has_data) {
+        loadEndpointsData();
+    }
+
+    // Reset Endpoints filters
+    function resetEndpointsFilters() {
+        document.getElementById('endpoints-search').value = '';
+        document.getElementById('endpoints-exclude').value = '';
+        document.getElementById('endpoints-category').value = '';
+        document.getElementById('endpoints-status').value = '';
+        document.getElementById('endpoints-per-page').value = '100';
+        applyEndpointsFilters();
+    }
+
+    // Load JS Files data via AJAX
+    async function loadJSFilesData() {
+        if (jsfilesState.loaded) {
             document.getElementById('jsfiles-loading').style.display = 'none';
-            document.getElementById('jsfiles-empty').style.display = 'block';
+            document.getElementById('jsfiles-content').style.display = 'block';
             return;
         }
 
-        renderJSFilesTable(data);
-        renderJSFilesPagination(data);
+        const params = new URLSearchParams({
+            page: jsfilesState.currentPage,
+            per_page: jsfilesState.perPage,
+            per_page: jsfilesState.perPage,
+            search: jsfilesState.search,
+            exclude: jsfilesState.exclude,
+            status_filter: jsfilesState.statusFilter,
+            secrets_filter: jsfilesState.secretsFilter
+        });
 
-        // Update last scan date
-        if (data.snapshot_date) {
-            const date = new Date(data.snapshot_date);
-            document.getElementById('jsfiles-last-scan').textContent = date.toLocaleString();
-        }
+        try {
+            const response = await fetch(`/api/projects/{{ project.id }}/jsfiles?${params}`);
+            const data = await response.json();
 
-        // Show secrets alert if any
-        if (data.secrets_count > 0) {
-            document.getElementById('jsfiles-secrets-count').textContent = data.secrets_count;
-            document.getElementById('jsfiles-secrets-alert').style.display = 'block';
-        } else {
-            document.getElementById('jsfiles-secrets-alert').style.display = 'none';
-        }
+            if (!data.has_data) {
+                document.getElementById('jsfiles-loading').style.display = 'none';
+                document.getElementById('jsfiles-empty').style.display = 'block';
+                return;
+            }
 
-        document.getElementById('jsfiles-loading').style.display = 'none';
-        document.getElementById('jsfiles-content').style.display = 'block';
+            renderJSFilesTable(data);
+            renderJSFilesPagination(data);
 
-        jsfilesState.loaded = true;
-    } catch (error) {
-        console.error('Error loading JS files:', error);
-        document.getElementById('jsfiles-loading').innerHTML = `
+            // Update last scan date
+            if (data.snapshot_date) {
+                const date = new Date(data.snapshot_date);
+                document.getElementById('jsfiles-last-scan').textContent = date.toLocaleString();
+            }
+
+            // Show secrets alert if any
+            if (data.secrets_count > 0) {
+                document.getElementById('jsfiles-secrets-count').textContent = data.secrets_count;
+                document.getElementById('jsfiles-secrets-alert').style.display = 'block';
+            } else {
+                document.getElementById('jsfiles-secrets-alert').style.display = 'none';
+            }
+
+            document.getElementById('jsfiles-loading').style.display = 'none';
+            document.getElementById('jsfiles-content').style.display = 'block';
+
+            jsfilesState.loaded = true;
+        } catch (error) {
+            console.error('Error loading JS files:', error);
+            document.getElementById('jsfiles-loading').innerHTML = `
             <div style="text-align: center; padding: 3rem;">
                 <i class="fas fa-exclamation-triangle" style="font-size: 3rem; color: #dc2626; margin-bottom: 1rem;"></i>
                 <h3 style="color: #64748b;">Failed to Load JS Files</h3>
@@ -379,16 +377,16 @@ async function loadJSFilesData() {
                 </button>
             </div>
         `;
+        }
     }
-}
 
-// Render JS Files table
-function renderJSFilesTable(data) {
-    const tbody = document.getElementById('jsfiles-table-body');
-    tbody.innerHTML = '';
+    // Render JS Files table
+    function renderJSFilesTable(data) {
+        const tbody = document.getElementById('jsfiles-table-body');
+        tbody.innerHTML = '';
 
-    if (data.js_files.length === 0) {
-        tbody.innerHTML = `
+        if (data.js_files.length === 0) {
+            tbody.innerHTML = `
             <tr>
                 <td colspan="5" style="padding: 3rem; text-align: center; color: #94a3b8;">
                     <i class="fas fa-search" style="font-size: 2rem; margin-bottom: 0.5rem; display: block;"></i>
@@ -396,44 +394,44 @@ function renderJSFilesTable(data) {
                 </td>
             </tr>
         `;
-        document.getElementById('jsfiles-count-display').textContent = '0 files';
-        return;
-    }
-
-    data.js_files.forEach((file, index) => {
-        const row = document.createElement('tr');
-        row.style.borderBottom = '1px solid #fef3c7';
-        row.style.transition = 'background 0.2s';
-        row.onmouseover = () => row.style.background = '#fffbeb';
-        row.onmouseout = () => row.style.background = 'white';
-
-        const startIndex = (data.page - 1) * data.per_page + index + 1;
-
-        // Status badge
-        let statusBadge = '';
-        if (file.status === 'active') {
-            statusBadge = '<span style="padding: 0.25rem 0.625rem; border-radius: 9999px; font-size: 0.75rem; font-weight: 600; background: #dcfce7; color: #166534;"><i class="fas fa-check-circle"></i> Active</span>';
-        } else if (file.status === 'inactive') {
-            statusBadge = '<span style="padding: 0.25rem 0.625rem; border-radius: 9999px; font-size: 0.75rem; font-weight: 600; background: #fee2e2; color: #991b1b;"><i class="fas fa-times-circle"></i> Inactive</span>';
-        } else {
-            statusBadge = '<span style="padding: 0.25rem 0.625rem; border-radius: 9999px; font-size: 0.75rem; font-weight: 600; background: #f1f5f9; color: #64748b;"><i class="fas fa-question-circle"></i> Unknown</span>';
+            document.getElementById('jsfiles-count-display').textContent = '0 files';
+            return;
         }
 
-        // Secrets badge
-        let secretsBadge = '';
-        if (file.has_secrets) {
-            if (file.risk_level === 'high') {
-                secretsBadge = '<span style="padding: 0.25rem 0.625rem; border-radius: 9999px; font-size: 0.75rem; font-weight: 600; background: #fee2e2; color: #991b1b;"><i class="fas fa-skull-crossbones"></i> High Risk</span>';
-            } else if (file.risk_level === 'medium') {
-                secretsBadge = '<span style="padding: 0.25rem 0.625rem; border-radius: 9999px; font-size: 0.75rem; font-weight: 600; background: #fef3c7; color: #92400e;"><i class="fas fa-exclamation-triangle"></i> Medium</span>';
+        data.js_files.forEach((file, index) => {
+            const row = document.createElement('tr');
+            row.style.borderBottom = '1px solid #fef3c7';
+            row.style.transition = 'background 0.2s';
+            row.onmouseover = () => row.style.background = '#fffbeb';
+            row.onmouseout = () => row.style.background = 'white';
+
+            const startIndex = (data.page - 1) * data.per_page + index + 1;
+
+            // Status badge
+            let statusBadge = '';
+            if (file.status === 'active') {
+                statusBadge = '<span style="padding: 0.25rem 0.625rem; border-radius: 9999px; font-size: 0.75rem; font-weight: 600; background: #dcfce7; color: #166534;"><i class="fas fa-check-circle"></i> Active</span>';
+            } else if (file.status === 'inactive') {
+                statusBadge = '<span style="padding: 0.25rem 0.625rem; border-radius: 9999px; font-size: 0.75rem; font-weight: 600; background: #fee2e2; color: #991b1b;"><i class="fas fa-times-circle"></i> Inactive</span>';
             } else {
-                secretsBadge = '<span style="padding: 0.25rem 0.625rem; border-radius: 9999px; font-size: 0.75rem; font-weight: 600; background: #fed7aa; color: #78350f;"><i class="fas fa-exclamation-circle"></i> Low Risk</span>';
+                statusBadge = '<span style="padding: 0.25rem 0.625rem; border-radius: 9999px; font-size: 0.75rem; font-weight: 600; background: #f1f5f9; color: #64748b;"><i class="fas fa-question-circle"></i> Unknown</span>';
             }
-        } else {
-            secretsBadge = '<span style="padding: 0.25rem 0.625rem; border-radius: 9999px; font-size: 0.75rem; font-weight: 600; background: #dcfce7; color: #166534;"><i class="fas fa-shield-check"></i> Clean</span>';
-        }
 
-        row.innerHTML = `
+            // Secrets badge
+            let secretsBadge = '';
+            if (file.has_secrets) {
+                if (file.risk_level === 'high') {
+                    secretsBadge = '<span style="padding: 0.25rem 0.625rem; border-radius: 9999px; font-size: 0.75rem; font-weight: 600; background: #fee2e2; color: #991b1b;"><i class="fas fa-skull-crossbones"></i> High Risk</span>';
+                } else if (file.risk_level === 'medium') {
+                    secretsBadge = '<span style="padding: 0.25rem 0.625rem; border-radius: 9999px; font-size: 0.75rem; font-weight: 600; background: #fef3c7; color: #92400e;"><i class="fas fa-exclamation-triangle"></i> Medium</span>';
+                } else {
+                    secretsBadge = '<span style="padding: 0.25rem 0.625rem; border-radius: 9999px; font-size: 0.75rem; font-weight: 600; background: #fed7aa; color: #78350f;"><i class="fas fa-exclamation-circle"></i> Low Risk</span>';
+                }
+            } else {
+                secretsBadge = '<span style="padding: 0.25rem 0.625rem; border-radius: 9999px; font-size: 0.75rem; font-weight: 600; background: #dcfce7; color: #166534;"><i class="fas fa-shield-check"></i> Clean</span>';
+            }
+
+            row.innerHTML = `
             <td style="padding: 1rem; color: #64748b; font-size: 0.875rem;">${startIndex}</td>
             <td style="padding: 1rem;">${statusBadge}</td>
             <td style="padding: 1rem;">
@@ -456,95 +454,96 @@ function renderJSFilesTable(data) {
             </td>
         `;
 
-        tbody.appendChild(row);
-    });
+            tbody.appendChild(row);
+        });
 
-    // Update counters
-    document.getElementById('jsfiles-count-display').textContent = `${data.total} file${data.total !== 1 ? 's' : ''}`;
-    document.getElementById('jsfiles-showing-start').textContent = data.showing_start;
-    document.getElementById('jsfiles-showing-end').textContent = data.showing_end;
-    document.getElementById('jsfiles-total').textContent = data.total;
-}
-
-// Render JS Files pagination
-function renderJSFilesPagination(data) {
-    const container = document.getElementById('jsfiles-pagination');
-    container.innerHTML = '';
-
-    if (data.total_pages <= 1) return;
-
-    // Previous button
-    const prevBtn = document.createElement('button');
-    prevBtn.innerHTML = '<i class="fas fa-chevron-left"></i> Prev';
-    prevBtn.style.cssText = 'padding: 0.5rem 1rem; border: 2px solid #fde68a; border-radius: 8px; background: white; color: #78350f; cursor: pointer; font-size: 0.875rem; font-weight: 600; transition: all 0.2s;';
-    prevBtn.disabled = data.page === 1;
-    if (prevBtn.disabled) {
-        prevBtn.style.opacity = '0.5';
-        prevBtn.style.cursor = 'not-allowed';
-    }
-    prevBtn.onclick = () => gotoJSFilesPage(data.page - 1);
-    container.appendChild(prevBtn);
-
-    // Page numbers
-    const maxPages = 5;
-    let startPage = Math.max(1, data.page - Math.floor(maxPages / 2));
-    let endPage = Math.min(data.total_pages, startPage + maxPages - 1);
-
-    if (endPage - startPage < maxPages - 1) {
-        startPage = Math.max(1, endPage - maxPages + 1);
+        // Update counters
+        document.getElementById('jsfiles-count-display').textContent = `${data.total} file${data.total !== 1 ? 's' : ''}`;
+        document.getElementById('jsfiles-showing-start').textContent = data.showing_start;
+        document.getElementById('jsfiles-showing-end').textContent = data.showing_end;
+        document.getElementById('jsfiles-total').textContent = data.total;
     }
 
-    for (let i = startPage; i <= endPage; i++) {
-        const pageBtn = document.createElement('button');
-        pageBtn.textContent = i;
-        pageBtn.style.cssText = 'padding: 0.5rem 0.875rem; border: 2px solid #fde68a; border-radius: 8px; cursor: pointer; font-size: 0.875rem; font-weight: 600; transition: all 0.2s;';
+    // Render JS Files pagination
+    function renderJSFilesPagination(data) {
+        const container = document.getElementById('jsfiles-pagination');
+        container.innerHTML = '';
 
-        if (i === data.page) {
-            pageBtn.style.background = 'linear-gradient(135deg, #f59e0b 0%, #d97706 100%)';
-            pageBtn.style.color = 'white';
-            pageBtn.style.borderColor = '#f59e0b';
-        } else {
-            pageBtn.style.background = 'white';
-            pageBtn.style.color = '#78350f';
+        if (data.total_pages <= 1) return;
+
+        // Previous button
+        const prevBtn = document.createElement('button');
+        prevBtn.innerHTML = '<i class="fas fa-chevron-left"></i> Prev';
+        prevBtn.style.cssText = 'padding: 0.5rem 1rem; border: 2px solid #fde68a; border-radius: 8px; background: white; color: #78350f; cursor: pointer; font-size: 0.875rem; font-weight: 600; transition: all 0.2s;';
+        prevBtn.disabled = data.page === 1;
+        if (prevBtn.disabled) {
+            prevBtn.style.opacity = '0.5';
+            prevBtn.style.cursor = 'not-allowed';
+        }
+        prevBtn.onclick = () => gotoJSFilesPage(data.page - 1);
+        container.appendChild(prevBtn);
+
+        // Page numbers
+        const maxPages = 5;
+        let startPage = Math.max(1, data.page - Math.floor(maxPages / 2));
+        let endPage = Math.min(data.total_pages, startPage + maxPages - 1);
+
+        if (endPage - startPage < maxPages - 1) {
+            startPage = Math.max(1, endPage - maxPages + 1);
         }
 
-        pageBtn.onclick = () => gotoJSFilesPage(i);
-        container.appendChild(pageBtn);
+        for (let i = startPage; i <= endPage; i++) {
+            const pageBtn = document.createElement('button');
+            pageBtn.textContent = i;
+            pageBtn.style.cssText = 'padding: 0.5rem 0.875rem; border: 2px solid #fde68a; border-radius: 8px; cursor: pointer; font-size: 0.875rem; font-weight: 600; transition: all 0.2s;';
+
+            if (i === data.page) {
+                pageBtn.style.background = 'linear-gradient(135deg, #f59e0b 0%, #d97706 100%)';
+                pageBtn.style.color = 'white';
+                pageBtn.style.borderColor = '#f59e0b';
+            } else {
+                pageBtn.style.background = 'white';
+                pageBtn.style.color = '#78350f';
+            }
+
+            pageBtn.onclick = () => gotoJSFilesPage(i);
+            container.appendChild(pageBtn);
+        }
+
+        // Next button
+        const nextBtn = document.createElement('button');
+        nextBtn.innerHTML = 'Next <i class="fas fa-chevron-right"></i>';
+        nextBtn.style.cssText = 'padding: 0.5rem 1rem; border: 2px solid #fde68a; border-radius: 8px; background: white; color: #78350f; cursor: pointer; font-size: 0.875rem; font-weight: 600; transition: all 0.2s;';
+        nextBtn.disabled = data.page === data.total_pages;
+        if (nextBtn.disabled) {
+            nextBtn.style.opacity = '0.5';
+            nextBtn.style.cursor = 'not-allowed';
+        }
+        nextBtn.onclick = () => gotoJSFilesPage(data.page + 1);
+        container.appendChild(nextBtn);
     }
 
-    // Next button
-    const nextBtn = document.createElement('button');
-    nextBtn.innerHTML = 'Next <i class="fas fa-chevron-right"></i>';
-    nextBtn.style.cssText = 'padding: 0.5rem 1rem; border: 2px solid #fde68a; border-radius: 8px; background: white; color: #78350f; cursor: pointer; font-size: 0.875rem; font-weight: 600; transition: all 0.2s;';
-    nextBtn.disabled = data.page === data.total_pages;
-    if (nextBtn.disabled) {
-        nextBtn.style.opacity = '0.5';
-        nextBtn.style.cursor = 'not-allowed';
+    // Navigate to JS Files page
+    function gotoJSFilesPage(page) {
+        jsfilesState.currentPage = page;
+        jsfilesState.loaded = false;
+        loadJSFilesData();
     }
-    nextBtn.onclick = () => gotoJSFilesPage(data.page + 1);
-    container.appendChild(nextBtn);
-}
 
-// Navigate to JS Files page
-function gotoJSFilesPage(page) {
-    jsfilesState.currentPage = page;
-    jsfilesState.loaded = false;
-    loadJSFilesData();
-}
+    // Apply JS Files filters
+    function applyJSFilesFilters() {
+        jsfilesState.search = document.getElementById('jsfiles-search').value.trim();
+        jsfilesState.exclude = document.getElementById('jsfiles-exclude').value.trim();
+        jsfilesState.statusFilter = document.getElementById('jsfiles-status').value;
+        jsfilesState.secretsFilter = document.getElementById('jsfiles-secrets').value;
+        jsfilesState.perPage = parseInt(document.getElementById('jsfiles-per-page').value);
+        jsfilesState.currentPage = 1;
+        jsfilesState.loaded = false;
 
-// Apply JS Files filters
-function applyJSFilesFilters() {
-    jsfilesState.search = document.getElementById('jsfiles-search').value;
-    jsfilesState.statusFilter = document.getElementById('jsfiles-status').value;
-    jsfilesState.secretsFilter = document.getElementById('jsfiles-secrets').value;
-    jsfilesState.perPage = parseInt(document.getElementById('jsfiles-per-page').value);
-    jsfilesState.currentPage = 1;
-    jsfilesState.loaded = false;
-
-    // Show loading
-    document.getElementById('jsfiles-content').style.display = 'none';
-    document.getElementById('jsfiles-loading').style.display = 'block';
-    document.getElementById('jsfiles-loading').innerHTML = `
+        // Show loading
+        document.getElementById('jsfiles-content').style.display = 'none';
+        document.getElementById('jsfiles-loading').style.display = 'block';
+        document.getElementById('jsfiles-loading').innerHTML = `
         <div style="text-align: center; padding: 3rem;">
             <div style="display: inline-block; padding: 2rem; background: linear-gradient(135deg, #f59e0b 0%, #d97706 100%); border-radius: 50%; margin-bottom: 1.5rem;">
                 <i class="fas fa-spinner fa-spin" style="font-size: 3rem; color: white;"></i>
@@ -553,24 +552,25 @@ function applyJSFilesFilters() {
         </div>
     `;
 
-    loadJSFilesData();
-}
+        loadJSFilesData();
+    }
 
-// Reset JS Files filters
-function resetJSFilesFilters() {
-    document.getElementById('jsfiles-search').value = '';
-    document.getElementById('jsfiles-status').value = '';
-    document.getElementById('jsfiles-secrets').value = '';
-    document.getElementById('jsfiles-per-page').value = '100';
-    applyJSFilesFilters();
-}
+    // Reset JS Files filters
+    function resetJSFilesFilters() {
+        document.getElementById('jsfiles-search').value = '';
+        document.getElementById('jsfiles-exclude').value = '';
+        document.getElementById('jsfiles-status').value = '';
+        document.getElementById('jsfiles-secrets').value = '';
+        document.getElementById('jsfiles-per-page').value = '100';
+        applyJSFilesFilters();
+    }
 
-// Copy to clipboard utility
-function copyToClipboard(text) {
-    navigator.clipboard.writeText(text).then(() => {
-        showToast('URL copied to clipboard!', 'success');
-    }).catch(() => {
-        showToast('Failed to copy URL', 'error');
-    });
-}
+    // Copy to clipboard utility
+    function copyToClipboard(text) {
+        navigator.clipboard.writeText(text).then(() => {
+            showToast('URL copied to clipboard!', 'success');
+        }).catch(() => {
+            showToast('Failed to copy URL', 'error');
+        });
+    }
 </script>

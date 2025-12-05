@@ -1,157 +1,203 @@
-    <!-- Tab: Endpoints -->
-    <div id="tab-endpoints" class="tab-content">
-        <div class="section">
-            <!-- Loading State -->
-            <div id="endpoints-loading" style="text-align: center; padding: 4rem 2rem;">
-                <div style="display: inline-block; padding: 2rem; background: linear-gradient(135deg, #667eea 0%, #764ba2 100%); border-radius: 50%; margin-bottom: 1.5rem;">
-                    <i class="fas fa-spinner fa-spin" style="font-size: 3rem; color: white;"></i>
-                </div>
-                <h3 style="color: #1e293b; font-size: 1.5rem; margin-bottom: 0.5rem;">Loading Endpoints...</h3>
-                <p style="color: #64748b; font-size: 0.875rem;">Fetching endpoint data from the server</p>
-                <div style="width: 200px; height: 4px; background: #e2e8f0; border-radius: 4px; margin: 1.5rem auto; overflow: hidden;">
-                    <div style="width: 60%; height: 100%; background: linear-gradient(90deg, #667eea, #764ba2); animation: loading 1.5s ease-in-out infinite;"></div>
-                </div>
+<!-- Tab: Endpoints -->
+<div id="tab-endpoints" class="tab-content">
+    <div class="section">
+        <!-- Loading State -->
+        <div id="endpoints-loading" style="text-align: center; padding: 4rem 2rem;">
+            <div
+                style="display: inline-block; padding: 2rem; background: linear-gradient(135deg, #667eea 0%, #764ba2 100%); border-radius: 50%; margin-bottom: 1.5rem;">
+                <i class="fas fa-spinner fa-spin" style="font-size: 3rem; color: white;"></i>
             </div>
-
-            <!-- Main Content -->
-            <div id="endpoints-content" style="display: none;">
-                <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 1.5rem;">
-                    <h3 style="margin: 0; color: #1e293b; font-size: 1.25rem;">
-                        <i class="fas fa-link"></i> Discovered Endpoints
-                    </h3>
-                    <div style="color: #64748b; font-size: 0.875rem;">
-                        <i class="fas fa-clock"></i> Last scan: <span id="endpoints-last-scan">-</span>
-                    </div>
+            <h3 style="color: #1e293b; font-size: 1.5rem; margin-bottom: 0.5rem;">Loading Endpoints...</h3>
+            <p style="color: #64748b; font-size: 0.875rem;">Fetching endpoint data from the server</p>
+            <div
+                style="width: 200px; height: 4px; background: #e2e8f0; border-radius: 4px; margin: 1.5rem auto; overflow: hidden;">
+                <div
+                    style="width: 60%; height: 100%; background: linear-gradient(90deg, #667eea, #764ba2); animation: loading 1.5s ease-in-out infinite;">
                 </div>
-
-                <!-- Filters Bar -->
-                <div style="background: white; padding: 1.25rem; border-radius: 12px; box-shadow: 0 1px 3px rgba(0,0,0,0.1); margin-bottom: 1.5rem;">
-                    <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)); gap: 1rem; margin-bottom: 1rem;">
-                        <!-- Search -->
-                        <div>
-                            <label style="display: block; font-size: 0.75rem; font-weight: 600; color: #475569; margin-bottom: 0.5rem; text-transform: uppercase; letter-spacing: 0.5px;">
-                                <i class="fas fa-search"></i> Search
-                            </label>
-                            <input type="text" id="endpoints-search" placeholder="Search URL or title..."
-                                   style="width: 100%; padding: 0.625rem 1rem; border: 2px solid #e2e8f0; border-radius: 8px; font-size: 0.875rem; transition: all 0.2s;"
-                                   onfocus="this.style.borderColor='#667eea'"
-                                   onblur="this.style.borderColor='#e2e8f0'">
-                        </div>
-
-                        <!-- Category Filter -->
-                        <div>
-                            <label style="display: block; font-size: 0.75rem; font-weight: 600; color: #475569; margin-bottom: 0.5rem; text-transform: uppercase; letter-spacing: 0.5px;">
-                                <i class="fas fa-filter"></i> Category
-                            </label>
-                            <select id="endpoints-category"
-                                    style="width: 100%; padding: 0.625rem 1rem; border: 2px solid #e2e8f0; border-radius: 8px; font-size: 0.875rem; background: white; cursor: pointer;">
-                                <option value="">All Categories</option>
-                                <option value="sensitive">🔥 Sensitive</option>
-                                <option value="backup">📦 Backup</option>
-                                <option value="dev">🛠️ Dev/Admin</option>
-                                <option value="file">📄 Documents</option>
-                                <option value="config">⚙️ Config</option>
-                                <option value="auth">🔐 Auth</option>
-                                <option value="api">🔌 API</option>
-                            </select>
-                        </div>
-
-                        <!-- Status Filter -->
-                        <div>
-                            <label style="display: block; font-size: 0.75rem; font-weight: 600; color: #475569; margin-bottom: 0.5rem; text-transform: uppercase; letter-spacing: 0.5px;">
-                                <i class="fas fa-signal"></i> Status
-                            </label>
-                            <select id="endpoints-status"
-                                    style="width: 100%; padding: 0.625rem 1rem; border: 2px solid #e2e8f0; border-radius: 8px; font-size: 0.875rem; background: white; cursor: pointer;">
-                                <option value="">All Status</option>
-                                <option value="200">✅ 200 OK</option>
-                                <option value="300">↪️ 3xx Redirect</option>
-                                <option value="400">⚠️ 4xx Error</option>
-                                <option value="500">❌ 5xx Error</option>
-                                <option value="none">⚪ No Data</option>
-                            </select>
-                        </div>
-
-                        <!-- Per Page -->
-                        <div>
-                            <label style="display: block; font-size: 0.75rem; font-weight: 600; color: #475569; margin-bottom: 0.5rem; text-transform: uppercase; letter-spacing: 0.5px;">
-                                <i class="fas fa-list"></i> Per Page
-                            </label>
-                            <select id="endpoints-per-page"
-                                    style="width: 100%; padding: 0.625rem 1rem; border: 2px solid #e2e8f0; border-radius: 8px; font-size: 0.875rem; background: white; cursor: pointer;">
-                                <option value="50">50</option>
-                                <option value="100" selected>100</option>
-                                <option value="250">250</option>
-                                <option value="500">500</option>
-                            </select>
-                        </div>
-                    </div>
-
-                    <!-- Filter Actions -->
-                    <div style="display: flex; gap: 0.75rem; align-items: center;">
-                        <button onclick="applyEndpointsFilters()"
-                                style="padding: 0.625rem 1.25rem; background: linear-gradient(135deg, #667eea 0%, #764ba2 100%); color: white; border: none; border-radius: 8px; cursor: pointer; font-size: 0.875rem; font-weight: 600; transition: transform 0.2s;"
-                                onmouseover="this.style.transform='translateY(-2px)'"
-                                onmouseout="this.style.transform='translateY(0)'">
-                            <i class="fas fa-filter"></i> Apply Filters
-                        </button>
-                        <button onclick="resetEndpointsFilters()"
-                                style="padding: 0.625rem 1.25rem; background: white; color: #64748b; border: 2px solid #e2e8f0; border-radius: 8px; cursor: pointer; font-size: 0.875rem; font-weight: 600;">
-                            <i class="fas fa-undo"></i> Reset
-                        </button>
-                        <div id="endpoints-filter-info" style="margin-left: auto; color: #64748b; font-size: 0.875rem; font-weight: 500;">
-                            <i class="fas fa-info-circle"></i> <span id="endpoints-count-display">0 endpoints</span>
-                        </div>
-                    </div>
-                </div>
-
-                <!-- Table -->
-                <div style="background: white; border-radius: 12px; box-shadow: 0 1px 3px rgba(0,0,0,0.1); overflow: hidden;">
-                    <div class="table-responsive">
-                        <table class="table" style="margin: 0;">
-                            <thead style="background: linear-gradient(135deg, #f8fafc 0%, #f1f5f9 100%); border-bottom: 2px solid #e2e8f0;">
-                                <tr>
-                                    <th style="padding: 1rem; font-weight: 600; color: #475569; font-size: 0.8125rem; text-transform: uppercase; letter-spacing: 0.5px;">#</th>
-                                    <th style="padding: 1rem; font-weight: 600; color: #475569; font-size: 0.8125rem; text-transform: uppercase; letter-spacing: 0.5px; width: 80px;">Status</th>
-                                    <th style="padding: 1rem; font-weight: 600; color: #475569; font-size: 0.8125rem; text-transform: uppercase; letter-spacing: 0.5px; width: 140px;">Categories</th>
-                                    <th style="padding: 1rem; font-weight: 600; color: #475569; font-size: 0.8125rem; text-transform: uppercase; letter-spacing: 0.5px;">URL</th>
-                                    <th style="padding: 1rem; font-weight: 600; color: #475569; font-size: 0.8125rem; text-transform: uppercase; letter-spacing: 0.5px; width: 220px;">Title</th>
-                                </tr>
-                            </thead>
-                            <tbody id="endpoints-table-body">
-                                <!-- Data loaded via AJAX -->
-                            </tbody>
-                        </table>
-                    </div>
-                </div>
-
-                <!-- Pagination -->
-                <div style="margin-top: 1.5rem; display: flex; justify-content: space-between; align-items: center; padding: 1rem; background: white; border-radius: 12px; box-shadow: 0 1px 3px rgba(0,0,0,0.1);">
-                    <div style="color: #64748b; font-size: 0.875rem; font-weight: 500;">
-                        Showing <span id="endpoints-showing-start" style="font-weight: 700; color: #475569;">0</span> -
-                        <span id="endpoints-showing-end" style="font-weight: 700; color: #475569;">0</span> of
-                        <span id="endpoints-total" style="font-weight: 700; color: #475569;">0</span> endpoints
-                    </div>
-                    <div id="endpoints-pagination" style="display: flex; gap: 0.5rem; align-items: center;">
-                        <!-- Pagination buttons loaded via JS -->
-                    </div>
-                </div>
-            </div>
-
-            <!-- Empty State -->
-            <div id="endpoints-empty" style="display: none; text-align: center; padding: 4rem 2rem;">
-                <div style="display: inline-block; padding: 2rem; background: #f8fafc; border-radius: 50%; margin-bottom: 1.5rem;">
-                    <i class="fas fa-link" style="font-size: 3rem; color: #94a3b8;"></i>
-                </div>
-                <h3 style="color: #64748b; font-size: 1.25rem; margin-bottom: 0.5rem;">No Endpoint Data</h3>
-                <p style="color: #94a3b8; font-size: 0.875rem;">Run a weekly scan to discover endpoints</p>
             </div>
         </div>
+
+        <!-- Main Content -->
+        <div id="endpoints-content" style="display: none;">
+            <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 1.5rem;">
+                <h3 style="margin: 0; color: #1e293b; font-size: 1.25rem;">
+                    <i class="fas fa-link"></i> Discovered Endpoints
+                </h3>
+                <div style="color: #64748b; font-size: 0.875rem;">
+                    <i class="fas fa-clock"></i> Last scan: <span id="endpoints-last-scan">-</span>
+                </div>
+            </div>
+
+            <!-- Filters Bar -->
+            <div
+                style="background: white; padding: 1.25rem; border-radius: 12px; box-shadow: 0 1px 3px rgba(0,0,0,0.1); margin-bottom: 1.5rem;">
+                <!-- Primary Filters (Search & Exclude) -->
+                <div style="display: flex; gap: 1rem; margin-bottom: 1rem; flex-wrap: wrap;">
+                    <!-- Search -->
+                    <div style="flex: 1; min-width: 250px;">
+                        <label
+                            style="display: block; font-size: 0.75rem; font-weight: 600; color: #475569; margin-bottom: 0.5rem; text-transform: uppercase; letter-spacing: 0.5px;">
+                            <i class="fas fa-search"></i> Search
+                        </label>
+                        <input type="text" id="endpoints-search" placeholder="Search URL or title..."
+                            style="width: 100%; padding: 0.625rem 1rem; border: 2px solid #e2e8f0; border-radius: 8px; font-size: 0.875rem; transition: all 0.2s;"
+                            onfocus="this.style.borderColor='#667eea'" onblur="this.style.borderColor='#e2e8f0'">
+                    </div>
+
+                    <!-- Exclude -->
+                    <div style="flex: 1; min-width: 250px;">
+                        <label
+                            style="display: block; font-size: 0.75rem; font-weight: 600; color: #475569; margin-bottom: 0.5rem; text-transform: uppercase; letter-spacing: 0.5px;">
+                            <i class="fas fa-ban"></i> Exclude
+                        </label>
+                        <input type="text" id="endpoints-exclude" placeholder="Ignore (e.g. css,png)..."
+                            style="width: 100%; padding: 0.625rem 1rem; border: 2px solid #e2e8f0; border-radius: 8px; font-size: 0.875rem; transition: all 0.2s;"
+                            onfocus="this.style.borderColor='#667eea'" onblur="this.style.borderColor='#e2e8f0'"
+                            title="Comma-separated patterns to exclude">
+                    </div>
+                </div>
+
+                <div
+                    style="display: grid; grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)); gap: 1rem; margin-bottom: 1rem;">
+
+
+                    <!-- Category Filter -->
+                    <div>
+                        <label
+                            style="display: block; font-size: 0.75rem; font-weight: 600; color: #475569; margin-bottom: 0.5rem; text-transform: uppercase; letter-spacing: 0.5px;">
+                            <i class="fas fa-filter"></i> Category
+                        </label>
+                        <select id="endpoints-category"
+                            style="width: 100%; padding: 0.625rem 1rem; border: 2px solid #e2e8f0; border-radius: 8px; font-size: 0.875rem; background: white; cursor: pointer;">
+                            <option value="">All Categories</option>
+                            <option value="sensitive">🔥 Sensitive</option>
+                            <option value="backup">📦 Backup</option>
+                            <option value="dev">🛠️ Dev/Admin</option>
+                            <option value="file">📄 Documents</option>
+                            <option value="config">⚙️ Config</option>
+                            <option value="auth">🔐 Auth</option>
+                            <option value="api">🔌 API</option>
+                        </select>
+                    </div>
+
+                    <!-- Status Filter -->
+                    <div>
+                        <label
+                            style="display: block; font-size: 0.75rem; font-weight: 600; color: #475569; margin-bottom: 0.5rem; text-transform: uppercase; letter-spacing: 0.5px;">
+                            <i class="fas fa-signal"></i> Status
+                        </label>
+                        <select id="endpoints-status"
+                            style="width: 100%; padding: 0.625rem 1rem; border: 2px solid #e2e8f0; border-radius: 8px; font-size: 0.875rem; background: white; cursor: pointer;">
+                            <option value="">All Status</option>
+                            <option value="200">✅ 200 OK</option>
+                            <option value="300">↪️ 3xx Redirect</option>
+                            <option value="400">⚠️ 4xx Error</option>
+                            <option value="500">❌ 5xx Error</option>
+                            <option value="none">⚪ No Data</option>
+                        </select>
+                    </div>
+
+                    <!-- Per Page -->
+                    <div>
+                        <label
+                            style="display: block; font-size: 0.75rem; font-weight: 600; color: #475569; margin-bottom: 0.5rem; text-transform: uppercase; letter-spacing: 0.5px;">
+                            <i class="fas fa-list"></i> Per Page
+                        </label>
+                        <select id="endpoints-per-page"
+                            style="width: 100%; padding: 0.625rem 1rem; border: 2px solid #e2e8f0; border-radius: 8px; font-size: 0.875rem; background: white; cursor: pointer;">
+                            <option value="50">50</option>
+                            <option value="100" selected>100</option>
+                            <option value="250">250</option>
+                            <option value="500">500</option>
+                        </select>
+                    </div>
+                </div>
+
+                <!-- Filter Actions -->
+                <div style="display: flex; gap: 0.75rem; align-items: center;">
+                    <button onclick="applyEndpointsFilters()"
+                        style="padding: 0.625rem 1.25rem; background: linear-gradient(135deg, #667eea 0%, #764ba2 100%); color: white; border: none; border-radius: 8px; cursor: pointer; font-size: 0.875rem; font-weight: 600; transition: transform 0.2s;"
+                        onmouseover="this.style.transform='translateY(-2px)'"
+                        onmouseout="this.style.transform='translateY(0)'">
+                        <i class="fas fa-filter"></i> Apply Filters
+                    </button>
+                    <button onclick="resetEndpointsFilters()"
+                        style="padding: 0.625rem 1.25rem; background: white; color: #64748b; border: 2px solid #e2e8f0; border-radius: 8px; cursor: pointer; font-size: 0.875rem; font-weight: 600;">
+                        <i class="fas fa-undo"></i> Reset
+                    </button>
+                    <div id="endpoints-filter-info"
+                        style="margin-left: auto; color: #64748b; font-size: 0.875rem; font-weight: 500;">
+                        <i class="fas fa-info-circle"></i> <span id="endpoints-count-display">0 endpoints</span>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Table -->
+            <div
+                style="background: white; border-radius: 12px; box-shadow: 0 1px 3px rgba(0,0,0,0.1); overflow: hidden;">
+                <div class="table-responsive">
+                    <table class="table" style="margin: 0;">
+                        <thead
+                            style="background: linear-gradient(135deg, #f8fafc 0%, #f1f5f9 100%); border-bottom: 2px solid #e2e8f0;">
+                            <tr>
+                                <th
+                                    style="padding: 1rem; font-weight: 600; color: #475569; font-size: 0.8125rem; text-transform: uppercase; letter-spacing: 0.5px;">
+                                    #</th>
+                                <th
+                                    style="padding: 1rem; font-weight: 600; color: #475569; font-size: 0.8125rem; text-transform: uppercase; letter-spacing: 0.5px; width: 80px;">
+                                    Status</th>
+                                <th
+                                    style="padding: 1rem; font-weight: 600; color: #475569; font-size: 0.8125rem; text-transform: uppercase; letter-spacing: 0.5px; width: 140px;">
+                                    Categories</th>
+                                <th
+                                    style="padding: 1rem; font-weight: 600; color: #475569; font-size: 0.8125rem; text-transform: uppercase; letter-spacing: 0.5px;">
+                                    URL</th>
+                                <th
+                                    style="padding: 1rem; font-weight: 600; color: #475569; font-size: 0.8125rem; text-transform: uppercase; letter-spacing: 0.5px; width: 220px;">
+                                    Title</th>
+                            </tr>
+                        </thead>
+                        <tbody id="endpoints-table-body">
+                            <!-- Data loaded via AJAX -->
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+
+            <!-- Pagination -->
+            <div
+                style="margin-top: 1.5rem; display: flex; justify-content: space-between; align-items: center; padding: 1rem; background: white; border-radius: 12px; box-shadow: 0 1px 3px rgba(0,0,0,0.1);">
+                <div style="color: #64748b; font-size: 0.875rem; font-weight: 500;">
+                    Showing <span id="endpoints-showing-start" style="font-weight: 700; color: #475569;">0</span> -
+                    <span id="endpoints-showing-end" style="font-weight: 700; color: #475569;">0</span> of
+                    <span id="endpoints-total" style="font-weight: 700; color: #475569;">0</span> endpoints
+                </div>
+                <div id="endpoints-pagination" style="display: flex; gap: 0.5rem; align-items: center;">
+                    <!-- Pagination buttons loaded via JS -->
+                </div>
+            </div>
+        </div>
+
+        <!-- Empty State -->
+        <div id="endpoints-empty" style="display: none; text-align: center; padding: 4rem 2rem;">
+            <div
+                style="display: inline-block; padding: 2rem; background: #f8fafc; border-radius: 50%; margin-bottom: 1.5rem;">
+                <i class="fas fa-link" style="font-size: 3rem; color: #94a3b8;"></i>
+            </div>
+            <h3 style="color: #64748b; font-size: 1.25rem; margin-bottom: 0.5rem;">No Endpoint Data</h3>
+            <p style="color: #94a3b8; font-size: 0.875rem;">Run a weekly scan to discover endpoints</p>
+        </div>
     </div>
+</div>
 
 <style>
-@keyframes loading {
-    0% { transform: translateX(-100%); }
-    100% { transform: translateX(300%); }
-}
+    @keyframes loading {
+        0% {
+            transform: translateX(-100%);
+        }
+
+        100% {
+            transform: translateX(300%);
+        }
+    }
 </style>
