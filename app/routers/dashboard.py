@@ -134,6 +134,26 @@ def project_detail(
         Event.created_at >= week_ago
     ).order_by(Event.created_at.desc()).limit(50).all()
 
+    # Get asset changes for visible rows
+    asset_changes = {}
+    if paginated_subdomains:
+        # Fetch all events in window to map to assets
+        # We fetch more here to ensure coverage, but still limit to prevent OOM on massive datasets
+        scan_events = db.query(Event).filter(
+            Event.project_id == project_id,
+            Event.created_at >= week_ago
+        ).order_by(Event.created_at.desc()).limit(1000).all()
+        
+        for event in scan_events:
+            if not event.related_entities:
+                continue
+                
+            subdomain = event.related_entities.get("subdomain")
+            if subdomain and subdomain in paginated_subdomains:
+                if subdomain not in asset_changes:
+                    asset_changes[subdomain] = []
+                asset_changes[subdomain].append(event)
+
     # Get recent scans
     recent_scans = db.query(ScanLog).filter(
         ScanLog.project_id == project_id
@@ -145,6 +165,7 @@ def project_detail(
         "project": project,
         "latest_snapshots": latest_snapshots,
         "recent_events": recent_events,
+        "asset_changes": asset_changes,
         "recent_scans": recent_scans,
         # Pagination data
         "paginated_subdomains": paginated_subdomains,
