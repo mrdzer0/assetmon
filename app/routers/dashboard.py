@@ -97,7 +97,7 @@ def project_detail(
         if snapshot:
             latest_snapshots[snap_type] = snapshot
 
-    # Server-side pagination for All Assets
+    # Server-side pagination for All Assets using helper
     all_subdomains = []
     total_subdomains = 0
     paginated_subdomains = []
@@ -105,74 +105,27 @@ def project_detail(
     showing_start = 0
     showing_end = 0
 
-    if "subdomains" in latest_snapshots:
-        all_subdomains = sorted(latest_snapshots["subdomains"].data.get("subdomains", []))
+    # Get filtered assets
+    filtered_subdomains = _get_filtered_assets(
+        latest_snapshots,
+        search=search,
+        exclude=exclude,
+        status_filter=status_filter,
+        tech_filter=tech_filter
+    )
+    
+    # Calculate pagination
+    total_subdomains = len(filtered_subdomains)
+    total_pages = max(1, (total_subdomains + per_page - 1) // per_page)
+    page = max(1, min(page, total_pages))  # Clamp page number
 
-        # Apply filters
-        filtered_subdomains = []
-        dns_data = latest_snapshots.get("dns", {}).data.get("dns_records", {}) if "dns" in latest_snapshots else {}
-        http_data = latest_snapshots.get("http", {}).data.get("http_records", {}) if "http" in latest_snapshots else {}
+    start_idx = (page - 1) * per_page
+    end_idx = min(start_idx + per_page, total_subdomains)
+    paginated_subdomains = filtered_subdomains[start_idx:end_idx]
 
-        # Parse exclude patterns
-        exclude_patterns = [p.strip().lower() for p in exclude.split(",") if p.strip()]
-
-        for subdomain in all_subdomains:
-            # Check exclude patterns
-            if exclude_patterns:
-                should_exclude = False
-                for pattern in exclude_patterns:
-                    if pattern in subdomain.lower():
-                        should_exclude = True
-                        break
-                if should_exclude:
-                    continue
-
-            # Get related data
-            dns_record = dns_data.get(subdomain, {})
-            http_url_https = f"https://{subdomain}"
-            http_url_http = f"http://{subdomain}"
-            http_record = http_data.get(http_url_https) or http_data.get(http_url_http, {})
-
-            # Apply search filter
-            if search:
-                search_lower = search.lower()
-                matches_search = (
-                    search_lower in subdomain.lower() or
-                    search_lower in http_record.get("title", "").lower() or
-                    search_lower in str(dns_record.get("a", [])).lower() or
-                    search_lower in str(dns_record.get("cname", [])).lower() or
-                    search_lower in str(http_record.get("technologies", [])).lower()
-                )
-                if not matches_search:
-                    continue
-
-            # Apply status filter
-            if status_filter:
-                status_code = http_record.get("status_code", "")
-                if not str(status_code).startswith(status_filter):
-                    continue
-
-            # Apply technology filter
-            if tech_filter:
-                technologies = http_record.get("technologies", [])
-                tech_str = ",".join(technologies).lower() if isinstance(technologies, list) else str(technologies).lower()
-                if tech_filter.lower() not in tech_str:
-                    continue
-
-            filtered_subdomains.append(subdomain)
-
-        # Calculate pagination
-        total_subdomains = len(filtered_subdomains)
-        total_pages = max(1, (total_subdomains + per_page - 1) // per_page)
-        page = max(1, min(page, total_pages))  # Clamp page number
-
-        start_idx = (page - 1) * per_page
-        end_idx = min(start_idx + per_page, total_subdomains)
-        paginated_subdomains = filtered_subdomains[start_idx:end_idx]
-
-        # Calculate display indices (1-based)
-        showing_start = start_idx + 1 if total_subdomains > 0 else 0
-        showing_end = end_idx
+    # Calculate display indices (1-based)
+    showing_start = start_idx + 1 if total_subdomains > 0 else 0
+    showing_end = end_idx
 
     # Get recent events (last 7 days)
     week_ago = datetime.utcnow() - timedelta(days=7)
@@ -201,12 +154,171 @@ def project_detail(
         "total_pages": total_pages,
         "showing_start": showing_start,
         "showing_end": showing_end,
-        "showing_end": showing_end,
         "search": search,
         "exclude": exclude,
         "status_filter": status_filter,
         "tech_filter": tech_filter
     })
+
+
+def _get_filtered_assets(latest_snapshots, search="", exclude="", status_filter="", tech_filter=""):
+    """Helper to filter assets based on criteria"""
+    if "subdomains" not in latest_snapshots:
+        return []
+
+    all_subdomains = sorted(latest_snapshots["subdomains"].data.get("subdomains", []))
+    
+    # Apply filters
+    filtered_subdomains = []
+    dns_data = latest_snapshots.get("dns", {}).data.get("dns_records", {}) if "dns" in latest_snapshots else {}
+    http_data = latest_snapshots.get("http", {}).data.get("http_records", {}) if "http" in latest_snapshots else {}
+
+    # Parse exclude patterns
+    exclude_patterns = [p.strip().lower() for p in exclude.split(",") if p.strip()]
+
+    for subdomain in all_subdomains:
+        # Check exclude patterns
+        if exclude_patterns:
+            should_exclude = False
+            for pattern in exclude_patterns:
+                if pattern in subdomain.lower():
+                    should_exclude = True
+                    break
+            if should_exclude:
+                continue
+
+        # Get related data
+        dns_record = dns_data.get(subdomain, {})
+        http_url_https = f"https://{subdomain}"
+        http_url_http = f"http://{subdomain}"
+        http_record = http_data.get(http_url_https) or http_data.get(http_url_http, {})
+
+        # Apply search filter
+        if search:
+            search_lower = search.lower()
+            matches_search = (
+                search_lower in subdomain.lower() or
+                search_lower in http_record.get("title", "").lower() or
+                search_lower in str(dns_record.get("a", [])).lower() or
+                search_lower in str(dns_record.get("cname", [])).lower() or
+                search_lower in str(http_record.get("technologies", [])).lower()
+            )
+            if not matches_search:
+                continue
+
+        # Apply status filter
+        if status_filter:
+            status_code = http_record.get("status_code", "")
+            if not str(status_code).startswith(status_filter):
+                continue
+
+        # Apply technology filter
+        if tech_filter:
+            technologies = http_record.get("technologies", [])
+            tech_str = ",".join(technologies).lower() if isinstance(technologies, list) else str(technologies).lower()
+            if tech_filter.lower() not in tech_str:
+                continue
+
+        filtered_subdomains.append(subdomain)
+        
+    return filtered_subdomains
+
+
+@router.get("/projects/{project_id}/assets/export")
+def export_assets_csv(
+    project_id: int,
+    search: str = "",
+    exclude: str = "",
+    status_filter: str = "",
+    tech_filter: str = "",
+    db: Session = Depends(get_db),
+    current_user: User = Depends(get_current_user)
+):
+    """Export filtered assets to CSV"""
+    import csv
+    import io
+    from fastapi.responses import StreamingResponse
+
+    # Get latest snapshots
+    latest_snapshots = {}
+    for snap_type in ["subdomains", "dns", "http"]:
+        snapshot = db.query(Snapshot).filter(
+            Snapshot.project_id == project_id,
+            Snapshot.type == snap_type
+        ).order_by(Snapshot.created_at.desc()).first()
+
+        if snapshot:
+            latest_snapshots[snap_type] = snapshot
+
+    # Get filtered subdomains
+    filtered_subdomains = _get_filtered_assets(
+        latest_snapshots,
+        search=search,
+        exclude=exclude,
+        status_filter=status_filter,
+        tech_filter=tech_filter
+    )
+    
+    # Prepare CSV data
+    dns_data = latest_snapshots.get("dns", {}).data.get("dns_records", {}) if "dns" in latest_snapshots else {}
+    http_data = latest_snapshots.get("http", {}).data.get("http_records", {}) if "http" in latest_snapshots else {}
+
+    output = io.StringIO()
+    writer = csv.writer(output)
+    
+    # Write header
+    writer.writerow([
+        "Subdomain", 
+        "URL", 
+        "Status Code", 
+        "Title", 
+        "IP Address", 
+        "CNAME", 
+        "Technologies", 
+        "CDN/WAF"
+    ])
+    
+    # Write data rows
+    for subdomain in filtered_subdomains:
+        dns_record = dns_data.get(subdomain, {})
+        http_url_https = f"https://{subdomain}"
+        http_url_http = f"http://{subdomain}"
+        http_record = http_data.get(http_url_https) or http_data.get(http_url_http, {})
+        
+        # Determine URL
+        url = http_url_https if http_data.get(http_url_https) else (http_url_http if http_data.get(http_url_http) else subdomain)
+        
+        # Get IP (first one)
+        ips = dns_record.get("a", [])
+        ip = ips[0] if ips else ""
+        
+        # Get CNAME (first one)
+        cnames = dns_record.get("cname", [])
+        cname = cnames[0] if cnames else ""
+        
+        # Technologies
+        techs = http_record.get("technologies", [])
+        tech_str = ", ".join(techs) if isinstance(techs, list) else str(techs)
+
+        writer.writerow([
+            subdomain,
+            url,
+            http_record.get("status_code", ""),
+            http_record.get("title", ""),
+            ip,
+            cname,
+            tech_str,
+            http_record.get("cdn", "")
+        ])
+
+    output.seek(0)
+    
+    timestamp = datetime.now().strftime("%Y-%m-%d")
+    filename = f"assets_export_{project_id}_{timestamp}.csv"
+    
+    response = StreamingResponse(iter([output.getvalue()]), media_type="text/csv")
+    response.headers["Content-Disposition"] = f"attachment; filename={filename}"
+    return response
 
 
 @router.get("/projects/{project_id}/edit", response_class=HTMLResponse)

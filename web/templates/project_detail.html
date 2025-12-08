@@ -1150,32 +1150,22 @@
     // ========== NEW ASSETS TAB FUNCTIONS ==========
 
     // Export assets to CSV
+    // Export assets to CSV
     function exportAssetsToCSV() {
-        const table = document.getElementById('assetsTable');
-        const rows = table.querySelectorAll('tr');
+        const search = "{{ search }}";
+        const exclude = "{{ exclude }}";
+        const status_filter = "{{ status_filter }}";
+        const tech_filter = "{{ tech_filter }}";
 
-        let csv = [];
-        for (let row of rows) {
-            const cells = row.querySelectorAll('th, td');
-            const rowData = Array.from(cells).map((cell, index) => {
-                // Skip screenshot column (index 1)
-                if (index === 1) return '';
+        let url = `/projects/{{ project.id }}/assets/export?`;
+        const params = new URLSearchParams();
 
-                let text = cell.textContent.trim().replace(/\s+/g, ' ');
-                text = text.replace(/"/g, '""');
-                return `"${text}"`;
-            }).filter(cell => cell !== '');
-            csv.push(rowData.join(','));
-        }
+        if (search) params.append('search', search);
+        if (exclude) params.append('exclude', exclude);
+        if (status_filter) params.append('status_filter', status_filter);
+        if (tech_filter) params.append('tech_filter', tech_filter);
 
-        const csvContent = csv.join('\n');
-        const blob = new Blob([csvContent], { type: 'text/csv' });
-        const url = window.URL.createObjectURL(blob);
-        const a = document.createElement('a');
-        a.href = url;
-        a.download = 'http_assets_' + new Date().toISOString().split('T')[0] + '.csv';
-        a.click();
-        window.URL.revokeObjectURL(url);
+        window.location.href = url + params.toString();
     }
 
     // Show screenshot modal
