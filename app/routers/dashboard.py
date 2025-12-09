@@ -3,7 +3,7 @@ Dashboard and UI endpoints
 """
 
 from fastapi import APIRouter, Depends, Request
-from fastapi.responses import HTMLResponse
+from fastapi.responses import HTMLResponse, RedirectResponse
 from fastapi.templating import Jinja2Templates
 from sqlalchemy.orm import Session
 from datetime import datetime, timedelta
@@ -53,6 +53,12 @@ def dashboard_home(request: Request, db: Session = Depends(get_db), current_user
     })
 
 
+@router.get("/projects")
+def projects_redirect():
+    """Redirect /projects to dashboard"""
+    return RedirectResponse(url="/")
+
+
 @router.get("/projects/new", response_class=HTMLResponse)
 def project_new(request: Request, current_user: User = Depends(get_current_user)):
     """Create new project page"""
@@ -72,6 +78,7 @@ def project_detail(
     exclude: str = "",
     status_filter: str = "",
     tech_filter: str = "",
+    change_filter: str = "",
     db: Session = Depends(get_db),
     current_user: User = Depends(get_current_user)
 ):
@@ -97,6 +104,32 @@ def project_detail(
         if snapshot:
             latest_snapshots[snap_type] = snapshot
 
+    # Get recent events (last 7 days) and changes for filtering
+    week_ago = datetime.utcnow() - timedelta(days=7)
+    recent_events = db.query(Event).filter(
+        Event.project_id == project_id,
+        Event.created_at >= week_ago
+    ).order_by(Event.created_at.desc()).limit(1000).all()
+
+    # Process events to identify changes
+    asset_changes = {}
+    new_subdomains = set()
+    changed_subdomains = set()
+
+    for event in recent_events:
+        if event.related_entities and "subdomain" in event.related_entities:
+            subdomain = event.related_entities["subdomain"]
+            if subdomain not in asset_changes:
+                asset_changes[subdomain] = []
+            asset_changes[subdomain].append(event)
+            
+            # Categorize change
+            if str(event.type) == "subdomain_new" or str(event.type) == "EventType.SUBDOMAIN_NEW" or \
+               (event.summary and "New subdomain" in event.summary):
+                new_subdomains.add(subdomain)
+            else:
+                changed_subdomains.add(subdomain)
+
     # Server-side pagination for All Assets using helper
     all_subdomains = []
     total_subdomains = 0
@@ -111,7 +144,10 @@ def project_detail(
         search=search,
         exclude=exclude,
         status_filter=status_filter,
-        tech_filter=tech_filter
+        tech_filter=tech_filter,
+        change_filter=change_filter,
+        new_subdomains=new_subdomains,
+        changed_subdomains=changed_subdomains
     )
     
     # Calculate pagination
@@ -127,32 +163,99 @@ def project_detail(
     showing_start = start_idx + 1 if total_subdomains > 0 else 0
     showing_end = end_idx
 
-    # Get recent events (last 7 days)
-    week_ago = datetime.utcnow() - timedelta(days=7)
-    recent_events = db.query(Event).filter(
-        Event.project_id == project_id,
-        Event.created_at >= week_ago
-    ).order_by(Event.created_at.desc()).limit(50).all()
+    # Pass only changes for paginated subdomains to template
+    paginated_changes = {s: asset_changes[s] for s in paginated_subdomains if s in asset_changes}
+    
+    # Trim recent_events for display (top 50)
+    display_recent_events = recent_events[:50]
 
-    # Get asset changes for visible rows
-    asset_changes = {}
-    if paginated_subdomains:
-        # Fetch all events in window to map to assets
-        # We fetch more here to ensure coverage, but still limit to prevent OOM on massive datasets
-        scan_events = db.query(Event).filter(
-            Event.project_id == project_id,
-            Event.created_at >= week_ago
-        ).order_by(Event.created_at.desc()).limit(1000).all()
+    # Calculate Chart Data
+    status_counts = {"2xx": 0, "3xx": 0, "4xx": 0, "5xx": 0, "Other": 0}
+    tech_counts = {}
+    
+    # 1. Status & Tech Counts
+    if "http" in latest_snapshots and latest_snapshots["http"].data:
+        http_records = latest_snapshots["http"].data.get("http_records", {})
+        for record in http_records.values():
+            # Status
+            code = record.get("status_code")
+            if code:
+                if 200 <= code < 300: status_counts["2xx"] += 1
+                elif 300 <= code < 400: status_counts["3xx"] += 1
+                elif 400 <= code < 500: status_counts["4xx"] += 1
+                elif 500 <= code < 600: status_counts["5xx"] += 1
+                else: status_counts["Other"] += 1
+            
+            # Tech
+            techs = record.get("technologies", [])
+            for tech in techs:
+                tech_counts[tech] = tech_counts.get(tech, 0) + 1
+    
+    # Sort and trim tech counts (Top 10)
+    top_techs = dict(sorted(tech_counts.items(), key=lambda item: item[1], reverse=True)[:10])
+
+    # 2. Daily Discovery Trend (Last 7 Days)
+    # Group SUBDOMAIN_NEW events by day
+    chart_event_counts = {}
+    # Initialize last 7 days with 0
+    for i in range(7):
+        day = (datetime.utcnow() - timedelta(days=i)).strftime("%Y-%m-%d")
+        chart_event_counts[day] = 0
+
+    for event in recent_events:
+        if str(event.type) == "subdomain_new" or str(event.type) == "EventType.SUBDOMAIN_NEW" or \
+           (event.summary and "New subdomain" in event.summary):
+            event_day = event.created_at.strftime("%Y-%m-%d")
+            if event_day in chart_event_counts:
+                chart_event_counts[event_day] += 1
+    
+    # Sort chronologically for chart
+    chart_trend_data = dict(sorted(chart_event_counts.items()))
+
+    # 3. Event Dashboard Stats
+    event_severity_counts = {"critical": 0, "high": 0, "medium": 0, "low": 0, "info": 0}
+    event_type_counts = {}
+    for event in recent_events:
+        # Severity
+        sev = str(event.severity).lower().split('.')[-1] # Handle Enum like SeverityLevel.HIGH
+        if sev in event_severity_counts:
+            event_severity_counts[sev] += 1
         
-        for event in scan_events:
-            if not event.related_entities:
+        # Type
+        etype = str(event.type).split('.')[-1] # Handle Enum
+        event_type_counts[etype] = event_type_counts.get(etype, 0) + 1
+    
+    # Top 5 Event Types
+    top_event_types = dict(sorted(event_type_counts.items(), key=lambda item: item[1], reverse=True)[:5])
+
+    # 4. Endpoint Dashboard Stats
+    endpoint_status_counts = {"2xx": 0, "3xx": 0, "4xx": 0, "5xx": 0, "Other": 0}
+    endpoint_sensitive_counts = {"Sensitive": 0, "Safe": 0}
+    
+    if "endpoints" in latest_snapshots and latest_snapshots["endpoints"].data:
+        ep_data = latest_snapshots["endpoints"].data.get("enriched_urls", [])
+        js_files_set = set(latest_snapshots["endpoints"].data.get("js_files", []))
+        
+        for ep in ep_data:
+            if ep.get("url") in js_files_set:
                 continue
                 
-            subdomain = event.related_entities.get("subdomain")
-            if subdomain and subdomain in paginated_subdomains:
-                if subdomain not in asset_changes:
-                    asset_changes[subdomain] = []
-                asset_changes[subdomain].append(event)
+            # Status
+            code = ep.get("status_code")
+            if code:
+                if 200 <= code < 300: endpoint_status_counts["2xx"] += 1
+                elif 300 <= code < 400: endpoint_status_counts["3xx"] += 1
+                elif 400 <= code < 500: endpoint_status_counts["4xx"] += 1
+                elif 500 <= code < 600: endpoint_status_counts["5xx"] += 1
+                else: endpoint_status_counts["Other"] += 1
+            else:
+                 endpoint_status_counts["Other"] += 1
+
+            # Sensitivity
+            if ep.get("is_sensitive"):
+                endpoint_sensitive_counts["Sensitive"] += 1
+            else:
+                endpoint_sensitive_counts["Safe"] += 1
 
     # Get recent scans
     recent_scans = db.query(ScanLog).filter(
@@ -164,9 +267,17 @@ def project_detail(
         "current_user": current_user,
         "project": project,
         "latest_snapshots": latest_snapshots,
-        "recent_events": recent_events,
-        "asset_changes": asset_changes,
+        "recent_events": display_recent_events,
+        "asset_changes": paginated_changes,
         "recent_scans": recent_scans,
+        # Chart Data
+        "status_counts": status_counts,
+        "top_techs": top_techs,
+        "chart_trend_data": chart_trend_data,
+        "event_severity_counts": event_severity_counts,
+        "top_event_types": top_event_types,
+        "endpoint_status_counts": endpoint_status_counts,
+        "endpoint_sensitive_counts": endpoint_sensitive_counts,
         # Pagination data
         "paginated_subdomains": paginated_subdomains,
         "current_page": page,
@@ -178,11 +289,22 @@ def project_detail(
         "search": search,
         "exclude": exclude,
         "status_filter": status_filter,
-        "tech_filter": tech_filter
+        "status_filter": status_filter,
+        "tech_filter": tech_filter,
+        "change_filter": change_filter
     })
 
 
-def _get_filtered_assets(latest_snapshots, search="", exclude="", status_filter="", tech_filter=""):
+def _get_filtered_assets(
+    latest_snapshots, 
+    search="", 
+    exclude="", 
+    status_filter="", 
+    tech_filter="", 
+    change_filter="",
+    new_subdomains=None,
+    changed_subdomains=None
+):
     """Helper to filter assets based on criteria"""
     if "subdomains" not in latest_snapshots:
         return []
@@ -240,6 +362,24 @@ def _get_filtered_assets(latest_snapshots, search="", exclude="", status_filter=
             if tech_filter.lower() not in tech_str:
                 continue
 
+        # Apply change filter
+        if change_filter:
+            if change_filter == "new":
+                if not new_subdomains or subdomain not in new_subdomains:
+                    continue
+            elif change_filter == "changed":
+                if not changed_subdomains or subdomain not in changed_subdomains:
+                    # Also include new subdomains in "changed" or handle separately? 
+                    # User likely wants "modified" here. 
+                    # If we follow strict definition:
+                    continue
+            elif change_filter == "any":
+                # Any change (new or modified)
+                is_new = new_subdomains and subdomain in new_subdomains
+                is_changed = changed_subdomains and subdomain in changed_subdomains
+                if not (is_new or is_changed):
+                    continue
+
         filtered_subdomains.append(subdomain)
         
     return filtered_subdomains
@@ -252,6 +392,7 @@ def export_assets_csv(
     exclude: str = "",
     status_filter: str = "",
     tech_filter: str = "",
+    change_filter: str = "",
     db: Session = Depends(get_db),
     current_user: User = Depends(get_current_user)
 ):
@@ -271,13 +412,39 @@ def export_assets_csv(
         if snapshot:
             latest_snapshots[snap_type] = snapshot
 
+    # Get recent events (last 7 days) and changes for filtering
+    asset_changes = {}
+    new_subdomains = set()
+    changed_subdomains = set()
+    
+    if change_filter:
+        week_ago = datetime.utcnow() - timedelta(days=7)
+        recent_events = db.query(Event).filter(
+            Event.project_id == project_id,
+            Event.created_at >= week_ago
+        ).order_by(Event.created_at.desc()).limit(1000).all()
+
+        for event in recent_events:
+            if event.related_entities and "subdomain" in event.related_entities:
+                subdomain = event.related_entities["subdomain"]
+                
+                # Categorize change
+                if str(event.type) == "subdomain_new" or str(event.type) == "EventType.SUBDOMAIN_NEW" or \
+                   (event.summary and "New subdomain" in event.summary):
+                    new_subdomains.add(subdomain)
+                else:
+                    changed_subdomains.add(subdomain)
+
     # Get filtered subdomains
     filtered_subdomains = _get_filtered_assets(
         latest_snapshots,
         search=search,
         exclude=exclude,
         status_filter=status_filter,
-        tech_filter=tech_filter
+        tech_filter=tech_filter,
+        change_filter=change_filter,
+        new_subdomains=new_subdomains,
+        changed_subdomains=changed_subdomains
     )
     
     # Prepare CSV data
@@ -657,6 +824,8 @@ def get_project_endpoints(
                 if status == "active" and (not status_code or status_code >= 400):
                     continue
                 elif status == "error" and (not status_code or status_code < 400):
+                    continue
+                elif status == "200" and (not status_code or not (200 <= status_code < 300)):
                     continue
                 elif status == "300" and (not status_code or not (300 <= status_code < 400)):
                     continue

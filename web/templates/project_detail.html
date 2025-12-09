@@ -129,7 +129,10 @@
 
     <!-- Tabs -->
     <div class="tabs">
-        <button class="tab-btn active" onclick="switchTab('assets')">
+        <button class="tab-btn active" onclick="switchTab('dashboard')">
+            <i class="fas fa-chart-pie"></i> Dashboard
+        </button>
+        <button class="tab-btn" onclick="switchTab('assets')">
             <i class="fas fa-table"></i> All Assets
         </button>
         <button class="tab-btn" onclick="switchTab('takeovers')">
@@ -153,9 +156,239 @@
         </button>
     </div>
 
+    <!-- Tab: Dashboard -->
+    <div id="tab-dashboard" class="tab-content active">
+        <!-- ApexCharts CDN -->
+        <script src="https://cdn.jsdelivr.net/npm/apexcharts"></script>
+
+        <!-- Dashboard Grid -->
+        <div style="display: grid; grid-template-columns: repeat(2, 1fr); gap: 1.5rem; margin-bottom: 2rem;">
+
+            <!-- Row 1: Asset & Endpoint Status -->
+            <div
+                style="background: white; padding: 1.5rem; border-radius: 12px; box-shadow: 0 1px 3px rgba(0,0,0,0.1);">
+                <h4 style="margin: 0 0 1rem 0; color: #475569; font-size: 0.875rem; text-transform: uppercase;">
+                    <i class="fas fa-heartbeat"></i> Asset Status Distribution
+                </h4>
+                <div id="chart-status" style="min-height: 250px;"></div>
+            </div>
+
+            <div
+                style="background: white; padding: 1.5rem; border-radius: 12px; box-shadow: 0 1px 3px rgba(0,0,0,0.1);">
+                <h4 style="margin: 0 0 1rem 0; color: #475569; font-size: 0.875rem; text-transform: uppercase;">
+                    <i class="fas fa-link"></i> Endpoint Status Distribution
+                </h4>
+                <div id="chart-endpoint-status" style="min-height: 250px;"></div>
+            </div>
+
+            <!-- Row 2: Trends & Tech -->
+            <div
+                style="grid-column: span 2; background: white; padding: 1.5rem; border-radius: 12px; box-shadow: 0 1px 3px rgba(0,0,0,0.1);">
+                <h4 style="margin: 0 0 1rem 0; color: #475569; font-size: 0.875rem; text-transform: uppercase;">
+                    <i class="fas fa-chart-area"></i> Discovery Trend (7 Days)
+                </h4>
+                <div id="chart-trend" style="min-height: 250px;"></div>
+            </div>
+
+            <div
+                style="background: white; padding: 1.5rem; border-radius: 12px; box-shadow: 0 1px 3px rgba(0,0,0,0.1);">
+                <h4 style="margin: 0 0 1rem 0; color: #475569; font-size: 0.875rem; text-transform: uppercase;">
+                    <i class="fas fa-layer-group"></i> Top Technologies
+                </h4>
+                <div id="chart-tech" style="min-height: 250px;"></div>
+            </div>
+
+            <div
+                style="background: white; padding: 1.5rem; border-radius: 12px; box-shadow: 0 1px 3px rgba(0,0,0,0.1);">
+                <h4 style="margin: 0 0 1rem 0; color: #475569; font-size: 0.875rem; text-transform: uppercase;">
+                    <i class="fas fa-user-shield"></i> Sensitivity
+                </h4>
+                <div id="chart-sensitivity" style="min-height: 250px;"></div>
+            </div>
+
+            <!-- Row 3: Events -->
+            <div
+                style="background: white; padding: 1.5rem; border-radius: 12px; box-shadow: 0 1px 3px rgba(0,0,0,0.1);">
+                <h4 style="margin: 0 0 1rem 0; color: #475569; font-size: 0.875rem; text-transform: uppercase;">
+                    <i class="fas fa-exclamation-circle"></i> Event Severity
+                </h4>
+                <div id="chart-event-severity" style="min-height: 250px;"></div>
+            </div>
+
+            <div
+                style="background: white; padding: 1.5rem; border-radius: 12px; box-shadow: 0 1px 3px rgba(0,0,0,0.1);">
+                <h4 style="margin: 0 0 1rem 0; color: #475569; font-size: 0.875rem; text-transform: uppercase;">
+                    <i class="fas fa-tags"></i> Top Event Types
+                </h4>
+                <div id="chart-event-types" style="min-height: 250px;"></div>
+            </div>
+        </div>
+    </div>
+
     <!-- Tab: All Assets -->
-    <div id="tab-assets" class="tab-content active">
+    <div id="tab-assets" class="tab-content">
         <div class="section">
+
+            <script>
+                document.addEventListener('DOMContentLoaded', function () {
+                    // Common Chart Options
+                    const commonOptions = {
+                        fontFamily: 'Inter, sans-serif',
+                        toolbar: { show: false }
+                    };
+
+                    // 1. Asset Status Chart
+                    var statusOptions = {
+                        series: [
+                            {{ status_counts['2xx'] }},
+                        {{ status_counts['3xx'] }},
+                    {{ status_counts['4xx'] }},
+                    {{ status_counts['5xx'] }},
+                    {{ status_counts['Other'] }}
+                        ],
+                    chart: { type: 'donut', height: 250, ...commonOptions },
+                    labels: ['2xx Success', '3xx Redirect', '4xx Client Err', '5xx Server Err', 'Other'],
+                    colors: ['#10b981', '#3b82f6', '#f59e0b', '#ef4444', '#94a3b8'],
+                    plotOptions: { pie: { donut: { size: '65%' } } },
+                    dataLabels: { enabled: false },
+                    legend: { position: 'bottom' }
+                    };
+                new ApexCharts(document.querySelector("#chart-status"), statusOptions).render();
+
+                // 2. Tech Chart
+                var techOptions = {
+                    series: [{
+                        name: 'Count',
+                        data: [
+                            {% for tech, count in top_techs.items() %}
+                                {{ count }},
+                    {% endfor %}
+                            ]
+                        }],
+                chart: { type: 'bar', height: 250, ...commonOptions },
+                plotOptions: {
+                    bar: { borderRadius: 4, horizontal: true, barHeight: '70%' }
+                },
+                dataLabels: { enabled: true, textAnchor: 'start', formatter: function (val, opt) { return opt.w.globals.labels[opt.dataPointIndex] + ":  " + val } },
+                xaxis: {
+                    categories: [
+                        {% for tech in top_techs.keys() %}
+                "{{ tech }}",
+                    {% endfor %}
+                            ]
+                        },
+                colors: ['#6366f1'],
+                    grid: { show: false }
+                    };
+                new ApexCharts(document.querySelector("#chart-tech"), techOptions).render();
+
+                // 3. Trend Chart
+                var trendOptions = {
+                    series: [{
+                        name: 'New Assets',
+                        data: [
+                            {% for day, count in chart_trend_data.items() %}
+                                {{ count }},
+                    {% endfor %}
+                            ]
+                        }],
+                chart: { type: 'area', height: 250, ...commonOptions },
+                dataLabels: { enabled: false },
+                stroke: { curve: 'smooth', width: 2 },
+                xaxis: {
+                    type: 'datetime',
+                        categories: [
+                            {% for day in chart_trend_data.keys() %}
+                "{{ day }}",
+                    {% endfor %}
+                            ]
+                        },
+                colors: ['#8b5cf6'],
+                    fill: {
+                    type: 'gradient',
+                        gradient: { shadeIntensity: 1, opacityFrom: 0.7, opacityTo: 0.3, stops: [0, 90, 100] }
+                }
+                    };
+                new ApexCharts(document.querySelector("#chart-trend"), trendOptions).render();
+
+                // 4. Endpoint Status Chart
+                var endpointStatusOptions = {
+                    series: [
+                        {{ endpoint_status_counts['2xx'] }},
+                    {{ endpoint_status_counts['3xx'] }},
+                { { endpoint_status_counts['4xx'] } },
+                { { endpoint_status_counts['5xx'] } },
+                { { endpoint_status_counts['Other'] } }
+                        ],
+                chart: { type: 'donut', height: 250, ...commonOptions },
+                labels: ['2xx Success', '3xx Redirect', '4xx Client Err', '5xx Server Err', 'Other'],
+                    colors: ['#10b981', '#3b82f6', '#f59e0b', '#ef4444', '#94a3b8'],
+                        plotOptions: { pie: { donut: { size: '65%' } } },
+                dataLabels: { enabled: false },
+                legend: { position: 'bottom' }
+                    };
+                new ApexCharts(document.querySelector("#chart-endpoint-status"), endpointStatusOptions).render();
+
+                // 5. Sensitivity Chart
+                var sensitivityOptions = {
+                    series: [
+                        {{ endpoint_sensitive_counts['Sensitive'] }},
+                    {{ endpoint_sensitive_counts['Safe'] }}
+                         ],
+                chart: { type: 'pie', height: 250, ...commonOptions },
+                labels: ['Sensitive', 'Safe'],
+                    colors: ['#ef4444', '#10b981'],
+                        legend: { position: 'bottom' }
+                    };
+                new ApexCharts(document.querySelector("#chart-sensitivity"), sensitivityOptions).render();
+
+                // 6. Event Severity Chart
+                var severityOptions = {
+                    series: [
+                        {{ event_severity_counts['critical'] }},
+                    {{ event_severity_counts['high'] }},
+                { { event_severity_counts['medium'] } },
+                { { event_severity_counts['low'] } },
+                { { event_severity_counts['info'] } }
+                        ],
+                chart: { type: 'donut', height: 250, ...commonOptions },
+                labels: ['Critical', 'High', 'Medium', 'Low', 'Info'],
+                    colors: ['#7f1d1d', '#ef4444', '#f59e0b', '#3b82f6', '#94a3b8'],
+                        plotOptions: { pie: { donut: { size: '65%' } } },
+                dataLabels: { enabled: false },
+                legend: { position: 'bottom' }
+                    };
+                new ApexCharts(document.querySelector("#chart-event-severity"), severityOptions).render();
+
+                // 7. Top Event Types
+                var eventTypesOptions = {
+                    series: [{
+                        name: 'Count',
+                        data: [
+                            {% for etype, count in top_event_types.items() %}
+                                {{ count }},
+                    {% endfor %}
+                            ]
+                        }],
+                chart: { type: 'bar', height: 250, ...commonOptions },
+                plotOptions: {
+                    bar: { borderRadius: 4, horizontal: true, barHeight: '70%' }
+                },
+                dataLabels: { enabled: true, textAnchor: 'start', formatter: function (val, opt) { return opt.w.globals.labels[opt.dataPointIndex] + ":  " + val } },
+                xaxis: {
+                    categories: [
+                        {% for etype in top_event_types.keys() %}
+                "{{ etype }}",
+                    {% endfor %}
+                            ]
+                        },
+                colors: ['#ec4899'],
+                    grid: { show: false }
+                    };
+                new ApexCharts(document.querySelector("#chart-event-types"), eventTypesOptions).render();
+                });
+            </script>
+
             <h3>🌐 All Discovered Assets</h3>
 
             <!-- Filters -->
@@ -173,6 +406,15 @@
                         style="width: 100%; padding: 0.625rem 1rem; border: 2px solid #e2e8f0; border-radius: 8px; font-size: 0.875rem;"
                         title="Comma-separated patterns to hide">
                 </div>
+
+                <select name="change_filter"
+                    style="padding: 0.625rem 1rem; border: 2px solid #e2e8f0; border-radius: 8px; font-size: 0.875rem; background: white;">
+                    <option value="">🔔 All Changes</option>
+                    <option value="new" {% if change_filter=="new" %}selected{% endif %}>⭐ New Assets</option>
+                    <option value="changed" {% if change_filter=="changed" %}selected{% endif %}>📝 Modified Assets
+                    </option>
+                    <option value="any" {% if change_filter=="any" %}selected{% endif %}>🔔 Any Change</option>
+                </select>
 
                 <select name="status_filter"
                     style="padding: 0.625rem 1rem; border: 2px solid #e2e8f0; border-radius: 8px; font-size: 0.875rem; background: white;">
@@ -1117,6 +1359,11 @@
         } else if (tabName === 'events') {
             loadEventsData();
         }
+
+        // Trigger resize to fix ApexCharts in case they were hidden
+        setTimeout(() => {
+            window.dispatchEvent(new Event('resize'));
+        }, 50);
     }
 
     // Filter asset table
@@ -1220,20 +1467,21 @@
     // ========== NEW ASSETS TAB FUNCTIONS ==========
 
     // Export assets to CSV
-    // Export assets to CSV
+    // Export Assets as CSV
     function exportAssetsToCSV() {
-        const search = "{{ search }}";
-        const exclude = "{{ exclude }}";
-        const status_filter = "{{ status_filter }}";
-        const tech_filter = "{{ tech_filter }}";
+        const search = document.querySelector('input[name="search"]').value;
+        const exclude = document.querySelector('input[name="exclude"]').value;
+        const statusFilter = document.querySelector('select[name="status_filter"]').value;
+        const techFilter = document.querySelector('select[name="tech_filter"]').value;
+        const changeFilter = document.querySelector('select[name="change_filter"]').value;
 
         let url = `/projects/{{ project.id }}/assets/export?`;
         const params = new URLSearchParams();
-
         if (search) params.append('search', search);
         if (exclude) params.append('exclude', exclude);
-        if (status_filter) params.append('status_filter', status_filter);
-        if (tech_filter) params.append('tech_filter', tech_filter);
+        if (statusFilter) params.append('status_filter', statusFilter);
+        if (techFilter) params.append('tech_filter', techFilter);
+        if (changeFilter) params.append('change_filter', changeFilter);
 
         window.location.href = url + params.toString();
     }
