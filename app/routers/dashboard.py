@@ -366,8 +366,11 @@ def _get_filtered_assets(
 
         # Apply status filter
         if status_filter:
+            # Handle "2xx", "200" style filters by taking the first digit to support range filtering
+            # The user prefers passing "200" but expects "2xx" behavior
+            filter_prefix = status_filter[0] if len(str(status_filter)) >= 1 else ""
             status_code = http_record.get("status_code", "")
-            if not str(status_code).startswith(status_filter):
+            if not str(status_code).startswith(filter_prefix):
                 continue
 
         # Apply technology filter

@@ -129,29 +129,29 @@
 
     <!-- Tabs -->
     <div class="tabs">
-        <button class="tab-btn active" onclick="switchTab('dashboard')">
+        <button id="tab-btn-dashboard" class="tab-btn active" onclick="switchTab('dashboard')">
             <i class="fas fa-chart-pie"></i> Dashboard
         </button>
-        <button class="tab-btn" onclick="switchTab('assets')">
+        <button id="tab-btn-assets" class="tab-btn" onclick="switchTab('assets')">
             <i class="fas fa-table"></i> All Assets
         </button>
-        <button class="tab-btn" onclick="switchTab('takeovers')">
+        <button id="tab-btn-takeovers" class="tab-btn" onclick="switchTab('takeovers')">
             <i class="fas fa-exclamation-triangle"></i> Takeovers
             {% if latest_snapshots.dns and latest_snapshots.dns.scan_metadata and
             latest_snapshots.dns.scan_metadata.takeover_findings %}
             ({{ latest_snapshots.dns.scan_metadata.takeover_findings|length }})
             {% endif %}
         </button>
-        <button class="tab-btn" onclick="switchTab('endpoints')">
+        <button id="tab-btn-endpoints" class="tab-btn" onclick="switchTab('endpoints')">
             <i class="fas fa-link"></i> Endpoints
         </button>
-        <button class="tab-btn" onclick="switchTab('jsfiles')">
+        <button id="tab-btn-jsfiles" class="tab-btn" onclick="switchTab('jsfiles')">
             <i class="fas fa-file-code"></i> JS Files
         </button>
-        <button class="tab-btn" onclick="switchTab('events')">
+        <button id="tab-btn-events" class="tab-btn" onclick="switchTab('events')">
             <i class="fas fa-bell"></i> Events
         </button>
-        <button class="tab-btn" onclick="switchTab('scans')">
+        <button id="tab-btn-scans" class="tab-btn" onclick="switchTab('scans')">
             <i class="fas fa-history"></i> Scans
         </button>
     </div>
@@ -241,10 +241,10 @@
                     var statusOptions = {
                         series: [
                             {{ status_counts['2xx'] }},
-                            {{ status_counts['3xx'] }},
-                            {{ status_counts['4xx'] }},
-                            {{ status_counts['5xx'] }},
-                            {{ status_counts['Other'] }}
+                        {{ status_counts['3xx'] }},
+                    {{ status_counts['4xx'] }},
+                    {{ status_counts['5xx'] }},
+                    {{ status_counts['Other'] }}
                         ],
                     chart: { type: 'donut', height: 250, ...commonOptions },
                     labels: ['2xx Success', '3xx Redirect', '4xx Client Err', '5xx Server Err', 'Other'],
@@ -261,7 +261,7 @@
                         name: 'Count',
                         data: [
                             {% for tech, count in top_techs.items() %}
-                                {{ count }},
+                                    {{ count }},
                     {% endfor %}
                             ]
                         }],
@@ -288,7 +288,7 @@
                         name: 'New Assets',
                         data: [
                             {% for day, count in chart_trend_data.items() %}
-                                {{ count }},
+                                    {{ count }},
                     {% endfor %}
                             ]
                         }],
@@ -319,7 +319,7 @@
                 {{ endpoint_status_counts['4xx'] }},
                 {{ endpoint_status_counts['5xx'] }},
                 {{ endpoint_status_counts['Other'] }}
-                    ],
+                        ],
                 chart: { type: 'donut', height: 250, ...commonOptions },
                 labels: ['2xx Success', '3xx Redirect', '4xx Client Err', '5xx Server Err', 'Other'],
                     colors: ['#10b981', '#3b82f6', '#f59e0b', '#ef4444', '#94a3b8'],
@@ -334,7 +334,7 @@
                     series: [
                         {{ endpoint_sensitive_counts['Sensitive'] }},
                     {{ endpoint_sensitive_counts['Safe'] }}
-                         ],
+                        ],
                 chart: { type: 'pie', height: 250, ...commonOptions },
                 labels: ['Sensitive', 'Safe'],
                     colors: ['#ef4444', '#10b981'],
@@ -350,7 +350,7 @@
                 {{ event_severity_counts['medium'] }},
                 {{ event_severity_counts['low'] }},
                 {{ event_severity_counts['info'] }}
-                    ],
+                        ],
                 chart: { type: 'donut', height: 250, ...commonOptions },
                 labels: ['Critical', 'High', 'Medium', 'Low', 'Info'],
                     colors: ['#7f1d1d', '#ef4444', '#f59e0b', '#3b82f6', '#94a3b8'],
@@ -394,6 +394,8 @@
             <!-- Filters -->
             <form method="GET" action="/projects/{{ project.id }}"
                 style="display: flex; gap: 0.75rem; flex-wrap: wrap; margin-bottom: 1.5rem; align-items: center;">
+                <input type="hidden" name="tab" id="activeTabInput"
+                    value="{{ request.query_params.get('tab', 'dashboard') }}">
                 <div style="flex: 1; min-width: 250px;">
                     <input type="text" name="search" id="searchInput" value="{{ search }}"
                         placeholder="🔍 Search URL, title, IP, or technology..."
@@ -419,10 +421,10 @@
                 <select name="status_filter" id="statusFilter"
                     style="padding: 0.625rem 1rem; border: 2px solid #e2e8f0; border-radius: 8px; font-size: 0.875rem; background: white;">
                     <option value="">📊 All Status</option>
-                    <option value="2" {% if status_filter=="2" %}selected{% endif %}>✅ 2xx Success</option>
-                    <option value="3" {% if status_filter=="3" %}selected{% endif %}>🔄 3xx Redirect</option>
-                    <option value="4" {% if status_filter=="4" %}selected{% endif %}>⚠️ 4xx Client Error</option>
-                    <option value="5" {% if status_filter=="5" %}selected{% endif %}>❌ 5xx Server Error</option>
+                    <option value="200" {% if status_filter=="200" %}selected{% endif %}>✅ 2xx Success</option>
+                    <option value="300" {% if status_filter=="300" %}selected{% endif %}>🔄 3xx Redirect</option>
+                    <option value="400" {% if status_filter=="400" %}selected{% endif %}>⚠️ 4xx Client Error</option>
+                    <option value="500" {% if status_filter=="500" %}selected{% endif %}>❌ 5xx Server Error</option>
                 </select>
 
                 <select name="tech_filter"
@@ -1338,7 +1340,19 @@
     }
 
     // Tab switching
+    // Tab switching
     function switchTab(tabName) {
+        // Update URL to persist state on refresh
+        const url = new URL(window.location);
+        url.searchParams.set('tab', tabName);
+        window.history.pushState({}, '', url);
+
+        // Update hidden input for form submission
+        const tabInput = document.getElementById('activeTabInput');
+        if (tabInput) {
+            tabInput.value = tabName;
+        }
+
         document.querySelectorAll('.tab-content').forEach(tab => {
             tab.classList.remove('active');
         });
@@ -1346,8 +1360,11 @@
             btn.classList.remove('active');
         });
 
-        document.getElementById('tab-' + tabName).classList.add('active');
-        event.target.classList.add('active');
+        const targetTab = document.getElementById('tab-' + tabName);
+        if (targetTab) targetTab.classList.add('active');
+
+        const activeBtn = document.getElementById('tab-btn-' + tabName);
+        if (activeBtn) activeBtn.classList.add('active');
 
         // Handle lazy loading for heavy tabs
         if (tabName === 'endpoints') {
@@ -1435,7 +1452,7 @@
         document.getElementById('statusFilter').value = '';
         document.getElementById('changeFilter').value = '';
         document.getElementById('resolutionFilter').value = '';
-        filterTable();
+        // filterTable();
     }
 
     // Export to CSV
@@ -1498,9 +1515,17 @@
     }
 
     // Initialize assets table on page load
+    // Initialize assets table on page load
     document.addEventListener('DOMContentLoaded', function () {
+        // Restore active tab from URL
+        const urlParams = new URLSearchParams(window.location.search);
+        const activeTab = urlParams.get('tab');
+        if (activeTab) {
+            switchTab(activeTab);
+        }
+
         if (typeof filterTable === 'function') {
-            filterTable();
+            // filterTable();
         }
     });
 
@@ -2064,7 +2089,7 @@
 
     // Initialize stats on page load
     document.addEventListener('DOMContentLoaded', () => {
-        filterTable(); // Initialize counts for JS Files table
+        // filterTable(); // Initialize counts for JS Files table
         // All Assets pagination is now handled server-side
     });
 
