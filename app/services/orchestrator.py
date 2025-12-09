@@ -198,7 +198,7 @@ class ScanOrchestrator:
         try:
             # Get enabled sources
             subdomain_config = config.get("subdomains", {})
-            sources = subdomain_config.get("sources", ["subfinder", "assetfinder", "crtsh"])
+            sources = subdomain_config.get("sources", ["subfinder", "assetfinder", "crtsh", "chaos"])
 
             # Run discovery
             result = discover_subdomains(domains, sources=sources)

@@ -3,241 +3,460 @@
 {% block title %}New Project - Asset Monitor{% endblock %}
 
 {% block content %}
-<div class="project-new">
-    <div class="page-header">
-        <h2>Create New Project</h2>
+<div class="project-new" style="max-width: 900px; margin: 0 auto; padding-bottom: 4rem;">
+    <!-- Header -->
+    <div style="margin-bottom: 2rem; display: flex; align-items: center; justify-content: space-between;">
+        <div>
+            <h2 style="font-size: 1.875rem; font-weight: 700; color: #1e293b; margin-bottom: 0.5rem;">Create Project
+            </h2>
+            <p style="color: #64748b;">Configure your monitoring target and scanning preferences.</p>
+        </div>
+        <a href="/" class="btn btn-secondary"
+            style="color: #64748b; background: white; border: 1px solid #e2e8f0; padding: 0.75rem 1.5rem; border-radius: 8px; text-decoration: none; font-weight: 500; transition: all 0.2s;">
+            <i class="fas fa-times" style="margin-right: 0.5rem;"></i> Cancel
+        </a>
     </div>
 
-    <div class="section">
-        <form id="projectForm" onsubmit="createProject(event)">
-            <!-- Basic Info -->
+    <form id="projectForm" onsubmit="createProject(event)">
+
+        <!-- defined styles for reuse -->
+        <style>
+            .form-section {
+                background: white;
+                border-radius: 16px;
+                padding: 2rem;
+                margin-bottom: 2rem;
+                box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.05), 0 2px 4px -1px rgba(0, 0, 0, 0.03);
+                border: 1px solid #f1f5f9;
+            }
+
+            .section-title {
+                font-size: 1.125rem;
+                font-weight: 600;
+                color: #0f172a;
+                margin-bottom: 1.5rem;
+                display: flex;
+                align-items: center;
+                gap: 0.75rem;
+                padding-bottom: 1rem;
+                border-bottom: 1px solid #f1f5f9;
+            }
+
+            .section-icon {
+                width: 32px;
+                height: 32px;
+                background: #f1f5f9;
+                color: #64748b;
+                border-radius: 8px;
+                display: flex;
+                align-items: center;
+                justify-content: center;
+                font-size: 1rem;
+            }
+
+            .form-group {
+                margin-bottom: 1.5rem;
+            }
+
+            .form-label {
+                display: block;
+                font-weight: 500;
+                color: #334155;
+                margin-bottom: 0.5rem;
+                font-size: 0.875rem;
+            }
+
+            .form-control {
+                width: 100%;
+                padding: 0.75rem 1rem;
+                border: 1px solid #e2e8f0;
+                border-radius: 8px;
+                font-size: 0.95rem;
+                transition: border-color 0.15s ease-in-out, box-shadow 0.15s ease-in-out;
+            }
+
+            .form-control:focus {
+                border-color: #6366f1;
+                box-shadow: 0 0 0 3px rgba(99, 102, 241, 0.1);
+                outline: none;
+            }
+
+            .toggle-switch {
+                display: flex;
+                align-items: center;
+                justify-content: space-between;
+                padding: 1rem;
+                background: #f8fafc;
+                border-radius: 8px;
+                border: 1px solid #e2e8f0;
+                cursor: pointer;
+                transition: all 0.2s;
+            }
+
+            .toggle-switch:hover {
+                border-color: #cbd5e1;
+            }
+
+            .toggle-label {
+                font-weight: 500;
+                color: #334155;
+                display: flex;
+                align-items: center;
+                gap: 0.75rem;
+            }
+
+            .toggle-desc {
+                font-size: 0.8rem;
+                color: #64748b;
+                margin-top: 0.25rem;
+                font-weight: normal;
+            }
+
+            /* Checkbox styling */
+            .custom-checkbox {
+                width: 1.25rem;
+                height: 1.25rem;
+                border-radius: 4px;
+                border: 2px solid #cbd5e1;
+                appearance: none;
+                cursor: pointer;
+                position: relative;
+                transition: all 0.2s;
+            }
+
+            .custom-checkbox:checked {
+                background-color: #6366f1;
+                border-color: #6366f1;
+                background-image: url("data:image/svg+xml,%3csvg viewBox='0 0 16 16' fill='white' xmlns='http://www.w3.org/2000/svg'%3e%3cpath d='M12.207 4.793a1 1 0 010 1.414l-5 5a1 1 0 01-1.414 0l-2-2a1 1 0 011.414-1.414L6.5 9.086l4.293-4.293a1 1 0 011.414 0z'/%3e%3c/svg%3e");
+            }
+
+            .sub-options {
+                margin-top: 1rem;
+                margin-left: 2rem;
+                padding-left: 1rem;
+                border-left: 2px solid #e2e8f0;
+                display: grid;
+                grid-template-columns: repeat(auto-fill, minmax(140px, 1fr));
+                gap: 0.75rem;
+            }
+
+            .notify-group {
+                background: #f8fafc;
+                border-radius: 8px;
+                padding: 1rem;
+                border: 1px solid #e2e8f0;
+                margin-bottom: 1rem;
+            }
+        </style>
+
+        <!-- Section 1: General Info -->
+        <div class="form-section">
+            <h3 class="section-title">
+                <span class="section-icon"><i class="fas fa-layer-group"></i></span>
+                General Information
+            </h3>
+
             <div class="form-group">
-                <label for="name">Project Name *</label>
+                <label for="name" class="form-label">Project Name <span style="color: #ef4444;">*</span></label>
                 <input type="text" id="name" name="name" class="form-control" required
-                       placeholder="e.g., My Company Main">
+                    placeholder="e.g., Corporate Production, Client X">
             </div>
 
             <div class="form-group">
-                <label for="description">Description</label>
-                <textarea id="description" name="description" class="form-control"
-                          placeholder="Optional project description"></textarea>
+                <label for="description" class="form-label">Description</label>
+                <textarea id="description" name="description" class="form-control" rows="2"
+                    placeholder="Brief description of this project's scope..."></textarea>
             </div>
 
-            <!-- Domains -->
             <div class="form-group">
-                <label for="domains">Domains *</label>
-                <textarea id="domains" name="domains" class="form-control" required
-                          placeholder="Enter domains (one per line)&#10;example.com&#10;example.org"></textarea>
-                <small class="text-muted">One domain per line</small>
+                <label for="domains" class="form-label">Target Domains <span style="color: #ef4444;">*</span></label>
+                <textarea id="domains" name="domains" class="form-control" rows="5" required
+                    style="font-family: 'Consolas', monospace; font-size: 0.9rem; color: #475569;"
+                    placeholder="example.com&#10;api.example.com"></textarea>
+                <div style="font-size: 0.75rem; color: #94a3b8; margin-top: 0.5rem;">
+                    Enter one domain per line. These will be the root domains for all scanning activities.
+                </div>
             </div>
+        </div>
 
-            <!-- Tool Configuration -->
-            <h3 style="margin-top: 2rem;">Scan Configuration</h3>
+        <!-- Section 2: Scan Configuration -->
+        <div class="form-section">
+            <h3 class="section-title">
+                <span class="section-icon"><i class="fas fa-search-location"></i></span>
+                Scanning Engine
+            </h3>
 
+            <!-- Subdomains -->
             <div class="form-group">
-                <label>
-                    <input type="checkbox" name="subdomain_enabled" checked>
-                    Enable Subdomain Discovery
+                <label class="toggle-switch">
+                    <div class="toggle-label">
+                        <i class="fas fa-sitemap" style="color: #6366f1;"></i>
+                        <div>
+                            Subdomain Discovery
+                            <div class="toggle-desc">Find subdomains using passive and active sources.</div>
+                        </div>
+                    </div>
+                    <input type="checkbox" name="subdomain_enabled" class="custom-checkbox" checked
+                        onchange="toggleSubOptions(this, 'subdomain-sources')">
                 </label>
-                <div style="margin-left: 1.5rem; margin-top: 0.5rem;">
-                    <label><input type="checkbox" name="source_subfinder" checked> subfinder</label>
-                    <label style="margin-left: 1rem;"><input type="checkbox" name="source_assetfinder" checked> assetfinder</label>
-                    <label style="margin-left: 1rem;"><input type="checkbox" name="source_crtsh" checked> crt.sh</label>
+
+                <div id="subdomain-sources" class="sub-options">
+                    <label
+                        style="display: flex; align-items: center; gap: 0.5rem; font-size: 0.9rem; color: #475569; cursor: pointer;">
+                        <input type="checkbox" name="source_subfinder" class="custom-checkbox" checked> Subfinder
+                    </label>
+                    <label
+                        style="display: flex; align-items: center; gap: 0.5rem; font-size: 0.9rem; color: #475569; cursor: pointer;">
+                        <input type="checkbox" name="source_assetfinder" class="custom-checkbox" checked> Assetfinder
+                    </label>
+                    <label
+                        style="display: flex; align-items: center; gap: 0.5rem; font-size: 0.9rem; color: #475569; cursor: pointer;">
+                        <input type="checkbox" name="source_crtsh" class="custom-checkbox" checked> crt.sh
+                    </label>
+                    <label
+                        style="display: flex; align-items: center; gap: 0.5rem; font-size: 0.9rem; color: #475569; cursor: pointer;">
+                        <input type="checkbox" name="source_chaos" class="custom-checkbox" checked> Chaos
+                    </label>
                 </div>
             </div>
 
-            <div class="form-group">
-                <label>
-                    <input type="checkbox" name="dns_enabled" checked>
-                    Enable DNS Monitoring
+            <!-- DNS & HTTP -->
+            <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 1.5rem; margin-bottom: 1.5rem;">
+                <label class="toggle-switch">
+                    <div class="toggle-label">
+                        <i class="fas fa-network-wired" style="color: #10b981;"></i>
+                        <div>
+                            DNS Monitoring
+                            <div class="toggle-desc">Track A, CNAME records.</div>
+                        </div>
+                    </div>
+                    <input type="checkbox" name="dns_enabled" class="custom-checkbox" checked>
+                </label>
+
+                <label class="toggle-switch">
+                    <div class="toggle-label">
+                        <i class="fas fa-globe" style="color: #3b82f6;"></i>
+                        <div>
+                            HTTP Probing
+                            <div class="toggle-desc">Check status, title, tech.</div>
+                        </div>
+                    </div>
+                    <input type="checkbox" name="http_enabled" class="custom-checkbox" checked>
                 </label>
             </div>
 
-            <div class="form-group">
-                <label>
-                    <input type="checkbox" name="http_enabled" checked>
-                    Enable HTTP Probing
+            <!-- Advanced -->
+            <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 1.5rem;">
+                <label class="toggle-switch">
+                    <div class="toggle-label">
+                        <i class="fas fa-bug" style="color: #ef4444;"></i>
+                        <div>
+                            Shodan Scan
+                            <div class="toggle-desc">Check IPs for vuln/ports.</div>
+                        </div>
+                    </div>
+                    <input type="checkbox" name="shodan_enabled" class="custom-checkbox">
+                </label>
+
+                <label class="toggle-switch">
+                    <div class="toggle-label">
+                        <i class="fas fa-link" style="color: #8b5cf6;"></i>
+                        <div>
+                            Endpoints (Weekly)
+                            <div class="toggle-desc">Deep crawl and JS analysis.</div>
+                        </div>
+                    </div>
+                    <input type="checkbox" name="endpoints_enabled" class="custom-checkbox">
                 </label>
             </div>
+        </div>
+
+        <!-- Section 3: Notifications -->
+        <div class="form-section">
+            <h3 class="section-title">
+                <span class="section-icon"><i class="fas fa-bell"></i></span>
+                Notifications
+            </h3>
 
             <div class="form-group">
-                <label>
-                    <input type="checkbox" name="shodan_enabled">
-                    Enable Shodan Scanning
-                </label>
-                <small class="text-muted">Requires Shodan API key</small>
-            </div>
-
-            <div class="form-group">
-                <label>
-                    <input type="checkbox" name="endpoints_enabled">
-                    Enable Endpoint Discovery (Weekly Scan Only)
-                </label>
-            </div>
-
-            <!-- Notification Configuration -->
-            <h3 style="margin-top: 2rem;">Notifications (Optional)</h3>
-
-            <div class="form-group">
-                <label for="slack_webhook">Slack Webhook URL</label>
-                <input type="url" id="slack_webhook" name="slack_webhook" class="form-control"
-                       placeholder="https://hooks.slack.com/services/...">
-            </div>
-
-            <div class="form-group">
-                <label for="discord_webhook">Discord Webhook URL</label>
-                <input type="url" id="discord_webhook" name="discord_webhook" class="form-control"
-                       placeholder="https://discord.com/api/webhooks/...">
-            </div>
-
-            <div class="form-group">
-                <label for="telegram_token">Telegram Bot Token</label>
-                <input type="text" id="telegram_token" name="telegram_token" class="form-control"
-                       placeholder="123456:ABC-DEF1234ghIkl-zyx57W2v1u123ew11">
-            </div>
-
-            <div class="form-group">
-                <label for="telegram_chat">Telegram Chat ID</label>
-                <input type="text" id="telegram_chat" name="telegram_chat" class="form-control"
-                       placeholder="123456789">
-            </div>
-
-            <div class="form-group">
-                <label for="min_severity">Minimum Severity for Notifications</label>
-                <select id="min_severity" name="min_severity" class="form-control">
-                    <option value="info">Info (all events)</option>
+                <label for="min_severity" class="form-label">Minimum Alert Severity</label>
+                <select id="min_severity" name="min_severity" class="form-control" style="background-image: none;">
+                    <option value="info">Info (receive all alerts)</option>
                     <option value="low">Low</option>
-                    <option value="medium" selected>Medium</option>
+                    <option value="medium" selected>Medium (Recommended)</option>
                     <option value="high">High</option>
                     <option value="critical">Critical</option>
                 </select>
             </div>
 
-            <!-- Submit -->
-            <div style="margin-top: 2rem;">
-                <button type="submit" class="btn btn-primary">
-                    <i class="fas fa-plus"></i> Create Project
-                </button>
-                <a href="/" class="btn btn-secondary" style="margin-left: 0.5rem;">
-                    <i class="fas fa-times"></i> Cancel
-                </a>
+            <div class="notify-group">
+                <label class="form-label"
+                    style="display: flex; align-items: center; gap: 0.5rem; margin-bottom: 0.75rem;">
+                    <i class="fab fa-slack" style="color: #e01e5a; font-size: 1.1rem;"></i> Slack Integration
+                </label>
+                <input type="url" name="slack_webhook" class="form-control"
+                    placeholder="https://hooks.slack.com/services/...">
             </div>
-        </form>
-    </div>
+
+            <div class="notify-group">
+                <label class="form-label"
+                    style="display: flex; align-items: center; gap: 0.5rem; margin-bottom: 0.75rem;">
+                    <i class="fab fa-discord" style="color: #5865F2; font-size: 1.1rem;"></i> Discord Integration
+                </label>
+                <input type="url" name="discord_webhook" class="form-control"
+                    placeholder="https://discord.com/api/webhooks/...">
+            </div>
+
+            <div class="notify-group">
+                <label class="form-label"
+                    style="display: flex; align-items: center; gap: 0.5rem; margin-bottom: 0.75rem;">
+                    <i class="fab fa-telegram" style="color: #0088cc; font-size: 1.1rem;"></i> Telegram Integration
+                </label>
+                <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 1rem;">
+                    <input type="text" name="telegram_token" class="form-control" placeholder="Bot Token">
+                    <input type="text" name="telegram_chat" class="form-control" placeholder="Chat ID">
+                </div>
+            </div>
+        </div>
+
+        <!-- Submit Button -->
+        <div style="position: sticky; bottom: 2rem; z-index: 10; display: flex; justify-content: flex-end; gap: 1rem;">
+            <button type="submit" class="btn btn-primary"
+                style="padding: 1rem 2rem; font-size: 1rem; font-weight: 600; border-radius: 12px; background: #6366f1; border: none; box-shadow: 0 4px 6px -1px rgba(99, 102, 241, 0.4); display: flex; align-items: center; gap: 0.75rem;">
+                <i class="fas fa-plus"></i> Create Project
+            </button>
+        </div>
+
+    </form>
 </div>
+
+<script>
+    function toggleSubOptions(checkbox, targetId) {
+        const target = document.getElementById(targetId);
+        if (checkbox.checked) {
+            target.style.opacity = '1';
+            target.style.pointerEvents = 'auto';
+        } else {
+            target.style.opacity = '0.5';
+            target.style.pointerEvents = 'none';
+        }
+    }
+</script>
 {% endblock %}
 
 {% block extra_js %}
 <script>
-function createProject(event) {
-    event.preventDefault();
+    function createProject(event) {
+        event.preventDefault();
 
-    const form = event.target;
-    const formData = new FormData(form);
+        const form = event.target;
+        const formData = new FormData(form);
 
-    // Parse domains
-    const domainsText = formData.get('domains');
-    const domains = domainsText.split('\n')
-        .map(d => d.trim())
-        .filter(d => d.length > 0);
+        // Parse domains
+        const domainsText = formData.get('domains');
+        const domains = domainsText.split('\n')
+            .map(d => d.trim())
+            .filter(d => d.length > 0);
 
-    // Build subdomain sources
-    const subdomainSources = [];
-    if (formData.get('source_subfinder')) subdomainSources.push('subfinder');
-    if (formData.get('source_assetfinder')) subdomainSources.push('assetfinder');
-    if (formData.get('source_crtsh')) subdomainSources.push('crtsh');
+        // Build subdomain sources
+        const subdomainSources = [];
+        if (formData.get('source_subfinder')) subdomainSources.push('subfinder');
+        if (formData.get('source_assetfinder')) subdomainSources.push('assetfinder');
+        if (formData.get('source_assetfinder')) subdomainSources.push('assetfinder');
+        if (formData.get('source_crtsh')) subdomainSources.push('crtsh');
+        if (formData.get('source_chaos')) subdomainSources.push('chaos');
 
-    // Build config
-    const config = {
-        enabled_tools: {
-            subdomains: {
-                enabled: formData.get('subdomain_enabled') === 'on',
-                sources: subdomainSources
-            },
-            dns: {
-                enabled: formData.get('dns_enabled') === 'on'
-            },
-            http: {
-                enabled: formData.get('http_enabled') === 'on',
-                threads: 50
-            },
-            shodan: {
-                enabled: formData.get('shodan_enabled') === 'on'
-            },
-            endpoints: {
-                enabled: formData.get('endpoints_enabled') === 'on',
-                sources: ['waybackurls', 'gau'],
-                weekly_only: true
+        // Build config
+        const config = {
+            enabled_tools: {
+                subdomains: {
+                    enabled: formData.get('subdomain_enabled') === 'on',
+                    sources: subdomainSources
+                },
+                dns: {
+                    enabled: formData.get('dns_enabled') === 'on'
+                },
+                http: {
+                    enabled: formData.get('http_enabled') === 'on',
+                    threads: 50
+                },
+                shodan: {
+                    enabled: formData.get('shodan_enabled') === 'on'
+                },
+                endpoints: {
+                    enabled: formData.get('endpoints_enabled') === 'on',
+                    sources: ['waybackurls', 'gau'],
+                    weekly_only: true
+                }
             }
+        };
+
+        // Build notification config
+        const notificationConfig = {};
+
+        const slackWebhook = formData.get('slack_webhook');
+        if (slackWebhook) {
+            notificationConfig.slack = {
+                enabled: true,
+                webhook_url: slackWebhook,
+                min_severity: formData.get('min_severity')
+            };
         }
-    };
 
-    // Build notification config
-    const notificationConfig = {};
-
-    const slackWebhook = formData.get('slack_webhook');
-    if (slackWebhook) {
-        notificationConfig.slack = {
-            enabled: true,
-            webhook_url: slackWebhook,
-            min_severity: formData.get('min_severity')
-        };
-    }
-
-    const discordWebhook = formData.get('discord_webhook');
-    if (discordWebhook) {
-        notificationConfig.discord = {
-            enabled: true,
-            webhook_url: discordWebhook,
-            min_severity: formData.get('min_severity')
-        };
-    }
-
-    const telegramToken = formData.get('telegram_token');
-    const telegramChat = formData.get('telegram_chat');
-    if (telegramToken && telegramChat) {
-        notificationConfig.telegram = {
-            enabled: true,
-            bot_token: telegramToken,
-            chat_id: telegramChat,
-            min_severity: formData.get('min_severity')
-        };
-    }
-
-    // Build request
-    const data = {
-        name: formData.get('name'),
-        description: formData.get('description') || null,
-        domains: domains,
-        config: config,
-        notification_config: Object.keys(notificationConfig).length > 0 ? notificationConfig : null
-    };
-
-    // Submit
-    showToast('Creating project...', 'info');
-
-    fetch('/api/projects', {
-        method: 'POST',
-        headers: {'Content-Type': 'application/json'},
-        body: JSON.stringify(data)
-    })
-    .then(res => {
-        if (!res.ok) {
-            return res.json().then(err => { throw err; });
+        const discordWebhook = formData.get('discord_webhook');
+        if (discordWebhook) {
+            notificationConfig.discord = {
+                enabled: true,
+                webhook_url: discordWebhook,
+                min_severity: formData.get('min_severity')
+            };
         }
-        return res.json();
-    })
-    .then(project => {
-        showToast('Project created successfully!', 'success');
-        setTimeout(() => {
-            window.location.href = '/projects/' + project.id;
-        }, 1000);
-    })
-    .catch(err => {
-        console.error('Error:', err);
-        const message = err.detail || err.message || 'Failed to create project';
-        showToast(message, 'error');
-    });
-}
+
+        const telegramToken = formData.get('telegram_token');
+        const telegramChat = formData.get('telegram_chat');
+        if (telegramToken && telegramChat) {
+            notificationConfig.telegram = {
+                enabled: true,
+                bot_token: telegramToken,
+                chat_id: telegramChat,
+                min_severity: formData.get('min_severity')
+            };
+        }
+
+        // Build request
+        const data = {
+            name: formData.get('name'),
+            description: formData.get('description') || null,
+            domains: domains,
+            config: config,
+            notification_config: Object.keys(notificationConfig).length > 0 ? notificationConfig : null
+        };
+
+        // Submit
+        showToast('Creating project...', 'info');
+
+        fetch('/api/projects', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify(data)
+        })
+            .then(res => {
+                if (!res.ok) {
+                    return res.json().then(err => { throw err; });
+                }
+                return res.json();
+            })
+            .then(project => {
+                showToast('Project created successfully!', 'success');
+                setTimeout(() => {
+                    window.location.href = '/projects/' + project.id;
+                }, 1000);
+            })
+            .catch(err => {
+                console.error('Error:', err);
+                const message = err.detail || err.message || 'Failed to create project';
+                showToast(message, 'error');
+            });
+    }
 </script>
 {% endblock %}

@@ -4,6 +4,10 @@ Aggregates results from multiple sources: subfinder, assetfinder, crt.sh, etc.
 """
 
 import logging
+import os
+import requests
+import zipfile
+from pathlib import Path
 from typing import List, Dict, Set
 from concurrent.futures import ThreadPoolExecutor, as_completed
 
@@ -33,10 +37,66 @@ class SubdomainDiscovery:
         self.results = {}
         self.all_subdomains = set()
 
+    def run_chaos(self, domain: str) -> Set[str]:
+        """Run Chaos (ProjectDiscovery) for subdomain discovery"""
+        logger.info(f"Running Chaos Dump for {domain}...")
+
+        # Use temporary directory for chaos data
+        chaos_dir = Path(os.path.join("/tmp", "assetmon_chaos"))
+        chaos_dir.mkdir(exist_ok=True)
+
+        try:
+            # Download chaos index
+            index_url = "https://chaos-data.projectdiscovery.io/index.json"
+            response = requests.get(index_url, timeout=30)
+            index_data = response.json()
+
+            # Find domain in index
+            chaos_url = None
+            for entry in index_data:
+                if entry.get('domain') == domain:
+                    chaos_url = entry.get('URL')
+                    break
+
+            if chaos_url:
+                logger.info(f"Downloading Chaos data for {domain}...")
+
+                # Download zip file
+                zip_response = requests.get(chaos_url, timeout=60)
+                zip_file = chaos_dir / f"{domain}.zip"
+
+                with open(zip_file, 'wb') as f:
+                    f.write(zip_response.content)
+
+                # Extract zip
+                with zipfile.ZipFile(zip_file, 'r') as zip_ref:
+                    zip_ref.extractall(chaos_dir)
+
+                # Read all txt files
+                subs = set()
+                for txt_file in chaos_dir.glob("*.txt"):
+                    with open(txt_file, 'r') as f:
+                        subs.update([line.strip() for line in f if line.strip()])
+
+                # Cleanup zip file (temp dir will be cleaned by OS eventually, or explicitly here)
+                zip_file.unlink()
+                for txt_file in chaos_dir.glob("*.txt"):
+                    txt_file.unlink()
+
+                logger.info(f"Chaos Dump: {len(subs)} subdomains found for {domain}")
+                return subs
+            else:
+                logger.info(f"Chaos Dump: Not found for {domain}")
+                return set()
+
+        except Exception as e:
+            logger.error(f"Chaos error for {domain}: {e}")
+            return set()
+
     def discover(self) -> Dict[str, any]:
         """
         Run subdomain discovery from all enabled sources
-
+        
         Returns:
             Dict with results: {
                 "subdomains": List[str],
@@ -67,17 +127,17 @@ class SubdomainDiscovery:
                 logger.error(f"subfinder failed: {e}")
                 source_results["subfinder"] = {"count": 0, "subdomains": [], "error": str(e)}
 
-        # Run assetfinder and crtsh per domain (they only support single domain)
+        # Run assetfinder, crtsh, and chaos per domain
         for domain in self.domains:
             if "assetfinder" in self.enabled_sources:
                 try:
                     logger.info(f"Running assetfinder for {domain}...")
                     subdomains = run_assetfinder(domain)
                     cleaned = self._clean_subdomains(subdomains)
-
+                    
                     if "assetfinder" not in source_results:
                         source_results["assetfinder"] = {"count": 0, "subdomains": []}
-
+                    
                     source_results["assetfinder"]["count"] += len(cleaned)
                     source_results["assetfinder"]["subdomains"].extend(cleaned)
                     self.all_subdomains.update(cleaned)
@@ -89,15 +149,30 @@ class SubdomainDiscovery:
                     logger.info(f"Running crt.sh query for {domain}...")
                     subdomains = crtsh_query(domain)
                     cleaned = self._clean_subdomains(subdomains)
-
+                    
                     if "crtsh" not in source_results:
                         source_results["crtsh"] = {"count": 0, "subdomains": []}
-
+                        
                     source_results["crtsh"]["count"] += len(cleaned)
                     source_results["crtsh"]["subdomains"].extend(cleaned)
                     self.all_subdomains.update(cleaned)
                 except Exception as e:
                     logger.error(f"crt.sh failed for {domain}: {e}")
+
+            if "chaos" in self.enabled_sources:
+                try:
+                    subdomains = list(self.run_chaos(domain))
+                    cleaned = self._clean_subdomains(subdomains)
+                    
+                    if "chaos" not in source_results:
+                        source_results["chaos"] = {"count": 0, "subdomains": []}
+                        
+                    source_results["chaos"]["count"] += len(cleaned)
+                    source_results["chaos"]["subdomains"].extend(cleaned)
+                    self.all_subdomains.update(cleaned)
+                except Exception as e:
+                    logger.error(f"chaos failed for {domain}: {e}")
+
 
         # Aggregate results
         all_subdomains_list = sorted(list(self.all_subdomains))
