@@ -459,9 +459,16 @@
             <form method="GET" action="/" style="position: relative; max-width: 300px; width: 100%;">
                 <i class="fas fa-search"
                     style="position: absolute; left: 1rem; top: 50%; transform: translateY(-50%); color: var(--text-secondary);"></i>
-                <input type="text" name="search" value="{{ search }}" placeholder="Search projects..."
+                <input type="text" name="search" value="{{ search or '' }}" placeholder="Search projects..."
                     style="width: 100%; padding: 0.625rem 1rem 0.625rem 2.5rem; border: 1px solid #e2e8f0; border-radius: 8px; font-size: 0.875rem; transition: all 0.2s;"
                     onfocus="this.style.borderColor='var(--text-primary)'" onblur="this.style.borderColor='#e2e8f0'">
+                {% if search %}
+                <a href="/"
+                    style="position: absolute; right: 0.75rem; top: 50%; transform: translateY(-50%); color: #94a3b8; text-decoration: none; padding: 0.25rem;"
+                    title="Clear search">
+                    <i class="fas fa-times"></i>
+                </a>
+                {% endif %}
             </form>
             <a href="/projects/new" class="btn-new-project-header">
                 <i class="fas fa-plus"></i> New Project
