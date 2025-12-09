@@ -2,592 +2,635 @@
 
 {% block title %}Scheduled Jobs - Asset Monitor{% endblock %}
 
+{% block extra_css %}
+<style>
+    .schedules-container {
+        max-width: 1400px;
+        margin: 0 auto;
+    }
+
+    /* Premium Header */
+    .page-header-premium {
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+        margin-bottom: 2rem;
+        background: white;
+        padding: 1.5rem 2rem;
+        border-radius: 16px;
+        box-shadow: 0 4px 20px rgba(0, 0, 0, 0.05);
+        border: 1px solid rgba(255, 255, 255, 0.8);
+    }
+
+    .page-title h2 {
+        margin: 0;
+        font-size: 1.75rem;
+        font-weight: 700;
+        background: linear-gradient(135deg, #1e293b 0%, #334155 100%);
+        -webkit-background-clip: text;
+        -webkit-text-fill-color: transparent;
+        letter-spacing: -0.02em;
+    }
+
+    .page-title p {
+        margin: 0.5rem 0 0;
+        color: #64748b;
+        font-size: 0.95rem;
+    }
+
+    /* Stats Row */
+    .stats-grid {
+        display: grid;
+        grid-template-columns: repeat(auto-fit, minmax(240px, 1fr));
+        gap: 1.5rem;
+        margin-bottom: 2rem;
+    }
+
+    .stat-card {
+        background: white;
+        padding: 1.5rem;
+        border-radius: 16px;
+        border: 1px solid #e2e8f0;
+        box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.05);
+        display: flex;
+        align-items: center;
+        gap: 1rem;
+        transition: transform 0.2s, box-shadow 0.2s;
+    }
+
+    .stat-card:hover {
+        transform: translateY(-2px);
+        box-shadow: 0 10px 15px -3px rgba(0, 0, 0, 0.05);
+    }
+
+    .stat-icon {
+        width: 48px;
+        height: 48px;
+        border-radius: 12px;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        font-size: 1.25rem;
+    }
+
+    .stat-info .value {
+        font-size: 1.5rem;
+        font-weight: 700;
+        color: #0f172a;
+        line-height: 1;
+        margin-bottom: 0.25rem;
+    }
+
+    .stat-info .label {
+        font-size: 0.875rem;
+        color: #64748b;
+        font-weight: 500;
+    }
+
+    /* Table Search Bar */
+    .table-controls {
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+        margin-bottom: 1rem;
+        gap: 1rem;
+    }
+
+    .search-wrapper {
+        position: relative;
+        flex: 1;
+        max-width: 400px;
+    }
+
+    .search-input {
+        width: 100%;
+        padding: 0.75rem 1rem 0.75rem 2.5rem;
+        border: 1px solid #e2e8f0;
+        border-radius: 12px;
+        font-size: 0.95rem;
+        transition: all 0.2s;
+        box-shadow: 0 1px 2px rgba(0, 0, 0, 0.05);
+    }
+
+    .search-input:focus {
+        outline: none;
+        border-color: #6366f1;
+        box-shadow: 0 0 0 3px rgba(99, 102, 241, 0.1);
+    }
+
+    .search-icon {
+        position: absolute;
+        left: 1rem;
+        top: 50%;
+        transform: translateY(-50%);
+        color: #94a3b8;
+    }
+
+    /* Premium Table */
+    .table-container {
+        background: white;
+        border-radius: 16px;
+        box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.05);
+        border: 1px solid #e2e8f0;
+        overflow: hidden;
+    }
+
+    .premium-table {
+        width: 100%;
+        border-collapse: collapse;
+    }
+
+    .premium-table th {
+        background: #f8fafc;
+        padding: 1rem 1.5rem;
+        text-align: left;
+        font-weight: 600;
+        color: #475569;
+        font-size: 0.875rem;
+        text-transform: uppercase;
+        letter-spacing: 0.05em;
+        border-bottom: 1px solid #e2e8f0;
+    }
+
+    .premium-table td {
+        padding: 1.25rem 1.5rem;
+        border-bottom: 1px solid #f1f5f9;
+        vertical-align: middle;
+        color: #334155;
+        font-size: 0.95rem;
+    }
+
+    .premium-table tr:last-child td {
+        border-bottom: none;
+    }
+
+    .premium-table tr:hover {
+        background-color: #f8fafc;
+    }
+
+    /* Column Styles */
+    .project-cell {
+        display: flex;
+        align-items: center;
+        gap: 0.75rem;
+    }
+
+    .project-icon-small {
+        width: 32px;
+        height: 32px;
+        background: linear-gradient(135deg, #6366f1 0%, #4f46e5 100%);
+        color: white;
+        border-radius: 8px;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        font-size: 0.875rem;
+    }
+
+    .project-name {
+        font-weight: 600;
+        color: #0f172a;
+        text-decoration: none;
+    }
+
+    .project-name:hover {
+        color: #4f46e5;
+    }
+
+    .status-badge {
+        padding: 0.25rem 0.75rem;
+        border-radius: 9999px;
+        font-size: 0.75rem;
+        font-weight: 600;
+        display: inline-flex;
+        align-items: center;
+        gap: 0.35rem;
+    }
+
+    .status-badge.normal {
+        background: #dcfce7;
+        color: #166534;
+    }
+
+    .status-badge.weekly {
+        background: #fef9c3;
+        color: #854d0e;
+    }
+
+    .info-pill {
+        background: #f1f5f9;
+        color: #475569;
+        padding: 0.25rem 0.6rem;
+        border-radius: 6px;
+        font-family: 'JetBrains Mono', monospace;
+        font-size: 0.8rem;
+    }
+
+    .action-btn {
+        width: 32px;
+        height: 32px;
+        border-radius: 8px;
+        display: inline-flex;
+        align-items: center;
+        justify-content: center;
+        border: 1px solid transparent;
+        background: transparent;
+        color: #64748b;
+        cursor: pointer;
+        transition: all 0.2s;
+    }
+
+    .action-btn:hover {
+        background: #f1f5f9;
+        color: #0f172a;
+    }
+
+    .action-btn.primary:hover {
+        background: #eff6ff;
+        color: #2563eb;
+    }
+
+    /* Modal Styles */
+    .modal-backdrop {
+        display: none;
+        position: fixed;
+        top: 0;
+        left: 0;
+        width: 100%;
+        height: 100%;
+        background: rgba(15, 23, 42, 0.6);
+        backdrop-filter: blur(4px);
+        z-index: 50;
+        opacity: 0;
+        transition: opacity 0.2s;
+    }
+
+    .modal-backdrop.show {
+        opacity: 1;
+    }
+
+    .modal-content {
+        background: white;
+        width: 90%;
+        max-width: 600px;
+        border-radius: 16px;
+        box-shadow: 0 25px 50px -12px rgba(0, 0, 0, 0.25);
+        position: absolute;
+        top: 50%;
+        left: 50%;
+        transform: translate(-50%, -48%) scale(0.96);
+        transition: all 0.2s;
+        opacity: 0;
+        overflow: hidden;
+    }
+
+    .modal-backdrop.show .modal-content {
+        transform: translate(-50%, -50%) scale(1);
+        opacity: 1;
+    }
+
+    .modal-header {
+        padding: 1.5rem;
+        border-bottom: 1px solid #e2e8f0;
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+        background: #f8fafc;
+    }
+
+    .modal-body {
+        padding: 1.5rem;
+    }
+
+    .preset-grid {
+        display: grid;
+        grid-template-columns: repeat(auto-fit, minmax(140px, 1fr));
+        gap: 0.75rem;
+        margin-bottom: 1.5rem;
+    }
+
+    .preset-chip {
+        padding: 0.6rem 0.8rem;
+        background: white;
+        border: 1px solid #e2e8f0;
+        border-radius: 8px;
+        font-size: 0.85rem;
+        color: #475569;
+        cursor: pointer;
+        transition: all 0.2s;
+        text-align: center;
+    }
+
+    .preset-chip:hover {
+        border-color: #6366f1;
+        color: #6366f1;
+        background: #eef2ff;
+    }
+</style>
+{% endblock %}
+
 {% block content %}
-<div class="schedules-page">
-    <div class="page-header">
-        <h2>Scheduled Scan Jobs</h2>
-        <div class="header-actions">
-            <button class="btn btn-secondary" onclick="refreshPage()">
-                <i class="fas fa-refresh"></i> Refresh
-            </button>
+<div class="schedules-container">
+    <!-- Header -->
+    <div class="page-header-premium">
+        <div class="page-title">
+            <h2>Scheduled Jobs</h2>
+            <p>Manage automated scanning schedules for your projects</p>
+        </div>
+        <button class="btn btn-secondary" onclick="location.reload()"
+            style="gap: 0.5rem; display: flex; align-items: center;">
+            <i class="fas fa-refresh"></i> Refresh
+        </button>
+    </div>
+
+    <!-- Stats -->
+    <div class="stats-grid">
+        <div class="stat-card">
+            <div class="stat-icon" style="background: rgba(99, 102, 241, 0.1); color: #6366f1;">
+                <i class="fas fa-clock"></i>
+            </div>
+            <div class="stat-info">
+                <div class="value">{{ stats.total|default(0) }}</div>
+                <div class="label">Total Jobs</div>
+            </div>
+        </div>
+        <div class="stat-card">
+            <div class="stat-icon" style="background: rgba(34, 197, 94, 0.1); color: #22c55e;">
+                <i class="fas fa-calendar-day"></i>
+            </div>
+            <div class="stat-info">
+                <div class="value">
+                    {{ stats.normal|default(0) }}
+                </div>
+                <div class="label">Daily/Normal</div>
+            </div>
+        </div>
+        <div class="stat-card">
+            <div class="stat-icon" style="background: rgba(234, 179, 8, 0.1); color: #eab308;">
+                <i class="fas fa-calendar-week"></i>
+            </div>
+            <div class="stat-info">
+                <div class="value">
+                    {{ stats.weekly|default(0) }}
+                </div>
+                <div class="label">Weekly</div>
+            </div>
         </div>
     </div>
 
-    <!-- Summary Stats -->
-    <div class="section">
-        <div
-            style="display: grid; grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)); gap: 1rem; margin-bottom: 1rem;">
-            <div style="background: #f8f9fa; padding: 1rem; border-radius: 4px; border-left: 4px solid #007bff;">
-                <div style="font-size: 24px; font-weight: bold; color: #007bff;">
-                    {{ jobs|length }}
+    <!-- Table Section -->
+    <div class="table-container">
+        <!-- Controls -->
+        <div style="padding: 1.5rem; border-bottom: 1px solid #e2e8f0;">
+            <div class="table-controls" style="margin: 0;">
+                <div class="search-wrapper">
+                    <i class="fas fa-search search-icon"></i>
+                    <input type="text" id="jobSearch" class="search-input" placeholder="Search projects..."
+                        onkeyup="filterJobs()">
                 </div>
-                <div style="color: #6c757d;">Total Active Jobs</div>
-            </div>
-            <div style="background: #f8f9fa; padding: 1rem; border-radius: 4px; border-left: 4px solid #28a745;">
-                <div style="font-size: 24px; font-weight: bold; color: #28a745;">
-                    {% set normal_count = jobs|selectattr('scan_mode', 'defined')|selectattr('scan_mode', 'equalto',
-                    'normal')|list|length %}
-                    {{ normal_count }}
-                </div>
-                <div style="color: #6c757d;">Normal Scans</div>
-            </div>
-            <div style="background: #f8f9fa; padding: 1rem; border-radius: 4px; border-left: 4px solid #ffc107;">
-                <div style="font-size: 24px; font-weight: bold; color: #ffc107;">
-                    {% set weekly_count = jobs|selectattr('scan_mode', 'defined')|selectattr('scan_mode', 'equalto',
-                    'weekly')|list|length %}
-                    {{ weekly_count }}
-                </div>
-                <div style="color: #6c757d;">Weekly Scans</div>
             </div>
         </div>
-    </div>
 
-    <!-- Jobs List -->
-    <div class="section">
         {% if jobs|length == 0 %}
-        <div class="alert alert-info">
-            <i class="fas fa-info-circle"></i>
-            <strong>No scheduled jobs found.</strong> Create a project and configure scan schedules to see jobs here.
+        <div style="padding: 3rem; text-align: center; color: #64748b;">
+            <i class="fas fa-calendar-times" style="font-size: 3rem; margin-bottom: 1rem; color: #cbd5e1;"></i>
+            <p>No scheduled jobs found. Configure schedules in Project Settings.</p>
         </div>
         {% else %}
-        <div class="jobs-grid">
-            {% for job in jobs %}
-            <div class="job-card">
-                <div class="job-header">
-                    <div class="job-title">
-                        <i class="fas fa-clock"></i>
-                        {% if job.project is defined %}
-                        <strong>{{ job.project.name }}</strong>
-                        {% else %}
-                        <strong>{{ job.name }}</strong>
-                        {% endif %}
-                    </div>
-                    <div class="job-badge">
-                        {% if job.scan_mode == 'weekly' %}
-                        <span class="badge badge-warning">Weekly</span>
-                        {% else %}
-                        <span class="badge badge-success">Normal</span>
-                        {% endif %}
-                    </div>
-                </div>
-
-                <div class="job-body">
-                    <!-- Job ID -->
-                    <div class="job-info-row">
-                        <span class="info-label"><i class="fas fa-tag"></i> Job ID:</span>
-                        <span class="info-value"><code>{{ job.id }}</code></span>
-                    </div>
-
-                    <!-- Next Run -->
-                    <div class="job-info-row">
-                        <span class="info-label"><i class="fas fa-calendar-alt"></i> Next Run:</span>
-                        <span class="info-value">
-                            {% if job.next_run %}
-                            <strong style="color: #28a745;">
-                                <span class="local-date" data-date="{{ job.next_run.isoformat() }}">
-                                    {{ job.next_run.strftime('%Y-%m-%d %H:%M:%S') }}
-                                </span>
-                            </strong>
-                            {% else %}
-                            <span class="text-muted">Not scheduled</span>
-                            {% endif %}
-                        </span>
-                    </div>
-
-                    <!-- Schedule (Cron) -->
-                    <div class="job-info-row">
-                        <span class="info-label"><i class="fas fa-cog"></i> Schedule:</span>
-                        <span class="info-value"><code>{{ job.trigger }}</code></span>
-                    </div>
-
-                    {% if job.project is defined %}
-                    <!-- Project Info -->
-                    <div class="job-info-row">
-                        <span class="info-label"><i class="fas fa-project-diagram"></i> Project:</span>
-                        <span class="info-value">
-                            <a href="/projects/{{ job.project_id }}" style="color: #007bff; text-decoration: none;">
-                                {{ job.project.name }}
-                            </a>
-                        </span>
-                    </div>
-
-                    <!-- Domains -->
-                    <div class="job-info-row">
-                        <span class="info-label"><i class="fas fa-globe"></i> Domains:</span>
-                        <span class="info-value">
-                            {% if job.project.domains %}
-                            <div style="margin-top: 0.25rem;">
-                                {% for domain in job.project.domains[:3] %}
-                                <code
-                                    style="display: inline-block; margin: 2px;">{{ domain.name if domain.name is defined else domain }}</code>
-                                {% endfor %}
-                                {% if job.project.domains|length > 3 %}
-                                <span style="color: #6c757d;">+{{ job.project.domains|length - 3 }} more</span>
-                                {% endif %}
+        <div style="overflow-x: auto;">
+            <table class="premium-table" id="jobsTable">
+                <thead>
+                    <tr>
+                        <th style="width: 30%;">Project</th>
+                        <th>Total Domain</th>
+                        <th>Next Run</th>
+                        <th>Last Scan</th>
+                        <th style="width: 100px; text-align: right;">Action</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    {% for job in jobs %}
+                    <tr>
+                        <td>
+                            <div class="project-cell">
+                                <div class="project-icon-small">
+                                    <i class="fas fa-cube"></i>
+                                </div>
+                                <div style="display: flex; flex-direction: column;">
+                                    {% if job.project is defined %}
+                                    <a href="/projects/{{ job.project_id }}" class="project-name">{{ job.project.name
+                                        }}</a>
+                                    {% else %}
+                                    <span class="project-name">{{ job.name }}</span>
+                                    {% endif %}
+                                    <small style="color: #64748b; font-size: 0.8rem;">{{ job.trigger }}</small>
+                                </div>
                             </div>
-                            {% else %}
-                            <span class="text-muted">No domains</span>
-                            {% endif %}
-                        </span>
-                    </div>
-
-                    <!-- Scan Configuration -->
-                    {% if job.scan_config is defined %}
-                    <div class="job-info-row" style="margin-top: 0.5rem;">
-                        <span class="info-label"><i class="fas fa-list-check"></i> Scan Tools:</span>
-                        <span class="info-value">
-                            <div class="tools-badges">
-                                {% if job.scan_config.subdomains %}
-                                <span class="tool-badge enabled"><i class="fas fa-check"></i> Subdomains</span>
-                                {% else %}
-                                <span class="tool-badge disabled"><i class="fas fa-times"></i> Subdomains</span>
-                                {% endif %}
-
-                                {% if job.scan_config.dns %}
-                                <span class="tool-badge enabled"><i class="fas fa-check"></i> DNS</span>
-                                {% else %}
-                                <span class="tool-badge disabled"><i class="fas fa-times"></i> DNS</span>
-                                {% endif %}
-
-                                {% if job.scan_config.http %}
-                                <span class="tool-badge enabled"><i class="fas fa-check"></i> HTTP</span>
-                                {% else %}
-                                <span class="tool-badge disabled"><i class="fas fa-times"></i> HTTP</span>
-                                {% endif %}
-
-                                {% if job.scan_config.shodan %}
-                                <span class="tool-badge enabled"><i class="fas fa-check"></i> Shodan</span>
-                                {% else %}
-                                <span class="tool-badge disabled"><i class="fas fa-times"></i> Shodan</span>
-                                {% endif %}
-
-                                {% if job.scan_config.endpoints %}
-                                <span class="tool-badge enabled"><i class="fas fa-check"></i> Endpoints</span>
-                                {% else %}
-                                <span class="tool-badge disabled"><i class="fas fa-times"></i> Endpoints</span>
-                                {% endif %}
-                            </div>
-                        </span>
-                    </div>
-                    {% endif %}
-
-                    <!-- Last Scan -->
-                    {% if job.project is defined and job.project.last_scan_at %}
-                    <div class="job-info-row" style="margin-top: 0.5rem;">
-                        <span class="info-label"><i class="fas fa-history"></i> Last Scan:</span>
-                        <span class="info-value">
-                            <span class="local-date" data-date="{{ job.project.last_scan_at.isoformat() }}">
-                                {{ job.project.last_scan_at.strftime('%Y-%m-%d %H:%M:%S') }}
+                        </td>
+                        <td>
+                            {% if job.project is defined and job.project.domains %}
+                            <span class="stats-badge"
+                                style="background: #f1f5f9; padding: 2px 8px; border-radius: 4px; font-weight: 600; font-size: 0.85rem;">
+                                {{ job.project.domains|length }}
                             </span>
-                        </span>
-                    </div>
-                    {% endif %}
-                    {% endif %}
-                </div>
+                            {% else %}
+                            <span style="color: #94a3b8;">-</span>
+                            {% endif %}
+                        </td>
+                        <td>
+                            {% if job.next_run %}
+                            <span class="text-green-600 font-medium" style="color: #166534; font-weight: 600;">
+                                {{ job.next_run.strftime('%Y-%m-%d %H:%M') }}
+                            </span>
+                            {% else %}
+                            <span style="color: #94a3b8;">Not scheduled</span>
+                            {% endif %}
+                        </td>
+                        <td>
+                            {% if job.project is defined and job.project.last_scan_at %}
+                            <span data-timestamp="{{ job.project.last_scan_at.isoformat() }}" style="color: #64748b;">
+                                {{ job.project.last_scan_at.strftime('%Y-%m-%d %H:%M') }}
+                            </span>
+                            {% else %}
+                            -
+                            {% endif %}
+                        </td>
+                        <td style="text-align: right;">
+                            {% if job.project_id is defined %}
+                            <button class="action-btn primary" title="Edit Schedule" data-job-id="{{ job.id }}"
+                                data-trigger="{{ job.trigger }}"
+                                data-project-name="{{ job.project.name if job.project is defined else job.name }}"
+                                onclick="openEditScheduleModal(this.getAttribute('data-job-id'), this.getAttribute('data-trigger'), this.getAttribute('data-project-name'))">
+                                <i class="fas fa-edit"></i>
+                            </button>
+                            {% endif %}
+                        </td>
+                    </tr>
+                    {% endfor %}
+                </tbody>
+            </table>
+        </div>
 
-                <div class="job-footer">
-                    {% if job.project_id is defined %}
-                    <a href="/projects/{{ job.project_id }}" class="btn btn-sm btn-primary">
-                        <i class="fas fa-eye"></i> View Project
-                    </a>
-                    <button class="btn btn-sm btn-warning" data-job-id="{{ job.id }}" data-trigger="{{ job.trigger }}"
-                        data-project-name="{{ job.project.name if job.project is defined else job.name }}"
-                        onclick="openEditScheduleModal(this.getAttribute('data-job-id'), this.getAttribute('data-trigger'), this.getAttribute('data-project-name'))">
-                        <i class="fas fa-clock"></i> Edit Schedule
-                    </button>
-                    {% endif %}
+        <!-- Pagination -->
+        {% if total_pages is defined and total_pages > 1 %}
+        <div class="pagination-container"
+            style="padding: 1rem 1.5rem; border-top: 1px solid #e2e8f0; display: flex; justify-content: space-between; align-items: center; background: #f8fafc;">
+
+            <!-- Per Page & Info -->
+            <div style="display: flex; align-items: center; gap: 1rem;">
+                <div style="font-size: 0.875rem; color: #64748b;">
+                    Showing <strong>{{ jobs|length }}</strong> of <strong>{{ total_jobs }}</strong> results
                 </div>
             </div>
-            {% endfor %}
+
+            <!-- Page Controls -->
+            <div style="display: flex; gap: 0.5rem; align-items: center;">
+                <!-- Page Jump -->
+                <span style="font-size: 0.875rem; color: #64748b; margin-right: 0.5rem;">Page</span>
+                <select onchange="window.location.href='?page='+this.value"
+                    style="padding: 0.3rem 0.5rem; border: 1px solid #cbd5e1; border-radius: 6px; background: white; color: #334155; font-size: 0.9rem; margin-right: 0.5rem;">
+                    {% for p in range(1, total_pages + 1) %}
+                    <option value="{{ p }}" {% if p==current_page %}selected{% endif %}>{{ p }}</option>
+                    {% endfor %}
+                </select>
+                <span style="font-size: 0.875rem; color: #64748b; margin-right: 1rem;">of {{ total_pages }}</span>
+
+                {% if current_page > 1 %}
+                <a href="?page={{ current_page - 1 }}" class="btn btn-sm"
+                    style="border: 1px solid #e2e8f0; background: white; color: #475569; padding: 0.4rem 0.8rem; border-radius: 8px; text-decoration: none; transition: all 0.2s; display: flex; align-items: center; gap: 0.25rem;">
+                    <i class="fas fa-chevron-left"></i> Prev
+                </a>
+                {% else %}
+                <button disabled class="btn btn-sm"
+                    style="border: 1px solid #e2e8f0; background: #f1f5f9; color: #94a3b8; padding: 0.4rem 0.8rem; border-radius: 8px; cursor: not-allowed; display: flex; align-items: center; gap: 0.25rem;">
+                    <i class="fas fa-chevron-left"></i> Prev
+                </button>
+                {% endif %}
+
+                {% if current_page < total_pages %} <a href="?page={{ current_page + 1 }}" class="btn btn-sm"
+                    style="border: 1px solid #e2e8f0; background: white; color: #475569; padding: 0.4rem 0.8rem; border-radius: 8px; text-decoration: none; transition: all 0.2s; display: flex; align-items: center; gap: 0.25rem;">
+                    Next <i class="fas fa-chevron-right"></i>
+                    </a>
+                    {% else %}
+                    <button disabled class="btn btn-sm"
+                        style="border: 1px solid #e2e8f0; background: #f1f5f9; color: #94a3b8; padding: 0.4rem 0.8rem; border-radius: 8px; cursor: not-allowed; display: flex; align-items: center; gap: 0.25rem;">
+                        Next <i class="fas fa-chevron-right"></i>
+                    </button>
+                    {% endif %}
+            </div>
         </div>
         {% endif %}
-    </div>
 
-    <!-- Cron Expression Guide -->
-    <div class="section">
-        <h3>Cron Expression Guide</h3>
-        <p>Scheduled jobs use cron expressions with the following format. <strong>Note: The schedule runs in
-                UTC.</strong></p>
-        <div class="cron-guide">
-            <code>minute hour day month day_of_week</code>
+        {% endif %}
+    </div>
+</div>
+
+<!-- Edit Schedule Modal -->
+<div id="editScheduleModal" class="modal-backdrop">
+    <div class="modal-content">
+        <div class="modal-header">
+            <h3 style="margin: 0; font-size: 1.1rem; color: #0f172a; font-weight: 600;">
+                <i class="fas fa-history" style="color: #6366f1; margin-right: 0.5rem;"></i> Edit Schedule
+            </h3>
+            <button onclick="closeEditScheduleModal()"
+                style="background: none; border: none; font-size: 1.25rem; color: #64748b; cursor: pointer;">
+                <i class="fas fa-times"></i>
+            </button>
         </div>
-        <table class="table" style="margin-top: 1rem;">
-            <thead>
-                <tr>
-                    <th>Field</th>
-                    <th>Allowed Values</th>
-                    <th>Special Characters</th>
-                </tr>
-            </thead>
-            <tbody>
-                <tr>
-                    <td>minute</td>
-                    <td>0-59</td>
-                    <td>* , - /</td>
-                </tr>
-                <tr>
-                    <td>hour</td>
-                    <td>0-23</td>
-                    <td>* , - /</td>
-                </tr>
-                <tr>
-                    <td>day</td>
-                    <td>1-31</td>
-                    <td>* , - /</td>
-                </tr>
-                <tr>
-                    <td>month</td>
-                    <td>1-12</td>
-                    <td>* , - /</td>
-                </tr>
-                <tr>
-                    <td>day_of_week</td>
-                    <td>0-6 (0=Sunday)</td>
-                    <td>* , - /</td>
-                </tr>
-            </tbody>
-        </table>
+        <div class="modal-body">
+            <p id="modalProjectName" style="margin-top: 0; color: #64748b; font-size: 0.9rem; margin-bottom: 1.5rem;">
+            </p>
 
-        <h4 style="margin-top: 1rem;">Examples:</h4>
-        <ul>
-            <li><code>0 2 * * *</code> - Daily at 2:00 AM</li>
-            <li><code>0 */6 * * *</code> - Every 6 hours</li>
-            <li><code>0 3 * * 0</code> - Every Sunday at 3:00 AM</li>
-            <li><code>30 1 * * 1-5</code> - Every weekday at 1:30 AM</li>
-            <li><code>0 0 1 * *</code> - First day of every month at midnight</li>
-        </ul>
-    </div>
-
-    <!-- Edit Schedule Modal -->
-    <div id="editScheduleModal"
-        style="display: none; position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: rgba(0,0,0,0.5); z-index: 9999; justify-content: center; align-items: center;">
-        <div
-            style="background: white; border-radius: 12px; max-width: 700px; width: 90%; max-height: 90vh; overflow-y: auto; box-shadow: 0 20px 25px -5px rgba(0,0,0,0.3);">
-            <div
-                style="padding: 1.5rem; border-bottom: 2px solid #007bff; background: linear-gradient(135deg, #007bff 0%, #0056b3 100%); color: white; border-radius: 12px 12px 0 0;">
-                <h3 style="margin: 0; font-size: 1.5rem;">
-                    <i class="fas fa-clock"></i> Edit Schedule
-                </h3>
-                <p style="margin: 0.5rem 0 0 0; font-size: 0.875rem; opacity: 0.9;" id="modalProjectName"></p>
+            <label style="display: block; font-weight: 600; color: #334155; margin-bottom: 0.75rem;">Quick
+                Presets</label>
+            <div class="preset-grid">
+                <div class="preset-chip" onclick="setCronExpression('0 2 * * *', 'Daily at 2:00 AM')">Daily 2 AM</div>
+                <div class="preset-chip" onclick="setCronExpression('0 */6 * * *', 'Every 6H')">Every 6 Hours</div>
+                <div class="preset-chip" onclick="setCronExpression('0 */12 * * *', 'Every 12H')">Every 12 Hours</div>
+                <div class="preset-chip" onclick="setCronExpression('0 3 * * 0', 'Weekly Sun')">Weekly (Sun)</div>
+                <div class="preset-chip" onclick="setCronExpression('0 0 1 * *', 'Monthly')">Monthly (1st)</div>
             </div>
 
-            <div style="padding: 1.5rem;">
-                <!-- Quick Presets -->
-                <div style="margin-bottom: 1.5rem;">
-                    <label style="display: block; font-weight: 600; color: #333; margin-bottom: 0.75rem;">
-                        <i class="fas fa-magic"></i> Quick Presets
-                    </label>
-                    <div
-                        style="display: grid; grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)); gap: 0.75rem;">
-                        <button class="preset-btn" onclick="setCronExpression('0 2 * * *', 'Daily at 2:00 AM')">
-                            <i class="fas fa-calendar-day"></i> Daily at 2:00 AM
-                        </button>
-                        <button class="preset-btn" onclick="setCronExpression('0 */6 * * *', 'Every 6 hours')">
-                            <i class="fas fa-clock"></i> Every 6 hours
-                        </button>
-                        <button class="preset-btn" onclick="setCronExpression('0 */12 * * *', 'Every 12 hours')">
-                            <i class="fas fa-clock"></i> Every 12 hours
-                        </button>
-                        <button class="preset-btn" onclick="setCronExpression('0 3 * * 0', 'Weekly (Sunday 3:00 AM)')">
-                            <i class="fas fa-calendar-week"></i> Weekly (Sunday)
-                        </button>
-                        <button class="preset-btn" onclick="setCronExpression('0 4 * * 1', 'Weekly (Monday 4:00 AM)')">
-                            <i class="fas fa-calendar-week"></i> Weekly (Monday)
-                        </button>
-                        <button class="preset-btn"
-                            onclick="setCronExpression('0 0 1 * *', 'Monthly (1st at midnight)')">
-                            <i class="fas fa-calendar-alt"></i> Monthly
-                        </button>
-                    </div>
-                </div>
+            <label style="display: block; font-weight: 600; color: #334155; margin-bottom: 0.75rem;">Cron Expression
+                (UTC)</label>
+            <input type="text" id="cronExpression" class="search-input"
+                style="font-family: 'JetBrains Mono', monospace;" placeholder="0 2 * * *" oninput="validateCron()">
+            <small id="cronValidation"
+                style="display: block; margin-top: 0.5rem; color: #64748b; font-size: 0.85rem;"></small>
 
-                <!-- Manual Input -->
-                <div style="margin-bottom: 1.5rem;">
-                    <label for="cronExpression"
-                        style="display: block; font-weight: 600; color: #333; margin-bottom: 0.5rem;">
-                        <i class="fas fa-terminal"></i> Cron Expression
-                    </label>
-                    <input type="text" id="cronExpression"
-                        style="width: 100%; padding: 0.75rem; border: 2px solid #dee2e6; border-radius: 8px; font-family: monospace; font-size: 1rem;"
-                        placeholder="0 2 * * *" oninput="validateCron()">
-                    <small id="cronValidation" style="display: block; margin-top: 0.5rem; color: #6c757d;"></small>
-                </div>
-
-                <!-- Cron Helper -->
-                <div
-                    style="background: #f8f9fa; padding: 1rem; border-radius: 8px; margin-bottom: 1.5rem; border-left: 4px solid #007bff;">
-                    <div style="font-weight: 600; margin-bottom: 0.5rem; color: #333;">
-                        <i class="fas fa-info-circle"></i> Cron Format
-                    </div>
-                    <div style="font-family: monospace; font-size: 0.875rem; color: #6c757d; margin-bottom: 0.5rem;">
-                        minute hour day month day_of_week
-                    </div>
-                    <div style="font-size: 0.875rem; color: #6c757d;">
-                        Examples:
-                        <code>0 2 * * *</code> = Daily at 2 AM |
-                        <code>0 */6 * * *</code> = Every 6 hours |
-                        <code>0 3 * * 0</code> = Sunday at 3 AM
-                    </div>
-                </div>
-
-                <!-- Action Buttons -->
-                <div style="display: flex; gap: 0.75rem; justify-content: flex-end;">
-                    <button class="btn btn-secondary" onclick="closeEditScheduleModal()">
-                        <i class="fas fa-times"></i> Cancel
-                    </button>
-                    <button class="btn btn-primary" onclick="saveSchedule()" id="saveBtn">
-                        <i class="fas fa-save"></i> Save Schedule
-                    </button>
-                </div>
+            <div style="margin-top: 2rem; display: flex; justify-content: flex-end; gap: 0.75rem;">
+                <button class="btn btn-secondary" onclick="closeEditScheduleModal()">Cancel</button>
+                <button class="btn btn-primary" onclick="saveSchedule()" id="saveBtn">Save Changes</button>
             </div>
         </div>
     </div>
 </div>
 
-<style>
-    .schedules-page .section {
-        background: white;
-        border-radius: 8px;
-        padding: 1.5rem;
-        margin-bottom: 1.5rem;
-        box-shadow: 0 1px 3px rgba(0, 0, 0, 0.1);
-    }
+{% endblock %}
 
-    .schedules-page .section h3 {
-        margin-top: 0;
-        margin-bottom: 1rem;
-        color: #333;
-        border-bottom: 2px solid #007bff;
-        padding-bottom: 0.5rem;
-    }
-
-    .jobs-grid {
-        display: grid;
-        grid-template-columns: repeat(auto-fill, minmax(450px, 1fr));
-        gap: 1.5rem;
-    }
-
-    .job-card {
-        background: #f8f9fa;
-        border: 1px solid #dee2e6;
-        border-radius: 8px;
-        overflow: hidden;
-        transition: box-shadow 0.2s;
-    }
-
-    .job-card:hover {
-        box-shadow: 0 4px 12px rgba(0, 0, 0, 0.15);
-    }
-
-    .job-header {
-        background: linear-gradient(135deg, #007bff 0%, #0056b3 100%);
-        color: white;
-        padding: 1rem;
-        display: flex;
-        justify-content: space-between;
-        align-items: center;
-    }
-
-    .job-title {
-        font-size: 1.1rem;
-    }
-
-    .job-title i {
-        margin-right: 0.5rem;
-    }
-
-    .job-badge .badge {
-        font-size: 0.85rem;
-        padding: 0.35rem 0.6rem;
-    }
-
-    .job-body {
-        padding: 1rem;
-    }
-
-    .job-info-row {
-        display: flex;
-        justify-content: space-between;
-        padding: 0.5rem 0;
-        border-bottom: 1px solid #dee2e6;
-    }
-
-    .job-info-row:last-child {
-        border-bottom: none;
-    }
-
-    .info-label {
-        font-weight: 500;
-        color: #6c757d;
-        flex-shrink: 0;
-        margin-right: 1rem;
-    }
-
-    .info-label i {
-        margin-right: 0.25rem;
-        width: 16px;
-        text-align: center;
-    }
-
-    .info-value {
-        text-align: right;
-        flex-grow: 1;
-    }
-
-    .tools-badges {
-        display: flex;
-        flex-wrap: wrap;
-        gap: 0.25rem;
-        justify-content: flex-end;
-        margin-top: 0.25rem;
-    }
-
-    .tool-badge {
-        display: inline-block;
-        padding: 0.25rem 0.5rem;
-        border-radius: 4px;
-        font-size: 0.75rem;
-        font-weight: 500;
-    }
-
-    .tool-badge.enabled {
-        background-color: #d4edda;
-        color: #155724;
-        border: 1px solid #c3e6cb;
-    }
-
-    .tool-badge.disabled {
-        background-color: #f8d7da;
-        color: #721c24;
-        border: 1px solid #f5c6cb;
-    }
-
-    .tool-badge i {
-        margin-right: 0.25rem;
-    }
-
-    .job-footer {
-        padding: 1rem;
-        background: white;
-        border-top: 1px solid #dee2e6;
-        display: flex;
-        gap: 0.5rem;
-    }
-
-    .alert-info {
-        background-color: #e7f3ff;
-        border: 1px solid #b3d9ff;
-        border-radius: 4px;
-        padding: 1rem;
-        color: #004085;
-    }
-
-    .cron-guide {
-        background: #f8f9fa;
-        padding: 1rem;
-        border-left: 4px solid #007bff;
-        border-radius: 4px;
-        font-family: monospace;
-        font-size: 1.1rem;
-    }
-
-    @media (max-width: 768px) {
-        .jobs-grid {
-            grid-template-columns: 1fr;
-        }
-
-        .job-info-row {
-            flex-direction: column;
-            gap: 0.25rem;
-        }
-
-        .info-value {
-            text-align: left;
-        }
-
-        .tools-badges {
-            justify-content: flex-start;
-        }
-    }
-
-    /* Preset Buttons */
-    .preset-btn {
-        padding: 0.75rem;
-        background: white;
-        border: 2px solid #dee2e6;
-        border-radius: 8px;
-        cursor: pointer;
-        font-size: 0.875rem;
-        font-weight: 500;
-        transition: all 0.2s;
-        text-align: left;
-        color: #495057;
-    }
-
-    .preset-btn:hover {
-        border-color: #007bff;
-        background: #f8f9fa;
-        color: #007bff;
-        transform: translateY(-2px);
-        box-shadow: 0 4px 8px rgba(0, 123, 255, 0.15);
-    }
-
-    .preset-btn i {
-        margin-right: 0.5rem;
-        color: #007bff;
-    }
-</style>
-
+{% block extra_js %}
 <script>
     let currentJobId = null;
-    let currentTrigger = null;
 
-    function refreshPage() {
-        location.reload();
+    // Filter Function
+    function filterJobs() {
+        const input = document.getElementById('jobSearch');
+        const filter = input.value.toLowerCase();
+        const table = document.getElementById('jobsTable');
+        const tr = table.getElementsByTagName('tr');
+
+        for (let i = 1; i < tr.length; i++) {
+            const td = tr[i].getElementsByTagName('td')[0]; // Project Column
+            if (td) {
+                const txtValue = td.textContent || td.innerText;
+                if (txtValue.toLowerCase().indexOf(filter) > -1) {
+                    tr[i].style.display = "";
+                } else {
+                    tr[i].style.display = "none";
+                }
+            }
+        }
     }
 
+    // Modal Logic
     function openEditScheduleModal(jobId, trigger, projectName) {
         currentJobId = jobId;
-        currentTrigger = trigger;
-
-        // Extract cron from trigger string (format: "cron[minute='0', hour='2', ...]")
         const cronMatch = extractCronFromTrigger(trigger);
 
-        document.getElementById('modalProjectName').textContent = `Job: ${jobId} - ${projectName}`;
+        document.getElementById('modalProjectName').textContent = `Editing schedule for: ${projectName}`;
         document.getElementById('cronExpression').value = cronMatch || '';
-        document.getElementById('editScheduleModal').style.display = 'flex';
+        document.getElementById('editScheduleModal').style.display = 'block';
+
+        // Trigger reflow for animation
+        setTimeout(() => {
+            document.getElementById('editScheduleModal').classList.add('show');
+        }, 10);
 
         validateCron();
     }
 
     function closeEditScheduleModal() {
-        document.getElementById('editScheduleModal').style.display = 'none';
+        const modal = document.getElementById('editScheduleModal');
+        modal.classList.remove('show');
+        setTimeout(() => {
+            modal.style.display = 'none';
+        }, 200);
         currentJobId = null;
-        currentTrigger = null;
     }
 
+    // Reuse existing helper functions
     function extractCronFromTrigger(trigger) {
-        // Parse cron trigger string like "cron[minute='0', hour='2', day='*', month='*', day_of_week='*']"
         const regex = /minute='([^']+)'.*hour='([^']+)'.*day='([^']+)'.*month='([^']+)'.*day_of_week='([^']+)'/;
         const match = trigger.match(regex);
-
-        if (match) {
-            return `${match[1]} ${match[2]} ${match[3]} ${match[4]} ${match[5]}`;
-        }
-
-        // Fallback: if already in cron format
+        if (match) return `${match[1]} ${match[2]} ${match[3]} ${match[4]} ${match[5]}`;
         const parts = trigger.trim().split(/\s+/);
-        if (parts.length === 5) {
-            return trigger.trim();
-        }
-
-        return '';
+        return parts.length === 5 ? trigger.trim() : '';
     }
 
     function setCronExpression(cron, description) {
         document.getElementById('cronExpression').value = cron;
         validateCron();
-        showToast(`Preset selected: ${description}`, 'info');
+        showToast(`Selected: ${description}`, 'info');
     }
 
     function validateCron() {
@@ -597,82 +640,30 @@
         const cron = input.value.trim();
 
         if (!cron) {
-            validation.textContent = '';
-            validation.style.color = '#6c757d';
+            validation.textContent = 'Enter a valid cron expression';
+            validation.style.color = '#64748b';
             saveBtn.disabled = true;
-            input.style.borderColor = '#dee2e6';
             return;
         }
 
         const parts = cron.split(/\s+/);
-
         if (parts.length !== 5) {
-            validation.textContent = '❌ Invalid format. Must be 5 fields: minute hour day month day_of_week';
-            validation.style.color = '#dc3545';
+            validation.textContent = 'Invalid format. Require 5 fields: min hour day month weekday';
+            validation.style.color = '#ef4444';
             saveBtn.disabled = true;
-            input.style.borderColor = '#dc3545';
             return;
         }
 
-        // Basic validation for each field
-        const validations = [
-            { name: 'minute', range: [0, 59], value: parts[0] },
-            { name: 'hour', range: [0, 23], value: parts[1] },
-            { name: 'day', range: [1, 31], value: parts[2] },
-            { name: 'month', range: [1, 12], value: parts[3] },
-            { name: 'day_of_week', range: [0, 6], value: parts[4] }
-        ];
-
-        for (const field of validations) {
-            if (!isValidCronField(field.value, field.range[0], field.range[1])) {
-                validation.textContent = `❌ Invalid ${field.name}: ${field.value}`;
-                validation.style.color = '#dc3545';
-                saveBtn.disabled = true;
-                input.style.borderColor = '#dc3545';
-                return;
-            }
-        }
-
-        validation.textContent = '✅ Valid cron expression';
-        validation.style.color = '#28a745';
+        validation.textContent = 'Valid expression format';
+        validation.style.color = '#22c55e';
         saveBtn.disabled = false;
-        input.style.borderColor = '#28a745';
-    }
-
-    function isValidCronField(value, min, max) {
-        // Allow wildcards, ranges, lists, and steps
-        if (value === '*') return true;
-        if (value.includes('/')) {
-            const [range, step] = value.split('/');
-            if (range !== '*' && !isValidCronField(range, min, max)) return false;
-            const stepNum = parseInt(step);
-            return !isNaN(stepNum) && stepNum > 0;
-        }
-        if (value.includes('-')) {
-            const [start, end] = value.split('-');
-            const startNum = parseInt(start);
-            const endNum = parseInt(end);
-            return !isNaN(startNum) && !isNaN(endNum) &&
-                startNum >= min && startNum <= max &&
-                endNum >= min && endNum <= max &&
-                startNum < endNum;
-        }
-        if (value.includes(',')) {
-            return value.split(',').every(v => isValidCronField(v.trim(), min, max));
-        }
-
-        const num = parseInt(value);
-        return !isNaN(num) && num >= min && num <= max;
     }
 
     async function saveSchedule() {
         const cron = document.getElementById('cronExpression').value.trim();
         const saveBtn = document.getElementById('saveBtn');
 
-        if (!cron || !currentJobId) {
-            showToast('Invalid input', 'error');
-            return;
-        }
+        if (!cron || !currentJobId) return;
 
         saveBtn.disabled = true;
         saveBtn.innerHTML = '<i class="fas fa-spinner fa-spin"></i> Saving...';
@@ -680,40 +671,20 @@
         try {
             const response = await fetch(`/api/scans/schedule/${currentJobId}?cron_expression=${encodeURIComponent(cron)}`, {
                 method: 'PUT',
-                headers: {
-                    'Content-Type': 'application/json'
-                }
+                headers: { 'Content-Type': 'application/json' }
             });
 
-            if (!response.ok) {
-                const error = await response.json();
-                throw new Error(error.detail || 'Failed to update schedule');
-            }
-
-            const result = await response.json();
+            if (!response.ok) throw new Error('Failed to update schedule');
 
             showToast('Schedule updated successfully!', 'success');
             closeEditScheduleModal();
-
-            // Reload page after short delay
-            setTimeout(() => {
-                location.reload();
-            }, 1000);
+            setTimeout(() => location.reload(), 500);
 
         } catch (error) {
-            console.error('Error:', error);
-            showToast(error.message || 'Failed to update schedule', 'error');
+            showToast(error.message, 'error');
             saveBtn.disabled = false;
-            saveBtn.innerHTML = '<i class="fas fa-save"></i> Save Schedule';
+            saveBtn.innerHTML = 'Save Changes';
         }
     }
-
-    // Close modal when clicking outside
-    document.addEventListener('click', (e) => {
-        const modal = document.getElementById('editScheduleModal');
-        if (e.target === modal) {
-            closeEditScheduleModal();
-        }
-    });
 </script>
 {% endblock %}

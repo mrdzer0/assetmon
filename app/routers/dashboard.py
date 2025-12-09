@@ -716,7 +716,13 @@ def settings_page(request: Request, current_user: User = Depends(get_current_use
 
 
 @router.get("/schedules", response_class=HTMLResponse)
-def schedules_page(request: Request, db: Session = Depends(get_db), current_user: User = Depends(get_current_user)):
+def schedules_page(
+    request: Request, 
+    page: int = 1,
+    per_page: int = 10,
+    db: Session = Depends(get_db), 
+    current_user: User = Depends(get_current_user)
+):
     """Scheduled jobs page"""
     from app.jobs import get_job_manager
 
@@ -763,10 +769,34 @@ def schedules_page(request: Request, db: Session = Depends(get_db), current_user
 
         enhanced_jobs.append(job_data)
 
+    # Sort jobs by next_run (if available) or id
+    enhanced_jobs.sort(key=lambda x: x.get('next_run') or datetime.max)
+
+    # Calculate stats BEFORE pagination
+    total_jobs = len(enhanced_jobs)
+    normal_count = sum(1 for job in enhanced_jobs if job.get('scan_mode') == 'normal')
+    weekly_count = sum(1 for job in enhanced_jobs if job.get('scan_mode') == 'weekly')
+
+    # Pagination Logic (in-memory since fetch is from scheduler)
+    total_pages = max(1, (total_jobs + per_page - 1) // per_page)
+    page = max(1, min(page, total_pages))
+    
+    start_idx = (page - 1) * per_page
+    end_idx = min(start_idx + per_page, total_jobs)
+    paginated_jobs = enhanced_jobs[start_idx:end_idx]
+
     return templates.TemplateResponse("schedules.html", {
         "request": request,
         "current_user": current_user,
-        "jobs": enhanced_jobs
+        "jobs": paginated_jobs,
+        "current_page": page,
+        "total_pages": total_pages,
+        "total_jobs": total_jobs,
+        "stats": {
+            "total": total_jobs,
+            "normal": normal_count,
+            "weekly": weekly_count
+        }
     })
 
 
