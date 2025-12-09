@@ -20,11 +20,20 @@ templates = Jinja2Templates(directory="web/templates")
 
 
 @router.get("/", response_class=HTMLResponse)
-def dashboard_home(request: Request, db: Session = Depends(get_db), current_user: User = Depends(get_current_user)):
+def dashboard_home(
+    request: Request,
+    page: int = 1,
+    per_page: int = 12,
+    search: str = "",
+    db: Session = Depends(get_db),
+    current_user: User = Depends(get_current_user)
+):
     """Main dashboard page"""
-    # Get all active projects
-    projects = db.query(Project).filter(Project.is_active == True).all()
+    from sqlalchemy import or_
 
+    # Global stats (unfiltered)
+    total_projects_count = db.query(Project).filter(Project.is_active == True).count()
+    
     # Get today's events
     today = datetime.utcnow().date()
     today_events = db.query(Event).filter(
@@ -37,6 +46,24 @@ def dashboard_home(request: Request, db: Session = Depends(get_db), current_user
         if e.severity in [SeverityLevel.HIGH, SeverityLevel.CRITICAL]
     )
 
+    # Filtered Projects Query
+    query = db.query(Project).filter(Project.is_active == True)
+    
+    if search:
+        search_term = f"%{search}%"
+        query = query.filter(
+            or_(
+                Project.name.ilike(search_term),
+                Project.description.ilike(search_term)
+            )
+        )
+    
+    # Pagination
+    filtered_total = query.count()
+    total_pages = (filtered_total + per_page - 1) // per_page
+    
+    projects = query.order_by(Project.last_scan_at.desc().nullslast()).offset((page - 1) * per_page).limit(per_page).all()
+
     # Get recent scan logs
     recent_scans = db.query(ScanLog).order_by(
         ScanLog.started_at.desc()
@@ -46,10 +73,15 @@ def dashboard_home(request: Request, db: Session = Depends(get_db), current_user
         "request": request,
         "current_user": current_user,
         "projects": projects,
-        "total_projects": len(projects),
+        "total_projects": total_projects_count,
         "total_events_today": len(today_events),
         "high_severity_events": high_severity_count,
-        "recent_scans": recent_scans
+        "recent_scans": recent_scans,
+        # Pagination Context
+        "current_page": page,
+        "total_pages": total_pages,
+        "search": search,
+        "filtered_total": filtered_total
     })
 
 

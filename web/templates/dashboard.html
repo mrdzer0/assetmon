@@ -2,130 +2,564 @@
 
 {% block title %}Dashboard - Asset Monitor{% endblock %}
 
+{% block extra_css %}
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap" rel="stylesheet">
+<style>
+    :root {
+        --font-main: 'Inter', sans-serif;
+        --card-bg: white;
+        --card-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.1), 0 2px 4px -1px rgba(0, 0, 0, 0.06);
+        --card-shadow-hover: 0 20px 25px -5px rgba(0, 0, 0, 0.1), 0 10px 10px -5px rgba(0, 0, 0, 0.04);
+        --text-primary: #1e293b;
+        --text-secondary: #64748b;
+        --gradient-primary: linear-gradient(135deg, #4f46e5 0%, #3b82f6 100%);
+        --gradient-success: linear-gradient(135deg, #10b981 0%, #059669 100%);
+        --gradient-danger: linear-gradient(135deg, #ef4444 0%, #dc2626 100%);
+        --gradient-warning: linear-gradient(135deg, #f59e0b 0%, #d97706 100%);
+        --gradient-purple: linear-gradient(135deg, #8b5cf6 0%, #7c3aed 100%);
+    }
+
+    body {
+        font-family: var(--font-main);
+        background-color: #f8fafc;
+    }
+
+    .dashboard-container {
+        padding: 2rem;
+        max-width: 1600px;
+        margin: 0 auto;
+    }
+
+    /* Page Header */
+    .dashboard-header {
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+        margin-bottom: 2.5rem;
+    }
+
+    .dashboard-header h2 {
+        font-size: 1.875rem;
+        font-weight: 800;
+        color: var(--text-primary);
+        letter-spacing: -0.025em;
+    }
+
+    .refresh-btn {
+        background: white;
+        border: 1px solid #e2e8f0;
+        color: var(--text-secondary);
+        padding: 0.5rem 1rem;
+        border-radius: 8px;
+        font-weight: 500;
+        transition: all 0.2s;
+        box-shadow: 0 1px 2px rgba(0, 0, 0, 0.05);
+    }
+
+    .refresh-btn:hover {
+        background: #f1f5f9;
+        color: var(--text-primary);
+    }
+
+    /* Stats Grid */
+    .stats-grid {
+        display: grid;
+        grid-template-columns: repeat(auto-fit, minmax(260px, 1fr));
+        gap: 1.5rem;
+        margin-bottom: 3rem;
+    }
+
+    .stat-card-premium {
+        background: var(--card-bg);
+        border-radius: 16px;
+        padding: 1.5rem;
+        box-shadow: var(--card-shadow);
+        transition: transform 0.3s ease, box-shadow 0.3s ease;
+        border: 1px solid rgba(255, 255, 255, 0.5);
+        position: relative;
+        overflow: hidden;
+    }
+
+    .stat-card-premium:hover {
+        transform: translateY(-5px);
+        box-shadow: var(--card-shadow-hover);
+    }
+
+    .stat-icon-wrapper {
+        width: 48px;
+        height: 48px;
+        border-radius: 12px;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        color: white;
+        font-size: 1.25rem;
+        margin-bottom: 1rem;
+        box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
+    }
+
+    .stat-value {
+        font-size: 2.25rem;
+        font-weight: 800;
+        color: var(--text-primary);
+        line-height: 1.1;
+        margin-bottom: 0.25rem;
+    }
+
+    .stat-label {
+        font-size: 0.875rem;
+        font-weight: 500;
+        color: var(--text-secondary);
+        text-transform: uppercase;
+        letter-spacing: 0.05em;
+    }
+
+    /* Projects Section */
+    .section-title {
+        font-size: 1.25rem;
+        font-weight: 700;
+        color: var(--text-primary);
+        margin-bottom: 1.5rem;
+        display: flex;
+        align-items: center;
+        gap: 0.75rem;
+    }
+
+    .projects-grid-premium {
+        display: grid;
+        grid-template-columns: repeat(auto-fill, minmax(380px, 1fr));
+        gap: 2rem;
+        margin-bottom: 3rem;
+    }
+
+    .project-card-premium {
+        background: white;
+        border-radius: 16px;
+        box-shadow: var(--card-shadow);
+        transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+        border: 1px solid #e2e8f0;
+        display: flex;
+        flex-direction: column;
+        cursor: pointer;
+        height: 100%;
+        position: relative;
+    }
+
+    .project-card-premium:hover {
+        transform: translateY(-8px) scale(1.01);
+        box-shadow: var(--card-shadow-hover);
+        border-color: #cbd5e1;
+    }
+
+    .status-strip {
+        height: 6px;
+        width: 100%;
+        border-radius: 16px 16px 0 0;
+        background: #e2e8f0;
+    }
+
+    .status-strip.active {
+        background: var(--gradient-success);
+    }
+
+    .status-strip.warning {
+        background: var(--gradient-warning);
+    }
+
+    .card-body {
+        padding: 1.5rem;
+        flex: 1;
+        display: flex;
+        flex-direction: column;
+    }
+
+    .project-header-row {
+        display: flex;
+        justify-content: space-between;
+        align-items: flex-start;
+        margin-bottom: 1rem;
+    }
+
+    .project-name {
+        font-size: 1.125rem;
+        font-weight: 700;
+        color: var(--text-primary);
+        margin-bottom: 0.25rem;
+        line-height: 1.3;
+    }
+
+    .project-desc-text {
+        color: var(--text-secondary);
+        font-size: 0.875rem;
+        display: -webkit-box;
+        -webkit-line-clamp: 2;
+        -webkit-box-orient: vertical;
+        overflow: hidden;
+        margin-bottom: 1.5rem;
+        flex: 1;
+    }
+
+    .badge-pill {
+        padding: 0.25rem 0.75rem;
+        border-radius: 99px;
+        font-size: 0.7rem;
+        font-weight: 600;
+        text-transform: uppercase;
+        letter-spacing: 0.05em;
+    }
+
+    .badge-soft-success {
+        background: #dcfce7;
+        color: #166534;
+    }
+
+    .project-meta-row {
+        display: flex;
+        gap: 1.5rem;
+        margin-bottom: 1.5rem;
+        padding-top: 1rem;
+        border-top: 1px dashed #e2e8f0;
+    }
+
+    .meta-item {
+        display: flex;
+        align-items: center;
+        gap: 0.5rem;
+        font-size: 0.8125rem;
+        font-weight: 500;
+        color: #64748b;
+    }
+
+    .meta-item i {
+        font-size: 1rem;
+        color: #94a3b8;
+    }
+
+    .card-actions {
+        display: flex;
+        gap: 0.75rem;
+        margin-top: auto;
+    }
+
+    .btn-action {
+        flex: 1;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        gap: 0.5rem;
+        padding: 0.625rem;
+        border-radius: 8px;
+        font-size: 0.875rem;
+        font-weight: 600;
+        transition: all 0.2s;
+        text-decoration: none;
+        cursor: pointer;
+    }
+
+    .btn-scan {
+        background: var(--gradient-primary);
+        color: white;
+        border: none;
+        box-shadow: 0 4px 6px -1px rgba(79, 70, 229, 0.2);
+    }
+
+    .btn-scan:hover {
+        box-shadow: 0 8px 10px -2px rgba(79, 70, 229, 0.3);
+        opacity: 0.95;
+    }
+
+    .btn-edit {
+        background: white;
+        border: 1px solid #e2e8f0;
+        color: var(--text-secondary);
+    }
+
+    .btn-edit:hover {
+        border-color: #cbd5e1;
+        background: #f8fafc;
+        color: var(--text-primary);
+    }
+
+    /* Recent Scans Table */
+    .scans-section {
+        background: white;
+        border-radius: 16px;
+        padding: 2rem;
+        box-shadow: var(--card-shadow);
+        border: 1px solid #e2e8f0;
+    }
+
+    .floating-table {
+        width: 100%;
+        border-collapse: separate;
+        border-spacing: 0 0.75rem;
+    }
+
+    .floating-table th {
+        text-align: left;
+        color: var(--text-secondary);
+        font-size: 0.75rem;
+        font-weight: 600;
+        text-transform: uppercase;
+        letter-spacing: 0.05em;
+        padding: 0 1rem;
+    }
+
+    .floating-table tr.scan-row {
+        transition: transform 0.2s;
+        background: white;
+    }
+
+    .floating-table tr.scan-row:hover {
+        transform: scale(1.005);
+    }
+
+    .floating-table td {
+        padding: 1rem;
+        background: #f8fafc;
+        font-size: 0.875rem;
+        color: var(--text-primary);
+        border-top: 1px solid #f1f5f9;
+        border-bottom: 1px solid #f1f5f9;
+    }
+
+    .floating-table td:first-child {
+        border-top-left-radius: 12px;
+        border-bottom-left-radius: 12px;
+        border-left: 1px solid #f1f5f9;
+        font-weight: 600;
+        color: var(--text-primary);
+    }
+
+    .floating-table td:last-child {
+        border-top-right-radius: 12px;
+        border-bottom-right-radius: 12px;
+        border-right: 1px solid #f1f5f9;
+    }
+
+    .status-dot {
+        height: 8px;
+        width: 8px;
+        border-radius: 50%;
+        display: inline-block;
+        margin-right: 6px;
+    }
+
+    .empty-state-premium {
+        text-align: center;
+        padding: 4rem 2rem;
+        background: white;
+        border-radius: 16px;
+        border: 2px dashed #e2e8f0;
+        color: var(--text-secondary);
+    }
+
+    .btn-create-large {
+        background: var(--text-primary);
+        color: white;
+        padding: 0.75rem 2rem;
+        border-radius: 12px;
+        font-weight: 600;
+        text-decoration: none;
+        display: inline-flex;
+        align-items: center;
+        gap: 0.5rem;
+        margin-top: 1.5rem;
+        transition: all 0.3s;
+    }
+
+    .btn-create-large:hover {
+        opacity: 0.9;
+        transform: translateY(-2px);
+    }
+
+    /* New Project Button in header */
+    .btn-new-project-header {
+        background: var(--gradient-primary);
+        color: white;
+        padding: 0.625rem 1.25rem;
+        border-radius: 8px;
+        font-weight: 600;
+        font-size: 0.875rem;
+        text-decoration: none;
+        display: inline-flex;
+        align-items: center;
+        gap: 0.5rem;
+        box-shadow: 0 4px 6px -1px rgba(59, 130, 246, 0.3);
+        transition: all 0.2s;
+    }
+
+    .btn-new-project-header:hover {
+        transform: translateY(-2px);
+        opacity: 0.95;
+    }
+</style>
+{% endblock %}
+
 {% block content %}
-<div class="dashboard">
-    <div class="page-header">
+<div class="dashboard-container">
+    <div class="dashboard-header">
         <h2>Dashboard</h2>
         <div class="header-actions">
-            <button class="btn btn-secondary" onclick="refreshStats()">
-                <i class="fas fa-refresh"></i> Refresh
+            <button class="refresh-btn" onclick="refreshStats()">
+                <i class="fas fa-undo-alt"></i>
             </button>
         </div>
     </div>
 
     <!-- Stats cards -->
     <div class="stats-grid">
-        <div class="stat-card">
-            <div class="stat-icon" style="background: #3b82f6;">
-                <i class="fas fa-project-diagram"></i>
+        <div class="stat-card-premium">
+            <div class="stat-icon-wrapper" style="background: var(--gradient-primary);">
+                <i class="fas fa-layer-group"></i>
             </div>
-            <div class="stat-content">
-                <h3>{{ total_projects }}</h3>
-                <p>Active Projects</p>
-            </div>
+            <div class="stat-value">{{ total_projects }}</div>
+            <div class="stat-label">Active Projects</div>
         </div>
 
-        <div class="stat-card">
-            <div class="stat-icon" style="background: #10b981;">
+        <div class="stat-card-premium">
+            <div class="stat-icon-wrapper" style="background: var(--gradient-success);">
                 <i class="fas fa-bell"></i>
             </div>
-            <div class="stat-content">
-                <h3>{{ total_events_today }}</h3>
-                <p>Events Today</p>
-            </div>
+            <div class="stat-value">{{ total_events_today }}</div>
+            <div class="stat-label">Events Today</div>
         </div>
 
-        <div class="stat-card">
-            <div class="stat-icon" style="background: #ef4444;">
-                <i class="fas fa-exclamation-triangle"></i>
+        <div class="stat-card-premium">
+            <div class="stat-icon-wrapper" style="background: var(--gradient-danger);">
+                <i class="fas fa-shield-virus"></i>
             </div>
-            <div class="stat-content">
-                <h3>{{ high_severity_events }}</h3>
-                <p>High Severity</p>
-            </div>
+            <div class="stat-value">{{ high_severity_events }}</div>
+            <div class="stat-label">High Severity</div>
         </div>
 
-        <div class="stat-card">
-            <div class="stat-icon" style="background: #8b5cf6;">
-                <i class="fas fa-clock"></i>
+        <div class="stat-card-premium">
+            <div class="stat-icon-wrapper" style="background: var(--gradient-purple);">
+                <i class="fas fa-stopwatch"></i>
             </div>
-            <div class="stat-content">
-                <h3 id="last-scan-time">-</h3>
-                <p>Last Scan</p>
-            </div>
+            <div class="stat-value" id="last-scan-time" style="font-size: 1.75rem;">-</div>
+            <div class="stat-label">Last Scan</div>
         </div>
     </div>
 
     <!-- Projects list -->
-    <div class="section">
-        <div class="section-header">
-            <h3>Projects</h3>
-            <a href="/projects/new" class="btn btn-primary">
+    <div class="section-header">
+        <div class="section-title">
+            <i class="fas fa-folder-open" style="color: var(--text-secondary);"></i> Projects
+        </div>
+        <div style="display: flex; gap: 1rem; flex: 1; justify-content: flex-end;">
+            <form method="GET" action="/" style="position: relative; max-width: 300px; width: 100%;">
+                <i class="fas fa-search"
+                    style="position: absolute; left: 1rem; top: 50%; transform: translateY(-50%); color: var(--text-secondary);"></i>
+                <input type="text" name="search" value="{{ search }}" placeholder="Search projects..."
+                    style="width: 100%; padding: 0.625rem 1rem 0.625rem 2.5rem; border: 1px solid #e2e8f0; border-radius: 8px; font-size: 0.875rem; transition: all 0.2s;"
+                    onfocus="this.style.borderColor='var(--text-primary)'" onblur="this.style.borderColor='#e2e8f0'">
+            </form>
+            <a href="/projects/new" class="btn-new-project-header">
                 <i class="fas fa-plus"></i> New Project
             </a>
         </div>
+    </div>
 
-        <div class="projects-grid">
-            {% for project in projects %}
-            <div class="project-card" onclick="window.location.href='/projects/{{ project.id }}'">
-                <div class="project-header">
-                    <h4>{{ project.name }}</h4>
-                    <span class="badge badge-success">Active</span>
+    <div class="projects-grid-premium">
+        {% for project in projects %}
+        <div class="project-card-premium" onclick="window.location.href='/projects/{{ project.id }}'">
+            <div class="status-strip active"></div>
+            <div class="card-body">
+                <div class="project-header-row">
+                    <div class="project-name">{{ project.name }}</div>
+                    <span class="badge-pill badge-soft-success">Active</span>
                 </div>
-                <p class="project-description">{{ project.description or 'No description' }}</p>
-                <div class="project-stats">
-                    <div class="stat-item">
+
+                <p class="project-desc-text">{{ project.description or 'No description provided.' }}</p>
+
+                <div class="project-meta-row">
+                    <div class="meta-item">
                         <i class="fas fa-globe"></i>
                         <span>{{ project.domains|length }} domains</span>
                     </div>
-                    <div class="stat-item">
-                        <i class="fas fa-clock"></i>
+                    <div class="meta-item">
+                        <i class="far fa-clock"></i>
                         <span>
                             {% if project.last_scan_at %}
                             <span class="local-date" data-date="{{ project.last_scan_at.isoformat() }}">
                                 {{ project.last_scan_at.strftime('%Y-%m-%d %H:%M') }}
                             </span>
                             {% else %}
-                            Never scanned
+                            Never
                             {% endif %}
                         </span>
                     </div>
                 </div>
-                <div class="project-actions">
-                    <button class="btn btn-sm btn-primary"
+
+                <div class="card-actions">
+                    <button class="btn-action btn-scan"
                         onclick="event.stopPropagation(); triggerScan({{ project.id }}, 'normal')">
                         <i class="fas fa-play"></i> Scan
                     </button>
-                    <a href="/projects/{{ project.id }}/edit" class="btn btn-sm btn-secondary"
+                    <a href="/projects/{{ project.id }}/edit" class="btn-action btn-edit"
                         onclick="event.stopPropagation()">
-                        <i class="fas fa-edit"></i> Edit
+                        <i class="fas fa-pen"></i> Edit
                     </a>
                 </div>
             </div>
-            {% endfor %}
+        </div>
+        {% endfor %}
 
-            {% if not projects %}
-            <div class="empty-state">
-                <i class="fas fa-folder-open"></i>
-                <h3>No Projects Yet</h3>
-                <p>Create your first project to start monitoring</p>
-                <a href="/projects/new" class="btn btn-primary">
-                    <i class="fas fa-plus"></i> Create Project
-                </a>
-            </div>
+        {% if not projects %}
+        <div class="empty-state-premium" style="grid-column: 1 / -1;">
+            {% if search %}
+            <div style="font-size: 3rem; margin-bottom: 1rem; opacity: 0.5;">🔍</div>
+            <h3>No Results Found</h3>
+            <p>No projects match your search query "{{ search }}".</p>
+            <a href="/" class="btn-create-large" style="background: var(--text-secondary);">
+                <i class="fas fa-times"></i> Clear Search
+            </a>
+            {% else %}
+            <div style="font-size: 3rem; margin-bottom: 1rem; opacity: 0.5;">✨</div>
+            <h3>No Projects Yet</h3>
+            <p>Start monitoring your assets by creating your first project.</p>
+            <a href="/projects/new" class="btn-create-large">
+                <i class="fas fa-plus-circle"></i> Create Project
+            </a>
             {% endif %}
         </div>
+        {% endif %}
     </div>
 
-    <!-- Recent scans -->
-    <div class="section">
-        <h3>Recent Scans</h3>
+    <!-- Pagination -->
+    {% if total_pages > 1 %}
+    <div style="display: flex; justify-content: center; margin-bottom: 3rem; gap: 0.5rem; align-items: center;">
+        {% if current_page > 1 %}
+        <a href="/?page={{ current_page - 1 }}&search={{ search }}"
+            style="padding: 0.5rem 1rem; background: white; border: 1px solid #e2e8f0; border-radius: 8px; color: var(--text-primary); text-decoration: none; font-weight: 500; transition: all 0.2s; display: flex; align-items: center; gap: 0.5rem;">
+            <i class="fas fa-chevron-left"></i> Previous
+        </a>
+        {% endif %}
+
+        <span style="font-size: 0.875rem; color: var(--text-secondary); margin: 0 1rem; font-weight: 500;">
+            Page {{ current_page }} of {{ total_pages }}
+        </span>
+
+        {% if current_page < total_pages %} <a href="/?page={{ current_page + 1 }}&search={{ search }}"
+            style="padding: 0.5rem 1rem; background: white; border: 1px solid #e2e8f0; border-radius: 8px; color: var(--text-primary); text-decoration: none; font-weight: 500; transition: all 0.2s; display: flex; align-items: center; gap: 0.5rem;">
+            Next <i class="fas fa-chevron-right"></i>
+            </a>
+            {% endif %}
+    </div>
+    {% endif %}
+
+    <!-- Recent Scans -->
+    <div class="scans-section">
+        <div class="section-title">
+            <i class="fas fa-history" style="color: var(--text-secondary);"></i> Recent Scans
+        </div>
         <div class="table-responsive">
-            <table class="table">
+            <table class="floating-table">
                 <thead>
                     <tr>
                         <th>Project</th>
-                        <th>Mode</th>
+                        <th>Type</th>
                         <th>Status</th>
                         <th>Started</th>
                         <th>Duration</th>
@@ -134,31 +568,50 @@
                 </thead>
                 <tbody>
                     {% for scan in recent_scans %}
-                    <tr>
-                        <td>Project {{ scan.project_id }}</td>
-                        <td><span class="badge badge-info">{{ scan.scan_mode }}</span></td>
+                    <tr class="scan-row">
+                        <td>Project #{{ scan.project_id }}</td>
+                        <td>
+                            <span
+                                style="font-family: monospace; font-size: 0.75rem; background: #e0e7ff; color: #3730a3; padding: 2px 6px; border-radius: 4px;">{{
+                                scan.scan_mode|upper }}</span>
+                        </td>
                         <td>
                             {% if scan.status == 'completed' %}
-                            <span class="badge badge-success">{{ scan.status }}</span>
+                            <span style="color: #059669; font-weight: 600; font-size: 0.8125rem;">
+                                <span class="status-dot" style="background: #10b981;"></span>Completed
+                            </span>
                             {% elif scan.status == 'running' %}
-                            <span class="badge badge-warning">{{ scan.status }}</span>
+                            <span style="color: #d97706; font-weight: 600; font-size: 0.8125rem;">
+                                <span class="status-dot" style="background: #f59e0b;"></span>Running
+                            </span>
                             {% else %}
-                            <span class="badge badge-danger">{{ scan.status }}</span>
+                            <span style="color: #dc2626; font-weight: 600; font-size: 0.8125rem;">
+                                <span class="status-dot" style="background: #ef4444;"></span>{{ scan.status|title }}
+                            </span>
                             {% endif %}
                         </td>
                         <td>
-                            <span class="local-date" data-date="{{ scan.started_at.isoformat() }}">
-                                {{ scan.started_at.strftime('%Y-%m-%d %H:%M') }}
+                            <span class="local-date" data-date="{{ scan.started_at.isoformat() }}"
+                                style="color: #64748b;">
+                                {{ scan.started_at.strftime('%d %b, %H:%M') }}
                             </span>
                         </td>
-                        <td>
+                        <td style="color: #64748b;">
                             {% if scan.completed_at %}
-                            {{ ((scan.completed_at - scan.started_at).total_seconds() / 60) | round(1) }} min
+                            {{ ((scan.completed_at - scan.started_at).total_seconds() / 60) | round(1) }}m
                             {% else %}
-                            -
+                            ...
                             {% endif %}
                         </td>
-                        <td>{{ scan.events_generated or 0 }}</td>
+                        <td>
+                            {% if scan.events_generated %}
+                            <span
+                                style="background: #f1f5f9; padding: 2px 8px; border-radius: 12px; font-weight: 600; font-size: 0.75rem;">{{
+                                scan.events_generated }}</span>
+                            {% else %}
+                            <span style="color: #cbd5e1;">-</span>
+                            {% endif %}
+                        </td>
                     </tr>
                     {% endfor %}
                 </tbody>
@@ -173,7 +626,7 @@
     function triggerScan(projectId, mode) {
         if (!confirm(`Start ${mode} scan for project ${projectId}?`)) return;
 
-        showToast('Scan started...', 'info');
+        showToast('🚀 Scan initialized...', 'info');
 
         fetch('/api/scans/trigger', {
             method: 'POST',
@@ -182,16 +635,18 @@
         })
             .then(res => res.json())
             .then(data => {
-                showToast('Scan started successfully!', 'success');
+                showToast('✅ Scan started successfully!', 'success');
                 setTimeout(() => location.reload(), 2000);
             })
             .catch(err => {
-                showToast('Failed to start scan: ' + err.message, 'error');
+                showToast('❌ Failed to start scan: ' + err.message, 'error');
             });
     }
 
     function refreshStats() {
-        location.reload();
+        const btn = document.querySelector('.refresh-btn i');
+        btn.classList.add('fa-spin');
+        setTimeout(() => location.reload(), 500);
     }
 </script>
 {% endblock %}
