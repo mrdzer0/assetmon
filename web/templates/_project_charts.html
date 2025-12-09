@@ -170,21 +170,17 @@
 
         const container = document.getElementById('asset-network');
         const loading = document.getElementById('graph-loading');
-        const statsPanel = document.getElementById('graph-stats');
 
         fetch('/api/projects/{{ project.id }}/graph')
             .then(response => response.json())
             .then(data => {
                 loading.style.display = 'none';
                 
-                // Store original data
                 allNodes = data.nodes;
                 allEdges = data.edges;
                 
-                // Update statistics panel
                 updateStatsPanel(data.stats, data.total_nodes, data.total_edges);
 
-                // Process nodes for vis.js
                 const processedNodes = processNodes(data.nodes);
                 const nodes = new vis.DataSet(processedNodes);
                 const edges = new vis.DataSet(data.edges.map(edge => ({
@@ -200,9 +196,7 @@
                         borderWidth: 2,
                         shadow: { enabled: true, size: 5, x: 2, y: 2 }
                     },
-                    edges: {
-                        arrows: { to: { enabled: false } }
-                    },
+                    edges: { arrows: { to: { enabled: false } } },
                     physics: {
                         enabled: true,
                         stabilization: { enabled: true, iterations: 100 },
@@ -219,7 +213,6 @@
                         tooltipDelay: 150,
                         hideEdgesOnDrag: true,
                         multiselect: true,
-                        navigationButtons: false,
                         keyboard: { enabled: true }
                     }
                 };
@@ -227,7 +220,6 @@
                 network = new vis.Network(container, { nodes, edges }, options);
                 graphLoaded = true;
                 
-                // Event handlers
                 network.on('click', function(params) {
                     if (params.nodes.length > 0) {
                         showNodeDetails(params.nodes[0]);
@@ -246,7 +238,6 @@
                     }
                 });
                 
-                // Fit after stabilization
                 network.once('stabilizationIterationsDone', function() {
                     network.fit({ animation: { duration: 500 } });
                 });
@@ -283,16 +274,14 @@
         const content = document.getElementById('stats-content');
         if (!content) return;
         
-        content.innerHTML = `
-            <div style="display: flex; justify-content: space-between;"><span>Total Nodes:</span><strong>${totalNodes}</strong></div>
-            <div style="display: flex; justify-content: space-between;"><span>Total Edges:</span><strong>${totalEdges}</strong></div>
-            <div style="border-top: 1px solid #e2e8f0; margin: 0.25rem 0;"></div>
-            <div style="display: flex; justify-content: space-between; color: #475569;"><span>🏠 Domains:</span><span>${stats.domains || 0}</span></div>
-            <div style="display: flex; justify-content: space-between; color: #3b82f6;"><span>🌐 Subdomains:</span><span>${stats.subdomains || 0}</span></div>
-            <div style="display: flex; justify-content: space-between; color: #10b981;"><span>📍 IPs:</span><span>${stats.ips || 0}</span></div>
-            <div style="display: flex; justify-content: space-between; color: #f59e0b;"><span>🔌 Ports:</span><span>${stats.ports || 0}</span></div>
-            <div style="display: flex; justify-content: space-between; color: #ef4444;"><span>⚠️ Vulns:</span><span>${stats.vulns || 0}</span></div>
-        `;
+        content.innerHTML = '<div style="display: flex; justify-content: space-between;"><span>Total Nodes:</span><strong>' + totalNodes + '</strong></div>' +
+            '<div style="display: flex; justify-content: space-between;"><span>Total Edges:</span><strong>' + totalEdges + '</strong></div>' +
+            '<div style="border-top: 1px solid #e2e8f0; margin: 0.25rem 0;"></div>' +
+            '<div style="display: flex; justify-content: space-between; color: #475569;"><span>🏠 Domains:</span><span>' + (stats.domains || 0) + '</span></div>' +
+            '<div style="display: flex; justify-content: space-between; color: #3b82f6;"><span>🌐 Subdomains:</span><span>' + (stats.subdomains || 0) + '</span></div>' +
+            '<div style="display: flex; justify-content: space-between; color: #10b981;"><span>📍 IPs:</span><span>' + (stats.ips || 0) + '</span></div>' +
+            '<div style="display: flex; justify-content: space-between; color: #f59e0b;"><span>🔌 Ports:</span><span>' + (stats.ports || 0) + '</span></div>' +
+            '<div style="display: flex; justify-content: space-between; color: #ef4444;"><span>⚠️ Vulns:</span><span>' + (stats.vulns || 0) + '</span></div>';
     }
 
     function showNodeDetails(nodeId) {
@@ -305,38 +294,42 @@
         
         if (stats) stats.style.display = 'none';
         
-        let html = `
-            <div style="margin-bottom: 0.75rem;">
-                <span style="display: inline-block; padding: 0.2rem 0.5rem; background: ${getNodeColor(node.group)}; color: white; border-radius: 4px; font-size: 0.7rem; text-transform: uppercase;">${node.group}</span>
-            </div>
-            <div style="font-weight: 600; word-break: break-all; margin-bottom: 0.75rem; font-size: 0.9rem;">${node.label}</div>
-        `;
+        let html = '<div style="margin-bottom: 0.75rem;">' +
+            '<span style="display: inline-block; padding: 0.2rem 0.5rem; background: ' + getNodeColor(node.group) + '; color: white; border-radius: 4px; font-size: 0.7rem; text-transform: uppercase;">' + node.group + '</span>' +
+            '</div>' +
+            '<div style="font-weight: 600; word-break: break-all; margin-bottom: 0.75rem; font-size: 0.9rem;">' + node.label + '</div>';
         
         const meta = node.metadata || {};
         
         if (node.group === 'subdomain') {
-            if (meta.status_code) html += `<div style="margin-bottom: 0.25rem;"><strong>Status:</strong> <span style="color: ${getStatusColor(meta.status_code)}">${meta.status_code}</span></div>`;
-            if (meta.title) html += `<div style="margin-bottom: 0.25rem;"><strong>Title:</strong> ${meta.title}</div>`;
-            if (meta.technologies && meta.technologies.length) html += `<div style="margin-bottom: 0.25rem;"><strong>Tech:</strong> ${meta.technologies.slice(0,5).join(', ')}</div>`;
-            if (meta.cdn) html += `<div style="margin-bottom: 0.25rem;"><strong>CDN:</strong> ${meta.cdn}</div>`;
-            if (meta.url) html += `<div style="margin-top: 0.5rem;"><a href="${meta.url}" target="_blank" class="btn btn-sm btn-primary" style="font-size: 0.75rem;"><i class="fas fa-external-link-alt"></i> Open URL</a></div>`;
+            if (meta.status_code) html += '<div style="margin-bottom: 0.25rem;"><strong>Status:</strong> <span style="color: ' + getStatusColor(meta.status_code) + '">' + meta.status_code + '</span></div>';
+            if (meta.title) html += '<div style="margin-bottom: 0.25rem;"><strong>Title:</strong> ' + meta.title + '</div>';
+            if (meta.technologies && meta.technologies.length) html += '<div style="margin-bottom: 0.25rem;"><strong>Tech:</strong> ' + meta.technologies.slice(0,5).join(', ') + '</div>';
+            if (meta.cdn) html += '<div style="margin-bottom: 0.25rem;"><strong>CDN:</strong> ' + meta.cdn + '</div>';
+            if (meta.url) html += '<div style="margin-top: 0.5rem;"><a href="' + meta.url + '" target="_blank" class="btn btn-sm btn-primary" style="font-size: 0.75rem;"><i class="fas fa-external-link-alt"></i> Open URL</a></div>';
         } else if (node.group === 'ip') {
-            if (meta.subdomains && meta.subdomains.length) html += `<div style="margin-bottom: 0.25rem;"><strong>Resolves from:</strong> ${meta.subdomains.length} subdomain(s)</div>`;
-            if (meta.ports && meta.ports.length) html += `<div style="margin-bottom: 0.25rem;"><strong>Ports:</strong> ${meta.ports.join(', ')}</div>`;
-            if (meta.vulns && meta.vulns.length) html += `<div style="margin-bottom: 0.25rem; color: #ef4444;"><strong>Vulns:</strong> ${meta.vulns.join(', ')}</div>`;
-            if (meta.org) html += `<div style="margin-bottom: 0.25rem;"><strong>Org:</strong> ${meta.org}</div>`;
+            if (meta.subdomains && meta.subdomains.length) {
+                html += '<div style="margin-bottom: 0.5rem;"><strong>Resolves from (' + meta.subdomains.length + '):</strong>' +
+                    '<div style="max-height: 120px; overflow-y: auto; margin-top: 0.25rem; padding: 0.25rem; background: #f8fafc; border-radius: 4px; font-size: 0.75rem;">';
+                meta.subdomains.forEach(function(s) {
+                    html += '<div style="padding: 0.1rem 0; word-break: break-all; color: #3b82f6;">• ' + s + '</div>';
+                });
+                html += '</div></div>';
+            }
+            if (meta.ports && meta.ports.length) html += '<div style="margin-bottom: 0.25rem;"><strong>Ports:</strong> ' + meta.ports.join(', ') + '</div>';
+            if (meta.vulns && meta.vulns.length) html += '<div style="margin-bottom: 0.25rem; color: #ef4444;"><strong>Vulns:</strong> ' + meta.vulns.join(', ') + '</div>';
+            if (meta.org) html += '<div style="margin-bottom: 0.25rem;"><strong>Org:</strong> ' + meta.org + '</div>';
         } else if (node.group === 'vuln') {
-            if (meta.cve) html += `<div style="margin-bottom: 0.5rem;"><a href="https://nvd.nist.gov/vuln/detail/${meta.cve}" target="_blank" class="btn btn-sm btn-danger" style="font-size: 0.75rem;"><i class="fas fa-external-link-alt"></i> View CVE</a></div>`;
-            if (meta.ip) html += `<div><strong>Affected IP:</strong> ${meta.ip}</div>`;
+            if (meta.cve) html += '<div style="margin-bottom: 0.5rem;"><a href="https://nvd.nist.gov/vuln/detail/' + meta.cve + '" target="_blank" class="btn btn-sm btn-danger" style="font-size: 0.75rem;"><i class="fas fa-external-link-alt"></i> View CVE</a></div>';
+            if (meta.ip) html += '<div><strong>Affected IP:</strong> ' + meta.ip + '</div>';
         } else if (node.group === 'port') {
-            if (meta.port) html += `<div><strong>Port:</strong> ${meta.port}</div>`;
-            if (meta.ip) html += `<div><strong>IP:</strong> ${meta.ip}</div>`;
+            if (meta.port) html += '<div><strong>Port:</strong> ' + meta.port + '</div>';
+            if (meta.ip) html += '<div><strong>IP:</strong> ' + meta.ip + '</div>';
         }
         
-        // Copy button
-        html += `<div style="margin-top: 0.75rem; border-top: 1px solid #e2e8f0; padding-top: 0.5rem;">
-            <button onclick="navigator.clipboard.writeText('${node.label}')" class="btn btn-sm btn-secondary" style="font-size: 0.7rem;"><i class="fas fa-copy"></i> Copy</button>
-        </div>`;
+        html += '<div style="margin-top: 0.75rem; border-top: 1px solid #e2e8f0; padding-top: 0.5rem;">' +
+            '<button onclick="navigator.clipboard.writeText(\'' + node.label + '\')" class="btn btn-sm btn-secondary" style="font-size: 0.7rem;"><i class="fas fa-copy"></i> Copy</button>' +
+            '</div>';
         
         content.innerHTML = html;
         panel.style.display = 'block';
@@ -366,10 +359,8 @@
         if (!network) return;
         physicsEnabled = !physicsEnabled;
         network.setOptions({ physics: { enabled: physicsEnabled } });
-        const btn = document.getElementById('btn-toggle-physics');
-        if (btn) {
-            btn.style.background = physicsEnabled ? '' : '#e2e8f0';
-        }
+        var btn = document.getElementById('btn-toggle-physics');
+        if (btn) btn.style.background = physicsEnabled ? '' : '#e2e8f0';
     }
 
     function searchNodes(query) {
@@ -377,20 +368,18 @@
         query = query.toLowerCase().trim();
         
         if (!query) {
-            // Reset all nodes to normal
-            const updates = allNodes.map(n => ({ id: n.id, opacity: 1 }));
+            var updates = allNodes.map(function(n) { return { id: n.id, opacity: 1 }; });
             network.body.data.nodes.update(updates);
             return;
         }
         
-        const updates = allNodes.map(n => {
-            const match = n.label.toLowerCase().includes(query) || n.id.toLowerCase().includes(query);
+        var updates = allNodes.map(function(n) {
+            var match = n.label.toLowerCase().includes(query) || n.id.toLowerCase().includes(query);
             return { id: n.id, opacity: match ? 1 : 0.2 };
         });
         network.body.data.nodes.update(updates);
         
-        // Focus on first match
-        const firstMatch = allNodes.find(n => n.label.toLowerCase().includes(query) || n.id.toLowerCase().includes(query));
+        var firstMatch = allNodes.find(function(n) { return n.label.toLowerCase().includes(query) || n.id.toLowerCase().includes(query); });
         if (firstMatch) {
             network.focus(firstMatch.id, { scale: 1.5, animation: { duration: 300 } });
         }
@@ -400,9 +389,9 @@
         if (!network) return;
         visibleNodeTypes[type] = !visibleNodeTypes[type];
         
-        const updates = allNodes
-            .filter(n => n.group === type)
-            .map(n => ({ id: n.id, hidden: !visibleNodeTypes[type] }));
+        var updates = allNodes
+            .filter(function(n) { return n.group === type; })
+            .map(function(n) { return { id: n.id, hidden: !visibleNodeTypes[type] }; });
         network.body.data.nodes.update(updates);
     }
 </script>
