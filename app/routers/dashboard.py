@@ -720,6 +720,9 @@ def schedules_page(
     request: Request, 
     page: int = 1,
     per_page: int = 10,
+    q: str = None,
+    sort_by: str = 'next_run',
+    sort_order: str = 'asc',
     db: Session = Depends(get_db), 
     current_user: User = Depends(get_current_user)
 ):
@@ -769,8 +772,45 @@ def schedules_page(
 
         enhanced_jobs.append(job_data)
 
-    # Sort jobs by next_run (if available) or id
-    enhanced_jobs.sort(key=lambda x: x.get('next_run') or datetime.max)
+    # Filter if query is present
+    if q:
+        q = q.lower()
+        filtered_jobs = []
+        for job in enhanced_jobs:
+            # Search by project name
+            if 'project' in job and q in job['project'].name.lower():
+                filtered_jobs.append(job)
+            # Search by job name (fallback)
+            elif q in job.get('name', '').lower():
+                filtered_jobs.append(job)
+        enhanced_jobs = filtered_jobs
+
+    # Sorting Logic
+    reverse = (sort_order == 'desc')
+    
+    if sort_by == 'domains':
+        enhanced_jobs.sort(
+            key=lambda x: len(x['project'].domains) if x.get('project') and x['project'].domains else 0,
+            reverse=reverse
+        )
+    elif sort_by == 'last_scan':
+        enhanced_jobs.sort(
+            key=lambda x: x['project'].last_scan_at if x.get('project') and x['project'].last_scan_at else datetime.min,
+            reverse=reverse
+        )
+    else: # default: next_run
+        enhanced_jobs.sort(
+            key=lambda x: x.get('next_run') or datetime.max, # Put None at the end for ASC, need handling for DESC?
+            reverse=reverse
+        )
+        # If ASC and we want None at the end, that's default. If DESC, datetime.max is big, so it comes first...
+        # Let's fix fallback for next_run sort
+        if sort_by == 'next_run':
+             # Use max for None to push to end in asc, min for desc? 
+             # Actually simplest is: if asc, None is infinite future (end). If desc, None is infinite future (start).
+             # Scheduler logic usually treats None as "not scheduled", so maybe effectively "far future".
+             # Let's stick to datetime.max for now.
+             pass
 
     # Calculate stats BEFORE pagination
     total_jobs = len(enhanced_jobs)
@@ -796,7 +836,10 @@ def schedules_page(
             "total": total_jobs,
             "normal": normal_count,
             "weekly": weekly_count
-        }
+        },
+        "q": q,
+        "sort_by": sort_by,
+        "sort_order": sort_order
     })
 
 

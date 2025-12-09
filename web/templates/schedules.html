@@ -385,8 +385,14 @@
             <div class="table-controls" style="margin: 0;">
                 <div class="search-wrapper">
                     <i class="fas fa-search search-icon"></i>
-                    <input type="text" id="jobSearch" class="search-input" placeholder="Search projects..."
-                        onkeyup="filterJobs()">
+                    <input type="text" id="jobSearch" class="search-input"
+                        placeholder="Search projects (Press Enter)..." value="{{ request.query_params.get('q', '') }}"
+                        onkeydown="handleSearch(event)">
+                    {% if request.query_params.get('q') %}
+                    <i class="fas fa-times"
+                        style="position: absolute; right: 1rem; top: 50%; transform: translateY(-50%); color: #94a3b8; cursor: pointer;"
+                        onclick="window.location.href='?sort_by={{ request.query_params.get('sort_by', 'next_run') }}&sort_order={{ request.query_params.get('sort_order', 'asc') }}'"></i>
+                    {% endif %}
                 </div>
             </div>
         </div>
@@ -394,7 +400,14 @@
         {% if jobs|length == 0 %}
         <div style="padding: 3rem; text-align: center; color: #64748b;">
             <i class="fas fa-calendar-times" style="font-size: 3rem; margin-bottom: 1rem; color: #cbd5e1;"></i>
-            <p>No scheduled jobs found. Configure schedules in Project Settings.</p>
+            <p>
+                {% if request.query_params.get('q') %}
+                No jobs found matching "{{ request.query_params.get('q') }}". <a href="?" style="color: #6366f1;">Clear
+                    search</a>
+                {% else %}
+                No scheduled jobs found. Configure schedules in Project Settings.
+                {% endif %}
+            </p>
         </div>
         {% else %}
         <div style="overflow-x: auto;">
@@ -402,9 +415,39 @@
                 <thead>
                     <tr>
                         <th style="width: 30%;">Project</th>
-                        <th>Total Domain</th>
-                        <th>Next Run</th>
-                        <th>Last Scan</th>
+                        <th>
+                            <a href="?sort_by=domains&sort_order={% if sort_by == 'domains' and sort_order == 'asc' %}desc{% else %}asc{% endif %}&q={{ request.query_params.get('q', '') }}"
+                                style="color: inherit; text-decoration: none; display: flex; align-items: center; gap: 0.5rem; cursor: pointer;">
+                                Total Domain
+                                {% if sort_by == 'domains' %}
+                                <i class="fas fa-sort-{{ 'up' if sort_order == 'asc' else 'down' }}"></i>
+                                {% else %}
+                                <i class="fas fa-sort" style="opacity: 0.3;"></i>
+                                {% endif %}
+                            </a>
+                        </th>
+                        <th>
+                            <a href="?sort_by=next_run&sort_order={% if sort_by == 'next_run' and sort_order == 'asc' %}desc{% else %}asc{% endif %}&q={{ request.query_params.get('q', '') }}"
+                                style="color: inherit; text-decoration: none; display: flex; align-items: center; gap: 0.5rem; cursor: pointer;">
+                                Next Run
+                                {% if sort_by == 'next_run' %}
+                                <i class="fas fa-sort-{{ 'up' if sort_order == 'asc' else 'down' }}"></i>
+                                {% else %}
+                                <i class="fas fa-sort" style="opacity: 0.3;"></i>
+                                {% endif %}
+                            </a>
+                        </th>
+                        <th>
+                            <a href="?sort_by=last_scan&sort_order={% if sort_by == 'last_scan' and sort_order == 'asc' %}desc{% else %}asc{% endif %}&q={{ request.query_params.get('q', '') }}"
+                                style="color: inherit; text-decoration: none; display: flex; align-items: center; gap: 0.5rem; cursor: pointer;">
+                                Last Scan
+                                {% if sort_by == 'last_scan' %}
+                                <i class="fas fa-sort-{{ 'up' if sort_order == 'asc' else 'down' }}"></i>
+                                {% else %}
+                                <i class="fas fa-sort" style="opacity: 0.3;"></i>
+                                {% endif %}
+                            </a>
+                        </th>
                         <th style="width: 100px; text-align: right;">Action</th>
                     </tr>
                 </thead>
@@ -487,7 +530,8 @@
             <div style="display: flex; gap: 0.5rem; align-items: center;">
                 <!-- Page Jump -->
                 <span style="font-size: 0.875rem; color: #64748b; margin-right: 0.5rem;">Page</span>
-                <select onchange="window.location.href='?page='+this.value"
+                <select
+                    onchange="window.location.href='?page='+this.value + '&q={{ request.query_params.get('q', '') }}'"
                     style="padding: 0.3rem 0.5rem; border: 1px solid #cbd5e1; border-radius: 6px; background: white; color: #334155; font-size: 0.9rem; margin-right: 0.5rem;">
                     {% for p in range(1, total_pages + 1) %}
                     <option value="{{ p }}" {% if p==current_page %}selected{% endif %}>{{ p }}</option>
@@ -496,7 +540,7 @@
                 <span style="font-size: 0.875rem; color: #64748b; margin-right: 1rem;">of {{ total_pages }}</span>
 
                 {% if current_page > 1 %}
-                <a href="?page={{ current_page - 1 }}" class="btn btn-sm"
+                <a href="?page={{ current_page - 1 }}&q={{ request.query_params.get('q', '') }}" class="btn btn-sm"
                     style="border: 1px solid #e2e8f0; background: white; color: #475569; padding: 0.4rem 0.8rem; border-radius: 8px; text-decoration: none; transition: all 0.2s; display: flex; align-items: center; gap: 0.25rem;">
                     <i class="fas fa-chevron-left"></i> Prev
                 </a>
@@ -507,7 +551,8 @@
                 </button>
                 {% endif %}
 
-                {% if current_page < total_pages %} <a href="?page={{ current_page + 1 }}" class="btn btn-sm"
+                {% if current_page < total_pages %} <a
+                    href="?page={{ current_page + 1 }}&q={{ request.query_params.get('q', '') }}" class="btn btn-sm"
                     style="border: 1px solid #e2e8f0; background: white; color: #475569; padding: 0.4rem 0.8rem; border-radius: 8px; text-decoration: none; transition: all 0.2s; display: flex; align-items: center; gap: 0.25rem;">
                     Next <i class="fas fa-chevron-right"></i>
                     </a>
@@ -572,23 +617,11 @@
 <script>
     let currentJobId = null;
 
-    // Filter Function
-    function filterJobs() {
-        const input = document.getElementById('jobSearch');
-        const filter = input.value.toLowerCase();
-        const table = document.getElementById('jobsTable');
-        const tr = table.getElementsByTagName('tr');
-
-        for (let i = 1; i < tr.length; i++) {
-            const td = tr[i].getElementsByTagName('td')[0]; // Project Column
-            if (td) {
-                const txtValue = td.textContent || td.innerText;
-                if (txtValue.toLowerCase().indexOf(filter) > -1) {
-                    tr[i].style.display = "";
-                } else {
-                    tr[i].style.display = "none";
-                }
-            }
+    // Search Handler
+    function handleSearch(event) {
+        if (event.key === 'Enter') {
+            const query = event.target.value;
+            window.location.href = `?q=${encodeURIComponent(query)}`;
         }
     }
 
