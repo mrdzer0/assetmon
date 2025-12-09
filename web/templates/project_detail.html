@@ -241,15 +241,15 @@
                     var statusOptions = {
                         series: [
                             {{ status_counts['2xx'] }},
-                        {{ status_counts['3xx'] }},
-                    {{ status_counts['4xx'] }},
-                    {{ status_counts['5xx'] }},
-                    {{ status_counts['Other'] }}
+                            {{ status_counts['3xx'] }},
+                            {{ status_counts['4xx'] }},
+                            {{ status_counts['5xx'] }},
+                            {{ status_counts['Other'] }}
                         ],
                     chart: { type: 'donut', height: 250, ...commonOptions },
                     labels: ['2xx Success', '3xx Redirect', '4xx Client Err', '5xx Server Err', 'Other'],
                     colors: ['#10b981', '#3b82f6', '#f59e0b', '#ef4444', '#94a3b8'],
-                    plotOptions: { pie: { donut: { size: '65%' } } },
+                    plotOptions: { pie: { donut: { size: '65%' }} },
                     dataLabels: { enabled: false },
                     legend: { position: 'bottom' }
                     };
@@ -269,7 +269,7 @@
                 plotOptions: {
                     bar: { borderRadius: 4, horizontal: true, barHeight: '70%' }
                 },
-                dataLabels: { enabled: true, textAnchor: 'start', formatter: function (val, opt) { return opt.w.globals.labels[opt.dataPointIndex] + ":  " + val } },
+                dataLabels: { enabled: true, textAnchor: 'start', formatter: function (val, opt) { return opt.w.globals.labels[opt.dataPointIndex] + ":  " + val }},
                 xaxis: {
                     categories: [
                         {% for tech in top_techs.keys() %}
@@ -316,14 +316,14 @@
                     series: [
                         {{ endpoint_status_counts['2xx'] }},
                     {{ endpoint_status_counts['3xx'] }},
-                { { endpoint_status_counts['4xx'] } },
-                { { endpoint_status_counts['5xx'] } },
-                { { endpoint_status_counts['Other'] } }
-                        ],
+                {{ endpoint_status_counts['4xx'] }},
+                {{ endpoint_status_counts['5xx'] }},
+                {{ endpoint_status_counts['Other'] }}
+                    ],
                 chart: { type: 'donut', height: 250, ...commonOptions },
                 labels: ['2xx Success', '3xx Redirect', '4xx Client Err', '5xx Server Err', 'Other'],
                     colors: ['#10b981', '#3b82f6', '#f59e0b', '#ef4444', '#94a3b8'],
-                        plotOptions: { pie: { donut: { size: '65%' } } },
+                        plotOptions: { pie: { donut: { size: '65%' }} },
                 dataLabels: { enabled: false },
                 legend: { position: 'bottom' }
                     };
@@ -347,14 +347,14 @@
                     series: [
                         {{ event_severity_counts['critical'] }},
                     {{ event_severity_counts['high'] }},
-                { { event_severity_counts['medium'] } },
-                { { event_severity_counts['low'] } },
-                { { event_severity_counts['info'] } }
-                        ],
+                {{ event_severity_counts['medium'] }},
+                {{ event_severity_counts['low'] }},
+                {{ event_severity_counts['info'] }}
+                    ],
                 chart: { type: 'donut', height: 250, ...commonOptions },
                 labels: ['Critical', 'High', 'Medium', 'Low', 'Info'],
                     colors: ['#7f1d1d', '#ef4444', '#f59e0b', '#3b82f6', '#94a3b8'],
-                        plotOptions: { pie: { donut: { size: '65%' } } },
+                        plotOptions: { pie: { donut: { size: '65%' }} },
                 dataLabels: { enabled: false },
                 legend: { position: 'bottom' }
                     };
@@ -374,7 +374,7 @@
                 plotOptions: {
                     bar: { borderRadius: 4, horizontal: true, barHeight: '70%' }
                 },
-                dataLabels: { enabled: true, textAnchor: 'start', formatter: function (val, opt) { return opt.w.globals.labels[opt.dataPointIndex] + ":  " + val } },
+                dataLabels: { enabled: true, textAnchor: 'start', formatter: function (val, opt) { return opt.w.globals.labels[opt.dataPointIndex] + ":  " + val }},
                 xaxis: {
                     categories: [
                         {% for etype in top_event_types.keys() %}
@@ -395,7 +395,7 @@
             <form method="GET" action="/projects/{{ project.id }}"
                 style="display: flex; gap: 0.75rem; flex-wrap: wrap; margin-bottom: 1.5rem; align-items: center;">
                 <div style="flex: 1; min-width: 250px;">
-                    <input type="text" name="search" value="{{ search }}"
+                    <input type="text" name="search" id="searchInput" value="{{ search }}"
                         placeholder="🔍 Search URL, title, IP, or technology..."
                         style="width: 100%; padding: 0.625rem 1rem; border: 2px solid #e2e8f0; border-radius: 8px; font-size: 0.875rem;">
                 </div>
@@ -407,7 +407,7 @@
                         title="Comma-separated patterns to hide">
                 </div>
 
-                <select name="change_filter"
+                <select name="change_filter" id="changeFilter"
                     style="padding: 0.625rem 1rem; border: 2px solid #e2e8f0; border-radius: 8px; font-size: 0.875rem; background: white;">
                     <option value="">🔔 All Changes</option>
                     <option value="new" {% if change_filter=="new" %}selected{% endif %}>⭐ New Assets</option>
@@ -416,7 +416,7 @@
                     <option value="any" {% if change_filter=="any" %}selected{% endif %}>🔔 Any Change</option>
                 </select>
 
-                <select name="status_filter"
+                <select name="status_filter" id="statusFilter"
                     style="padding: 0.625rem 1rem; border: 2px solid #e2e8f0; border-radius: 8px; font-size: 0.875rem; background: white;">
                     <option value="">📊 All Status</option>
                     <option value="2" {% if status_filter=="2" %}selected{% endif %}>✅ 2xx Success</option>
@@ -512,7 +512,7 @@
             <!-- Assets Table -->
             <div class="table-responsive"
                 style="background: white; border-radius: 12px; box-shadow: 0 1px 3px rgba(0,0,0,0.1); overflow-x: auto;">
-                <table class="table" id="assetsTable" style="margin: 0; width: 100%;">
+                <table class="table" id="assetTable" style="margin: 0; width: 100%;">
                     <thead style="background: #f8fafc; border-bottom: 2px solid #e2e8f0;">
                         <tr>
                             <th style="padding: 1rem; font-weight: 600; color: #1e293b; font-size: 0.875rem;">#</th>
@@ -1368,10 +1368,10 @@
 
     // Filter asset table
     function filterTable() {
-        const searchInput = document.getElementById('searchInput').value.toLowerCase();
-        const statusFilter = document.getElementById('statusFilter').value;
-        const changeFilter = document.getElementById('changeFilter').value;
-        const resolutionFilter = document.getElementById('resolutionFilter').value;
+        const searchInput = document.getElementById('searchInput') ? document.getElementById('searchInput').value.toLowerCase() : '';
+        const statusFilter = document.getElementById('statusFilter') ? document.getElementById('statusFilter').value : '';
+        const changeFilter = document.getElementById('changeFilter') ? document.getElementById('changeFilter').value : '';
+        const resolutionFilter = document.getElementById('resolutionFilter') ? document.getElementById('resolutionFilter').value : '';
 
         const table = document.getElementById('assetTable');
         const rows = table.getElementsByTagName('tbody')[0].getElementsByTagName('tr');
@@ -1499,7 +1499,9 @@
 
     // Initialize assets table on page load
     document.addEventListener('DOMContentLoaded', function () {
-        filterAssets();
+        if (typeof filterTable === 'function') {
+            filterTable();
+        }
     });
 
     // Show asset changes modal

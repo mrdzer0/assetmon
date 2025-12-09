@@ -10,7 +10,7 @@ from datetime import datetime, timedelta
 from typing import Optional
 
 from app.db import get_db
-from app.models import Project, Event, Snapshot, ScanLog, SeverityLevel, User
+from app.models import Project, Event, Snapshot, SnapshotType, ScanLog, SeverityLevel, User
 from app.schemas import DashboardStats, ProjectStats
 from app.config import settings
 from app.auth import get_current_user
@@ -103,6 +103,16 @@ def project_detail(
 
         if snapshot:
             latest_snapshots[snap_type] = snapshot
+
+    # Explicitly fetch ENDPOINTS snapshot using Enum to ensure it's found
+    # (Fix for missing endpoint charts)
+    if "endpoints" not in latest_snapshots:
+        ep_snap = db.query(Snapshot).filter(
+            Snapshot.project_id == project_id,
+            Snapshot.type == SnapshotType.ENDPOINTS
+        ).order_by(Snapshot.created_at.desc()).first()
+        if ep_snap:
+            latest_snapshots["endpoints"] = ep_snap
 
     # Get recent events (last 7 days) and changes for filtering
     week_ago = datetime.utcnow() - timedelta(days=7)
@@ -256,6 +266,11 @@ def project_detail(
                 endpoint_sensitive_counts["Sensitive"] += 1
             else:
                 endpoint_sensitive_counts["Safe"] += 1
+    
+    print(f"DEBUG_DASHBOARD: Status Counts: {endpoint_status_counts}")
+    print(f"DEBUG_DASHBOARD: Sensitive Counts: {endpoint_sensitive_counts}")
+
+    # Get recent scans
 
     # Get recent scans
     recent_scans = db.query(ScanLog).filter(
