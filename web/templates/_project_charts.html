@@ -1,0 +1,408 @@
+<script>
+    document.addEventListener('DOMContentLoaded', function () {
+        // Common Chart Options
+        const commonOptions = {
+            fontFamily: 'Inter, sans-serif',
+            toolbar: { show: false }
+        };
+
+        // 1. Asset Status Chart
+        var statusOptions = {
+            series: [
+                {{ status_counts['2xx'] }},
+                {{ status_counts['3xx'] }},
+                {{ status_counts['4xx'] }},
+                {{ status_counts['5xx'] }},
+                {{ status_counts['Other'] }}
+            ],
+            chart: { type: 'donut', height: 250, ...commonOptions },
+            labels: ['2xx Success', '3xx Redirect', '4xx Client Err', '5xx Server Err', 'Other'],
+            colors: ['#10b981', '#3b82f6', '#f59e0b', '#ef4444', '#94a3b8'],
+            plotOptions: { pie: { donut: { size: '65%' } } },
+            dataLabels: { enabled: false },
+            legend: { position: 'bottom' }
+        };
+        new ApexCharts(document.querySelector("#chart-status"), statusOptions).render();
+
+        // 2. Tech Chart
+        var techOptions = {
+            series: [{
+                name: 'Count',
+                data: [
+                    {% for tech, count in top_techs.items() %}
+                        {{ count }},
+                    {% endfor %}
+                ]
+            }],
+            chart: { type: 'bar', height: 250, ...commonOptions },
+            plotOptions: {
+                bar: { borderRadius: 4, horizontal: true, barHeight: '70%' }
+            },
+            dataLabels: { enabled: true, textAnchor: 'start', formatter: function (val, opt) { return opt.w.globals.labels[opt.dataPointIndex] + ":  " + val } },
+            xaxis: {
+                categories: [
+                    {% for tech in top_techs.keys() %}
+                        "{{ tech }}",
+                    {% endfor %}
+                ]
+            },
+            colors: ['#6366f1'],
+            grid: { show: false }
+        };
+        new ApexCharts(document.querySelector("#chart-tech"), techOptions).render();
+
+        // 3. Trend Chart
+        var trendOptions = {
+            series: [{
+                name: 'New Assets',
+                data: [
+                    {% for day, count in chart_trend_data.items() %}
+                        {{ count }},
+                    {% endfor %}
+                ]
+            }],
+            chart: { type: 'area', height: 250, ...commonOptions },
+            dataLabels: { enabled: false },
+            stroke: { curve: 'smooth', width: 2 },
+            xaxis: {
+                type: 'datetime',
+                categories: [
+                    {% for day in chart_trend_data.keys() %}
+                        "{{ day }}",
+                    {% endfor %}
+                ]
+            },
+            colors: ['#8b5cf6'],
+            fill: {
+                type: 'gradient',
+                gradient: { shadeIntensity: 1, opacityFrom: 0.7, opacityTo: 0.3, stops: [0, 90, 100] }
+            }
+        };
+        new ApexCharts(document.querySelector("#chart-trend"), trendOptions).render();
+
+        // 4. Endpoint Status Chart
+        var endpointStatusOptions = {
+            series: [
+                {{ endpoint_status_counts['2xx'] }},
+                {{ endpoint_status_counts['3xx'] }},
+                {{ endpoint_status_counts['4xx'] }},
+                {{ endpoint_status_counts['5xx'] }},
+                {{ endpoint_status_counts['Other'] }}
+            ],
+            chart: { type: 'donut', height: 250, ...commonOptions },
+            labels: ['2xx Success', '3xx Redirect', '4xx Client Err', '5xx Server Err', 'Other'],
+            colors: ['#10b981', '#3b82f6', '#f59e0b', '#ef4444', '#94a3b8'],
+            plotOptions: { pie: { donut: { size: '65%' } } },
+            dataLabels: { enabled: false },
+            legend: { position: 'bottom' }
+        };
+        new ApexCharts(document.querySelector("#chart-endpoint-status"), endpointStatusOptions).render();
+
+        // 5. Sensitivity Chart
+        var sensitivityOptions = {
+            series: [
+                {{ endpoint_sensitive_counts['Sensitive'] }},
+                {{ endpoint_sensitive_counts['Safe'] }}
+            ],
+            chart: { type: 'pie', height: 250, ...commonOptions },
+            labels: ['Sensitive', 'Safe'],
+            colors: ['#ef4444', '#10b981'],
+            legend: { position: 'bottom' }
+        };
+        new ApexCharts(document.querySelector("#chart-sensitivity"), sensitivityOptions).render();
+
+        // 6. Event Severity Chart
+        var severityOptions = {
+            series: [
+                {{ event_severity_counts['critical'] }},
+                {{ event_severity_counts['high'] }},
+                {{ event_severity_counts['medium'] }},
+                {{ event_severity_counts['low'] }},
+                {{ event_severity_counts['info'] }}
+            ],
+            chart: { type: 'donut', height: 250, ...commonOptions },
+            labels: ['Critical', 'High', 'Medium', 'Low', 'Info'],
+            colors: ['#7f1d1d', '#ef4444', '#f59e0b', '#3b82f6', '#94a3b8'],
+            plotOptions: { pie: { donut: { size: '65%' } } },
+            dataLabels: { enabled: false },
+            legend: { position: 'bottom' }
+        };
+        new ApexCharts(document.querySelector("#chart-event-severity"), severityOptions).render();
+
+        // 7. Top Event Types
+        var eventTypesOptions = {
+            series: [{
+                name: 'Count',
+                data: [
+                    {% for etype, count in top_event_types.items() %}
+                        {{ count }},
+                    {% endfor %}
+                ]
+            }],
+            chart: { type: 'bar', height: 250, ...commonOptions },
+            plotOptions: {
+                bar: { borderRadius: 4, horizontal: true, barHeight: '70%' }
+            },
+            dataLabels: { enabled: true, textAnchor: 'start', formatter: function (val, opt) { return opt.w.globals.labels[opt.dataPointIndex] + ":  " + val } },
+            xaxis: {
+                categories: [
+                    {% for etype in top_event_types.keys() %}
+                        "{{ etype }}",
+                    {% endfor %}
+                ]
+            },
+            colors: ['#ec4899'],
+            grid: { show: false }
+        };
+        new ApexCharts(document.querySelector("#chart-event-types"), eventTypesOptions).render();
+    });
+
+    // ==================== Graph Visualization ====================
+    let network = null;
+    let graphLoaded = false;
+    let allNodes = [];
+    let allEdges = [];
+    let physicsEnabled = true;
+    let visibleNodeTypes = { domain: true, subdomain: true, ip: true, port: true, vuln: true, cname: true };
+
+    function initGraph() {
+        if (graphLoaded) return;
+
+        const container = document.getElementById('asset-network');
+        const loading = document.getElementById('graph-loading');
+        const statsPanel = document.getElementById('graph-stats');
+
+        fetch('/api/projects/{{ project.id }}/graph')
+            .then(response => response.json())
+            .then(data => {
+                loading.style.display = 'none';
+                
+                // Store original data
+                allNodes = data.nodes;
+                allEdges = data.edges;
+                
+                // Update statistics panel
+                updateStatsPanel(data.stats, data.total_nodes, data.total_edges);
+
+                // Process nodes for vis.js
+                const processedNodes = processNodes(data.nodes);
+                const nodes = new vis.DataSet(processedNodes);
+                const edges = new vis.DataSet(data.edges.map(edge => ({
+                    ...edge,
+                    color: { color: '#cbd5e1', highlight: '#94a3b8', hover: '#94a3b8' },
+                    width: 1.5,
+                    smooth: { type: 'continuous' }
+                })));
+
+                const options = {
+                    nodes: {
+                        font: { size: 11, face: 'Inter, -apple-system, sans-serif', color: '#475569' },
+                        borderWidth: 2,
+                        shadow: { enabled: true, size: 5, x: 2, y: 2 }
+                    },
+                    edges: {
+                        arrows: { to: { enabled: false } }
+                    },
+                    physics: {
+                        enabled: true,
+                        stabilization: { enabled: true, iterations: 100 },
+                        barnesHut: {
+                            gravitationalConstant: -3000,
+                            centralGravity: 0.3,
+                            springLength: 100,
+                            springConstant: 0.04,
+                            damping: 0.09
+                        }
+                    },
+                    interaction: {
+                        hover: true,
+                        tooltipDelay: 150,
+                        hideEdgesOnDrag: true,
+                        multiselect: true,
+                        navigationButtons: false,
+                        keyboard: { enabled: true }
+                    }
+                };
+
+                network = new vis.Network(container, { nodes, edges }, options);
+                graphLoaded = true;
+                
+                // Event handlers
+                network.on('click', function(params) {
+                    if (params.nodes.length > 0) {
+                        showNodeDetails(params.nodes[0]);
+                    } else {
+                        closeNodeDetails();
+                    }
+                });
+                
+                network.on('doubleClick', function(params) {
+                    if (params.nodes.length > 0) {
+                        const nodeId = params.nodes[0];
+                        const node = allNodes.find(n => n.id === nodeId);
+                        if (node && node.metadata && node.metadata.url) {
+                            window.open(node.metadata.url, '_blank');
+                        }
+                    }
+                });
+                
+                // Fit after stabilization
+                network.once('stabilizationIterationsDone', function() {
+                    network.fit({ animation: { duration: 500 } });
+                });
+            })
+            .catch(err => {
+                console.error("Graph fetch error:", err);
+                loading.innerHTML = '<p style="color: #ef4444;"><i class="fas fa-exclamation-triangle"></i> Failed to load graph: ' + err.message + '</p>';
+            });
+    }
+
+    function processNodes(nodes) {
+        const colorMap = {
+            domain: { color: '#475569', border: '#334155', size: 35, shape: 'hexagon' },
+            subdomain: { color: '#3b82f6', border: '#2563eb', size: 20, shape: 'dot' },
+            ip: { color: '#10b981', border: '#059669', size: 25, shape: 'square' },
+            port: { color: '#f59e0b', border: '#d97706', size: 12, shape: 'dot' },
+            vuln: { color: '#ef4444', border: '#dc2626', size: 18, shape: 'triangle' },
+            cname: { color: '#8b5cf6', border: '#7c3aed', size: 18, shape: 'diamond' }
+        };
+        
+        return nodes.map(node => {
+            const style = colorMap[node.group] || colorMap.subdomain;
+            return {
+                ...node,
+                color: { background: style.color, border: style.border, highlight: { background: style.color, border: '#1e293b' }, hover: { background: style.color, border: '#1e293b' } },
+                size: style.size,
+                shape: style.shape,
+                font: { color: '#334155' }
+            };
+        });
+    }
+
+    function updateStatsPanel(stats, totalNodes, totalEdges) {
+        const content = document.getElementById('stats-content');
+        if (!content) return;
+        
+        content.innerHTML = `
+            <div style="display: flex; justify-content: space-between;"><span>Total Nodes:</span><strong>${totalNodes}</strong></div>
+            <div style="display: flex; justify-content: space-between;"><span>Total Edges:</span><strong>${totalEdges}</strong></div>
+            <div style="border-top: 1px solid #e2e8f0; margin: 0.25rem 0;"></div>
+            <div style="display: flex; justify-content: space-between; color: #475569;"><span>🏠 Domains:</span><span>${stats.domains || 0}</span></div>
+            <div style="display: flex; justify-content: space-between; color: #3b82f6;"><span>🌐 Subdomains:</span><span>${stats.subdomains || 0}</span></div>
+            <div style="display: flex; justify-content: space-between; color: #10b981;"><span>📍 IPs:</span><span>${stats.ips || 0}</span></div>
+            <div style="display: flex; justify-content: space-between; color: #f59e0b;"><span>🔌 Ports:</span><span>${stats.ports || 0}</span></div>
+            <div style="display: flex; justify-content: space-between; color: #ef4444;"><span>⚠️ Vulns:</span><span>${stats.vulns || 0}</span></div>
+        `;
+    }
+
+    function showNodeDetails(nodeId) {
+        const node = allNodes.find(n => n.id === nodeId);
+        if (!node) return;
+        
+        const panel = document.getElementById('node-details');
+        const content = document.getElementById('node-details-content');
+        const stats = document.getElementById('graph-stats');
+        
+        if (stats) stats.style.display = 'none';
+        
+        let html = `
+            <div style="margin-bottom: 0.75rem;">
+                <span style="display: inline-block; padding: 0.2rem 0.5rem; background: ${getNodeColor(node.group)}; color: white; border-radius: 4px; font-size: 0.7rem; text-transform: uppercase;">${node.group}</span>
+            </div>
+            <div style="font-weight: 600; word-break: break-all; margin-bottom: 0.75rem; font-size: 0.9rem;">${node.label}</div>
+        `;
+        
+        const meta = node.metadata || {};
+        
+        if (node.group === 'subdomain') {
+            if (meta.status_code) html += `<div style="margin-bottom: 0.25rem;"><strong>Status:</strong> <span style="color: ${getStatusColor(meta.status_code)}">${meta.status_code}</span></div>`;
+            if (meta.title) html += `<div style="margin-bottom: 0.25rem;"><strong>Title:</strong> ${meta.title}</div>`;
+            if (meta.technologies && meta.technologies.length) html += `<div style="margin-bottom: 0.25rem;"><strong>Tech:</strong> ${meta.technologies.slice(0,5).join(', ')}</div>`;
+            if (meta.cdn) html += `<div style="margin-bottom: 0.25rem;"><strong>CDN:</strong> ${meta.cdn}</div>`;
+            if (meta.url) html += `<div style="margin-top: 0.5rem;"><a href="${meta.url}" target="_blank" class="btn btn-sm btn-primary" style="font-size: 0.75rem;"><i class="fas fa-external-link-alt"></i> Open URL</a></div>`;
+        } else if (node.group === 'ip') {
+            if (meta.subdomains && meta.subdomains.length) html += `<div style="margin-bottom: 0.25rem;"><strong>Resolves from:</strong> ${meta.subdomains.length} subdomain(s)</div>`;
+            if (meta.ports && meta.ports.length) html += `<div style="margin-bottom: 0.25rem;"><strong>Ports:</strong> ${meta.ports.join(', ')}</div>`;
+            if (meta.vulns && meta.vulns.length) html += `<div style="margin-bottom: 0.25rem; color: #ef4444;"><strong>Vulns:</strong> ${meta.vulns.join(', ')}</div>`;
+            if (meta.org) html += `<div style="margin-bottom: 0.25rem;"><strong>Org:</strong> ${meta.org}</div>`;
+        } else if (node.group === 'vuln') {
+            if (meta.cve) html += `<div style="margin-bottom: 0.5rem;"><a href="https://nvd.nist.gov/vuln/detail/${meta.cve}" target="_blank" class="btn btn-sm btn-danger" style="font-size: 0.75rem;"><i class="fas fa-external-link-alt"></i> View CVE</a></div>`;
+            if (meta.ip) html += `<div><strong>Affected IP:</strong> ${meta.ip}</div>`;
+        } else if (node.group === 'port') {
+            if (meta.port) html += `<div><strong>Port:</strong> ${meta.port}</div>`;
+            if (meta.ip) html += `<div><strong>IP:</strong> ${meta.ip}</div>`;
+        }
+        
+        // Copy button
+        html += `<div style="margin-top: 0.75rem; border-top: 1px solid #e2e8f0; padding-top: 0.5rem;">
+            <button onclick="navigator.clipboard.writeText('${node.label}')" class="btn btn-sm btn-secondary" style="font-size: 0.7rem;"><i class="fas fa-copy"></i> Copy</button>
+        </div>`;
+        
+        content.innerHTML = html;
+        panel.style.display = 'block';
+    }
+
+    function closeNodeDetails() {
+        const panel = document.getElementById('node-details');
+        const stats = document.getElementById('graph-stats');
+        if (panel) panel.style.display = 'none';
+        if (stats) stats.style.display = 'block';
+    }
+
+    function getNodeColor(group) {
+        const colors = { domain: '#475569', subdomain: '#3b82f6', ip: '#10b981', port: '#f59e0b', vuln: '#ef4444', cname: '#8b5cf6' };
+        return colors[group] || '#94a3b8';
+    }
+
+    function getStatusColor(code) {
+        if (code >= 200 && code < 300) return '#10b981';
+        if (code >= 300 && code < 400) return '#3b82f6';
+        if (code >= 400 && code < 500) return '#f59e0b';
+        if (code >= 500) return '#ef4444';
+        return '#94a3b8';
+    }
+
+    function togglePhysics() {
+        if (!network) return;
+        physicsEnabled = !physicsEnabled;
+        network.setOptions({ physics: { enabled: physicsEnabled } });
+        const btn = document.getElementById('btn-toggle-physics');
+        if (btn) {
+            btn.style.background = physicsEnabled ? '' : '#e2e8f0';
+        }
+    }
+
+    function searchNodes(query) {
+        if (!network || !allNodes.length) return;
+        query = query.toLowerCase().trim();
+        
+        if (!query) {
+            // Reset all nodes to normal
+            const updates = allNodes.map(n => ({ id: n.id, opacity: 1 }));
+            network.body.data.nodes.update(updates);
+            return;
+        }
+        
+        const updates = allNodes.map(n => {
+            const match = n.label.toLowerCase().includes(query) || n.id.toLowerCase().includes(query);
+            return { id: n.id, opacity: match ? 1 : 0.2 };
+        });
+        network.body.data.nodes.update(updates);
+        
+        // Focus on first match
+        const firstMatch = allNodes.find(n => n.label.toLowerCase().includes(query) || n.id.toLowerCase().includes(query));
+        if (firstMatch) {
+            network.focus(firstMatch.id, { scale: 1.5, animation: { duration: 300 } });
+        }
+    }
+
+    function toggleNodeType(type) {
+        if (!network) return;
+        visibleNodeTypes[type] = !visibleNodeTypes[type];
+        
+        const updates = allNodes
+            .filter(n => n.group === type)
+            .map(n => ({ id: n.id, hidden: !visibleNodeTypes[type] }));
+        network.body.data.nodes.update(updates);
+    }
+</script>

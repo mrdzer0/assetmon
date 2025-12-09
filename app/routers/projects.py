@@ -7,7 +7,7 @@ from sqlalchemy.orm import Session
 from typing import List
 
 from app.db import get_db
-from app.models import Project, Domain
+from app.models import Project, Domain, Snapshot, SnapshotType
 from app.schemas import (
     Project as ProjectSchema,
     ProjectCreate,
@@ -213,3 +213,194 @@ def remove_domain(
     db.commit()
 
     return None
+
+
+@router.get("/{project_id}/graph")
+def get_project_graph(project_id: int, db: Session = Depends(get_db)):
+    """Get graph data for the project (nodes and edges) with rich metadata"""
+    project = db.query(Project).filter(Project.id == project_id).first()
+    if not project:
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail=f"Project {project_id} not found"
+        )
+
+    # Fetch latest snapshots
+    snapshots = {}
+    for type_ in [SnapshotType.SUBDOMAINS, SnapshotType.DNS, SnapshotType.HTTP, SnapshotType.SHODAN]:
+        snapshot = db.query(Snapshot).filter(
+            Snapshot.project_id == project_id,
+            Snapshot.type == type_
+        ).order_by(Snapshot.created_at.desc()).first()
+        if snapshot:
+            snapshots[type_] = snapshot.data
+
+    nodes = []
+    edges = []
+    node_ids = set()
+    
+    # Statistics counters
+    stats = {
+        "domains": 0,
+        "subdomains": 0,
+        "ips": 0,
+        "ports": 0,
+        "vulns": 0,
+        "cnames": 0
+    }
+
+    def add_node(id_, label, group, title=None, metadata=None):
+        if id_ not in node_ids:
+            node = {
+                "id": id_,
+                "label": label,
+                "group": group,
+                "title": title or label,
+                "metadata": metadata or {}
+            }
+            nodes.append(node)
+            node_ids.add(id_)
+            # Update stats
+            if group in stats:
+                stats[group] += 1
+            elif group == "ip":
+                stats["ips"] += 1
+            elif group == "subdomain":
+                stats["subdomains"] += 1
+            elif group == "domain":
+                stats["domains"] += 1
+            elif group == "port":
+                stats["ports"] += 1
+            elif group == "vuln":
+                stats["vulns"] += 1
+            elif group == "cname":
+                stats["cnames"] += 1
+
+    def add_edge(from_, to_, label=None):
+        edge = {"from": from_, "to": to_}
+        if label:
+            edge["label"] = label
+        edges.append(edge)
+
+    # 1. Root Domains
+    for domain in project.domains:
+        add_node(
+            domain.name, 
+            domain.name, 
+            "domain",
+            f"Root Domain: {domain.name}",
+            {"type": "domain", "created_at": domain.created_at.isoformat() if domain.created_at else None}
+        )
+
+    # 2. Subdomains
+    subdomains_data = snapshots.get(SnapshotType.SUBDOMAINS, {}).get("subdomains", [])
+    http_data = snapshots.get(SnapshotType.HTTP, {}).get("http_records", {})
+    
+    for sub in subdomains_data:
+        # Determine parent domain
+        parent = next((d.name for d in project.domains if sub.endswith(d.name)), None)
+        
+        # HTTP info
+        http_info = http_data.get(f"https://{sub}") or http_data.get(f"http://{sub}")
+        title = f"Subdomain: {sub}"
+        metadata = {"type": "subdomain", "parent": parent}
+        
+        if http_info:
+            status_code = http_info.get('status_code')
+            title_text = http_info.get('title', '')
+            technologies = http_info.get('technologies', [])
+            cdn = http_info.get('cdn', '')
+            
+            title += f"\nStatus: {status_code}"
+            if title_text:
+                title += f"\nTitle: {title_text}"
+            if technologies:
+                title += f"\nTech: {', '.join(technologies[:5])}"
+            if cdn:
+                title += f"\nCDN: {cdn}"
+            
+            metadata.update({
+                "status_code": status_code,
+                "title": title_text,
+                "technologies": technologies,
+                "cdn": cdn,
+                "url": f"https://{sub}"
+            })
+        
+        add_node(sub, sub, "subdomain", title, metadata)
+        if parent:
+            add_edge(parent, sub)
+
+    # 3. DNS (IPs)
+    dns_records = snapshots.get(SnapshotType.DNS, {}).get("dns_records", {})
+    existing_ips = set()
+    ip_to_subdomains = {}  # Track which subdomains resolve to which IPs
+    
+    for sub, record in dns_records.items():
+        if sub not in node_ids:
+            continue
+            
+        for ip in record.get("a", []):
+            if ip not in ip_to_subdomains:
+                ip_to_subdomains[ip] = []
+            ip_to_subdomains[ip].append(sub)
+            
+            add_node(
+                ip, ip, "ip",
+                f"IP: {ip}\nSubdomains: {len(ip_to_subdomains[ip])}",
+                {"type": "ip", "subdomains": ip_to_subdomains[ip]}
+            )
+            add_edge(sub, ip)
+            existing_ips.add(ip)
+            
+        for cname in record.get("cname", []):
+            add_node(
+                cname, cname, "cname",
+                f"CNAME: {cname}",
+                {"type": "cname", "source": sub}
+            )
+            add_edge(sub, cname)
+
+    # 4. Shodan (Ports/Vulns)
+    shodan_results = snapshots.get(SnapshotType.SHODAN, {}).get("shodan_results", {})
+    
+    for ip, data in shodan_results.items():
+        if ip in existing_ips:
+            # Update IP node metadata with Shodan info
+            for node in nodes:
+                if node["id"] == ip:
+                    node["metadata"]["ports"] = data.get("ports", [])
+                    node["metadata"]["vulns"] = data.get("vulns", [])
+                    node["metadata"]["org"] = data.get("org", "")
+                    node["metadata"]["isp"] = data.get("isp", "")
+                    node["title"] += f"\nPorts: {len(data.get('ports', []))}"
+                    node["title"] += f"\nVulns: {len(data.get('vulns', []))}"
+                    break
+            
+            # Add ports
+            for port in data.get("ports", []):
+                port_id = f"{ip}:{port}"
+                add_node(
+                    port_id, str(port), "port",
+                    f"Port: {port}\nIP: {ip}",
+                    {"type": "port", "port": port, "ip": ip}
+                )
+                add_edge(ip, port_id)
+            
+            # Add Vulns
+            for vuln in data.get("vulns", []):
+                vuln_id = f"{ip}:{vuln}"
+                add_node(
+                    vuln_id, vuln, "vuln",
+                    f"Vulnerability: {vuln}\nIP: {ip}",
+                    {"type": "vuln", "cve": vuln, "ip": ip}
+                )
+                add_edge(ip, vuln_id)
+
+    return {
+        "nodes": nodes, 
+        "edges": edges,
+        "stats": stats,
+        "total_nodes": len(nodes),
+        "total_edges": len(edges)
+    }

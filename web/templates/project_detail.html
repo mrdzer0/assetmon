@@ -154,12 +154,16 @@
         <button id="tab-btn-scans" class="tab-btn" onclick="switchTab('scans')">
             <i class="fas fa-history"></i> Scans
         </button>
+        <button id="tab-btn-graph" class="tab-btn" onclick="initGraph(); switchTab('graph')">
+            <i class="fas fa-project-diagram"></i> Topology
+        </button>
     </div>
 
-    <!-- Tab: Dashboard -->
     <div id="tab-dashboard" class="tab-content active">
         <!-- ApexCharts CDN -->
         <script src="https://cdn.jsdelivr.net/npm/apexcharts"></script>
+        <!-- Vis.js CDN -->
+        <script src="https://unpkg.com/vis-network/standalone/umd/vis-network.min.js"></script>
 
         <!-- Dashboard Grid -->
         <div style="display: grid; grid-template-columns: repeat(2, 1fr); gap: 1.5rem; margin-bottom: 2rem;">
@@ -225,169 +229,106 @@
         </div>
     </div>
 
+    <!-- Tab: Graph -->
+    <div id="tab-graph" class="tab-content">
+        <div class="section"
+            style="height: 800px; padding: 0; overflow: hidden; position: relative; border-radius: 12px; border: 1px solid #e2e8f0; background: linear-gradient(135deg, #f8fafc 0%, #f1f5f9 100%);">
+
+            <!-- Top Controls Bar -->
+            <div
+                style="position: absolute; top: 0; left: 0; right: 0; z-index: 10; background: white; padding: 0.75rem 1rem; border-bottom: 1px solid #e2e8f0; display: flex; justify-content: space-between; align-items: center; flex-wrap: wrap; gap: 0.5rem;">
+                <!-- Left: Controls -->
+                <div style="display: flex; gap: 0.5rem; align-items: center; flex-wrap: wrap;">
+                    <button class="btn btn-sm btn-secondary" onclick="network && network.fit()" title="Fit to screen">
+                        <i class="fas fa-compress-arrows-alt"></i> Fit
+                    </button>
+                    <button class="btn btn-sm btn-secondary"
+                        onclick="network && network.moveTo({scale: network.getScale() * 1.3})" title="Zoom in">
+                        <i class="fas fa-search-plus"></i>
+                    </button>
+                    <button class="btn btn-sm btn-secondary"
+                        onclick="network && network.moveTo({scale: network.getScale() * 0.7})" title="Zoom out">
+                        <i class="fas fa-search-minus"></i>
+                    </button>
+                    <button class="btn btn-sm btn-secondary" id="btn-toggle-physics" onclick="togglePhysics()"
+                        title="Toggle physics simulation">
+                        <i class="fas fa-atom"></i> Physics
+                    </button>
+                    <div style="border-left: 1px solid #e2e8f0; padding-left: 0.75rem; margin-left: 0.25rem;">
+                        <input type="text" id="graph-search" placeholder="Search nodes..."
+                            style="padding: 0.25rem 0.5rem; border: 1px solid #e2e8f0; border-radius: 6px; font-size: 0.8rem; width: 150px;"
+                            onkeyup="searchNodes(this.value)">
+                    </div>
+                </div>
+
+                <!-- Right: Filters -->
+                <div style="display: flex; gap: 0.75rem; align-items: center; font-size: 0.8rem;">
+                    <label style="display: flex; align-items: center; gap: 4px; cursor: pointer;">
+                        <input type="checkbox" checked onchange="toggleNodeType('domain')" id="filter-domain">
+                        <span style="width: 10px; height: 10px; background: #475569; border-radius: 2px;"></span>
+                        Domains
+                    </label>
+                    <label style="display: flex; align-items: center; gap: 4px; cursor: pointer;">
+                        <input type="checkbox" checked onchange="toggleNodeType('subdomain')" id="filter-subdomain">
+                        <span style="width: 10px; height: 10px; background: #3b82f6; border-radius: 50%;"></span>
+                        Subdomains
+                    </label>
+                    <label style="display: flex; align-items: center; gap: 4px; cursor: pointer;">
+                        <input type="checkbox" checked onchange="toggleNodeType('ip')" id="filter-ip">
+                        <span style="width: 10px; height: 10px; background: #10b981; border-radius: 2px;"></span> IPs
+                    </label>
+                    <label style="display: flex; align-items: center; gap: 4px; cursor: pointer;">
+                        <input type="checkbox" checked onchange="toggleNodeType('port')" id="filter-port">
+                        <span style="width: 10px; height: 10px; background: #f59e0b; border-radius: 50%;"></span> Ports
+                    </label>
+                    <label style="display: flex; align-items: center; gap: 4px; cursor: pointer;">
+                        <input type="checkbox" checked onchange="toggleNodeType('vuln')" id="filter-vuln">
+                        <span style="width: 10px; height: 10px; background: #ef4444; border-radius: 50%;"></span> Vulns
+                    </label>
+                </div>
+            </div>
+
+            <!-- Stats Panel (Top Right) -->
+            <div id="graph-stats"
+                style="position: absolute; top: 60px; right: 1rem; z-index: 10; background: white; padding: 0.75rem; border-radius: 8px; box-shadow: 0 2px 8px rgba(0,0,0,0.1); font-size: 0.75rem; min-width: 120px;">
+                <div style="font-weight: 600; margin-bottom: 0.5rem; color: #334155;">📊 Statistics</div>
+                <div id="stats-content" style="display: grid; gap: 0.25rem;">
+                    <div style="color: #64748b;">Loading...</div>
+                </div>
+            </div>
+
+            <!-- Graph Container -->
+            <div id="asset-network" style="width: 100%; height: 100%; padding-top: 50px;"></div>
+
+            <!-- Loading Indicator -->
+            <div id="graph-loading"
+                style="position: absolute; top: 50%; left: 50%; transform: translate(-50%, -50%); text-align: center; z-index: 5;">
+                <i class="fas fa-circle-notch fa-spin" style="font-size: 2rem; color: #6366f1;"></i>
+                <p style="margin-top: 1rem; color: #64748b;">Loading topology...</p>
+            </div>
+
+            <!-- Node Details Panel (Right Sidebar) -->
+            <div id="node-details"
+                style="position: absolute; top: 60px; right: 1rem; z-index: 15; background: white; padding: 1rem; border-radius: 8px; box-shadow: 0 4px 12px rgba(0,0,0,0.15); width: 280px; display: none; max-height: calc(100% - 80px); overflow-y: auto;">
+                <div
+                    style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 0.75rem;">
+                    <div style="font-weight: 600; color: #334155;">Node Details</div>
+                    <button onclick="closeNodeDetails()"
+                        style="background: none; border: none; cursor: pointer; color: #94a3b8; font-size: 1rem;">
+                        <i class="fas fa-times"></i>
+                    </button>
+                </div>
+                <div id="node-details-content"></div>
+            </div>
+        </div>
+    </div>
+
+
     <!-- Tab: All Assets -->
     <div id="tab-assets" class="tab-content">
         <div class="section">
 
-            <script>
-                document.addEventListener('DOMContentLoaded', function () {
-                    // Common Chart Options
-                    const commonOptions = {
-                        fontFamily: 'Inter, sans-serif',
-                        toolbar: { show: false }
-                    };
-
-                    // 1. Asset Status Chart
-                    var statusOptions = {
-                        series: [
-                            {{ status_counts['2xx'] }},
-                        {{ status_counts['3xx'] }},
-                    {{ status_counts['4xx'] }},
-                    {{ status_counts['5xx'] }},
-                    {{ status_counts['Other'] }}
-                        ],
-                    chart: { type: 'donut', height: 250, ...commonOptions },
-                    labels: ['2xx Success', '3xx Redirect', '4xx Client Err', '5xx Server Err', 'Other'],
-                    colors: ['#10b981', '#3b82f6', '#f59e0b', '#ef4444', '#94a3b8'],
-                    plotOptions: { pie: { donut: { size: '65%' }} },
-                    dataLabels: { enabled: false },
-                    legend: { position: 'bottom' }
-                    };
-                new ApexCharts(document.querySelector("#chart-status"), statusOptions).render();
-
-                // 2. Tech Chart
-                var techOptions = {
-                    series: [{
-                        name: 'Count',
-                        data: [
-                            {% for tech, count in top_techs.items() %}
-                                    {{ count }},
-                    {% endfor %}
-                            ]
-                        }],
-                chart: { type: 'bar', height: 250, ...commonOptions },
-                plotOptions: {
-                    bar: { borderRadius: 4, horizontal: true, barHeight: '70%' }
-                },
-                dataLabels: { enabled: true, textAnchor: 'start', formatter: function (val, opt) { return opt.w.globals.labels[opt.dataPointIndex] + ":  " + val }},
-                xaxis: {
-                    categories: [
-                        {% for tech in top_techs.keys() %}
-                "{{ tech }}",
-                    {% endfor %}
-                            ]
-                        },
-                colors: ['#6366f1'],
-                    grid: { show: false }
-                    };
-                new ApexCharts(document.querySelector("#chart-tech"), techOptions).render();
-
-                // 3. Trend Chart
-                var trendOptions = {
-                    series: [{
-                        name: 'New Assets',
-                        data: [
-                            {% for day, count in chart_trend_data.items() %}
-                                    {{ count }},
-                    {% endfor %}
-                            ]
-                        }],
-                chart: { type: 'area', height: 250, ...commonOptions },
-                dataLabels: { enabled: false },
-                stroke: { curve: 'smooth', width: 2 },
-                xaxis: {
-                    type: 'datetime',
-                        categories: [
-                            {% for day in chart_trend_data.keys() %}
-                "{{ day }}",
-                    {% endfor %}
-                            ]
-                        },
-                colors: ['#8b5cf6'],
-                    fill: {
-                    type: 'gradient',
-                        gradient: { shadeIntensity: 1, opacityFrom: 0.7, opacityTo: 0.3, stops: [0, 90, 100] }
-                }
-                    };
-                new ApexCharts(document.querySelector("#chart-trend"), trendOptions).render();
-
-                // 4. Endpoint Status Chart
-                var endpointStatusOptions = {
-                    series: [
-                        {{ endpoint_status_counts['2xx'] }},
-                    {{ endpoint_status_counts['3xx'] }},
-                {{ endpoint_status_counts['4xx'] }},
-                {{ endpoint_status_counts['5xx'] }},
-                {{ endpoint_status_counts['Other'] }}
-                        ],
-                chart: { type: 'donut', height: 250, ...commonOptions },
-                labels: ['2xx Success', '3xx Redirect', '4xx Client Err', '5xx Server Err', 'Other'],
-                    colors: ['#10b981', '#3b82f6', '#f59e0b', '#ef4444', '#94a3b8'],
-                        plotOptions: { pie: { donut: { size: '65%' }} },
-                dataLabels: { enabled: false },
-                legend: { position: 'bottom' }
-                    };
-                new ApexCharts(document.querySelector("#chart-endpoint-status"), endpointStatusOptions).render();
-
-                // 5. Sensitivity Chart
-                var sensitivityOptions = {
-                    series: [
-                        {{ endpoint_sensitive_counts['Sensitive'] }},
-                    {{ endpoint_sensitive_counts['Safe'] }}
-                        ],
-                chart: { type: 'pie', height: 250, ...commonOptions },
-                labels: ['Sensitive', 'Safe'],
-                    colors: ['#ef4444', '#10b981'],
-                        legend: { position: 'bottom' }
-                    };
-                new ApexCharts(document.querySelector("#chart-sensitivity"), sensitivityOptions).render();
-
-                // 6. Event Severity Chart
-                var severityOptions = {
-                    series: [
-                        {{ event_severity_counts['critical'] }},
-                    {{ event_severity_counts['high'] }},
-                {{ event_severity_counts['medium'] }},
-                {{ event_severity_counts['low'] }},
-                {{ event_severity_counts['info'] }}
-                        ],
-                chart: { type: 'donut', height: 250, ...commonOptions },
-                labels: ['Critical', 'High', 'Medium', 'Low', 'Info'],
-                    colors: ['#7f1d1d', '#ef4444', '#f59e0b', '#3b82f6', '#94a3b8'],
-                        plotOptions: { pie: { donut: { size: '65%' }} },
-                dataLabels: { enabled: false },
-                legend: { position: 'bottom' }
-                    };
-                new ApexCharts(document.querySelector("#chart-event-severity"), severityOptions).render();
-
-                // 7. Top Event Types
-                var eventTypesOptions = {
-                    series: [{
-                        name: 'Count',
-                        data: [
-                            {% for etype, count in top_event_types.items() %}
-                                {{ count }},
-                    {% endfor %}
-                            ]
-                        }],
-                chart: { type: 'bar', height: 250, ...commonOptions },
-                plotOptions: {
-                    bar: { borderRadius: 4, horizontal: true, barHeight: '70%' }
-                },
-                dataLabels: { enabled: true, textAnchor: 'start', formatter: function (val, opt) { return opt.w.globals.labels[opt.dataPointIndex] + ":  " + val }},
-                xaxis: {
-                    categories: [
-                        {% for etype in top_event_types.keys() %}
-                "{{ etype }}",
-                    {% endfor %}
-                            ]
-                        },
-                colors: ['#ec4899'],
-                    grid: { show: false }
-                    };
-                new ApexCharts(document.querySelector("#chart-event-types"), eventTypesOptions).render();
-                });
-            </script>
+            {% include '_project_charts.html' %}
 
             <h3>🌐 All Discovered Assets</h3>
 
