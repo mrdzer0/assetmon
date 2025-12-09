@@ -21,6 +21,10 @@
                 <a href="/" class="nav-item {% if request.url.path == '/' %}active{% endif %}">
                     <i class="fas fa-dashboard"></i> Dashboard
                 </a>
+                <a href="/executive-summary"
+                    class="nav-item {% if '/executive-summary' in request.url.path %}active{% endif %}">
+                    <i class="fas fa-chart-pie"></i> Executive Summary
+                </a>
                 <a href="/events" class="nav-item {% if '/events' in request.url.path %}active{% endif %}">
                     <i class="fas fa-bell"></i> Events
                 </a>

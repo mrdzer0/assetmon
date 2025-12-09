@@ -1479,3 +1479,363 @@ def get_dashboard_stats(db: Session = Depends(get_db), current_user: User = Depe
         last_scan=max([p.last_scan_at for p in projects if p.last_scan_at], default=None),
         projects=project_stats
     )
+
+
+@router.get("/executive-summary", response_class=HTMLResponse)
+def executive_summary_page(
+    request: Request,
+    db: Session = Depends(get_db),
+    current_user: User = Depends(get_current_user)
+):
+    """Executive Summary Dashboard - High-level metrics for stakeholders"""
+    from app.models import SnapshotType
+    
+    # Get summary data
+    summary_data = _calculate_executive_summary(db)
+    
+    return templates.TemplateResponse("executive_summary.html", {
+        "request": request,
+        "current_user": current_user,
+        **summary_data
+    })
+
+
+@router.get("/api/executive-summary")
+def get_executive_summary_api(
+    db: Session = Depends(get_db),
+    current_user: User = Depends(get_current_user)
+):
+    """API endpoint for executive summary data"""
+    return _calculate_executive_summary(db)
+
+
+def _calculate_executive_summary(db: Session) -> dict:
+    """Calculate all executive summary metrics"""
+    from app.models import SnapshotType, EventType
+    from sqlalchemy import func
+    
+    now = datetime.utcnow()
+    one_week_ago = now - timedelta(days=7)
+    two_weeks_ago = now - timedelta(days=14)
+    
+    # === BASIC COUNTS ===
+    total_projects = db.query(Project).filter(Project.is_active == True).count()
+    
+    # Total subdomains across all projects
+    total_subdomains = 0
+    subdomain_snapshots = db.query(Snapshot).filter(
+        Snapshot.type == SnapshotType.SUBDOMAINS
+    ).all()
+    for snap in subdomain_snapshots:
+        if snap.data and "subdomains" in snap.data:
+            total_subdomains += len(snap.data["subdomains"])
+    
+    # === VULNERABILITY COUNTS ===
+    vuln_counts = {"critical": 0, "high": 0, "medium": 0, "low": 0, "info": 0}
+    
+    # From nuclei findings
+    nuclei_snapshots = db.query(Snapshot).filter(
+        Snapshot.type == SnapshotType.NUCLEI
+    ).all()
+    for snap in nuclei_snapshots:
+        if snap.data and "nuclei_findings" in snap.data:
+            for f in snap.data["nuclei_findings"]:
+                sev = f.get("severity", "info").lower()
+                if sev in vuln_counts:
+                    vuln_counts[sev] += 1
+    
+    # From takeover findings (DNS snapshots)
+    dns_snapshots = db.query(Snapshot).filter(
+        Snapshot.type == SnapshotType.DNS
+    ).all()
+    total_takeovers = 0
+    for snap in dns_snapshots:
+        if snap.scan_metadata and "takeover_findings" in snap.scan_metadata:
+            takeovers = snap.scan_metadata["takeover_findings"]
+            total_takeovers += len(takeovers)
+            for t in takeovers:
+                sev = t.get("severity", "high").lower()
+                if sev in vuln_counts:
+                    vuln_counts[sev] += 1
+    
+    total_vulns = sum(vuln_counts.values())
+    
+    # === SECURITY POSTURE SCORE (0-100) ===
+    # Weighted scoring: critical=10, high=5, medium=2, low=1, info=0
+    weighted_score = (
+        vuln_counts["critical"] * 10 +
+        vuln_counts["high"] * 5 +
+        vuln_counts["medium"] * 2 +
+        vuln_counts["low"] * 1
+    )
+    # Max deduction is 100 (so cap at reasonable threshold)
+    # Score = 100 - min(weighted_score, 100)
+    security_score = max(0, 100 - min(weighted_score, 100))
+    
+    # Score status
+    if security_score >= 80:
+        score_status = "good"
+        score_label = "Excellent"
+    elif security_score >= 50:
+        score_status = "warning"
+        score_label = "Needs Attention"
+    else:
+        score_status = "critical"
+        score_label = "Critical"
+    
+    # === WEEK-OVER-WEEK CHANGES ===
+    # Events this week vs last week
+    events_this_week = db.query(Event).filter(
+        Event.created_at >= one_week_ago
+    ).count()
+    
+    events_last_week = db.query(Event).filter(
+        Event.created_at >= two_weeks_ago,
+        Event.created_at < one_week_ago
+    ).count()
+    
+    events_change = events_this_week - events_last_week
+    events_change_pct = round((events_change / max(events_last_week, 1)) * 100, 1)
+    
+    # High severity events this week
+    high_sev_this_week = db.query(Event).filter(
+        Event.created_at >= one_week_ago,
+        Event.severity.in_([SeverityLevel.HIGH, SeverityLevel.CRITICAL])
+    ).count()
+    
+    high_sev_last_week = db.query(Event).filter(
+        Event.created_at >= two_weeks_ago,
+        Event.created_at < one_week_ago,
+        Event.severity.in_([SeverityLevel.HIGH, SeverityLevel.CRITICAL])
+    ).count()
+    
+    high_sev_change = high_sev_this_week - high_sev_last_week
+    
+    # New subdomains this week (from events)
+    new_subdomain_events = db.query(Event).filter(
+        Event.created_at >= one_week_ago,
+        Event.type == EventType.SUBDOMAIN_NEW
+    ).count()
+    
+    # New vulnerabilities this week
+    new_vuln_events = db.query(Event).filter(
+        Event.created_at >= one_week_ago,
+        Event.type == EventType.VULNERABILITY_FOUND
+    ).count()
+    
+    # === PROJECT RISK RANKING ===
+    projects = db.query(Project).filter(Project.is_active == True).all()
+    project_risks = []
+    
+    for project in projects:
+        # Get latest nuclei snapshot for this project
+        nuclei_snap = db.query(Snapshot).filter(
+            Snapshot.project_id == project.id,
+            Snapshot.type == SnapshotType.NUCLEI
+        ).order_by(Snapshot.created_at.desc()).first()
+        
+        # Get DNS snapshot for takeovers
+        dns_snap = db.query(Snapshot).filter(
+            Snapshot.project_id == project.id,
+            Snapshot.type == SnapshotType.DNS
+        ).order_by(Snapshot.created_at.desc()).first()
+        
+        proj_vulns = {"critical": 0, "high": 0, "medium": 0, "low": 0}
+        
+        if nuclei_snap and nuclei_snap.data:
+            for f in nuclei_snap.data.get("nuclei_findings", []):
+                sev = f.get("severity", "info").lower()
+                if sev in proj_vulns:
+                    proj_vulns[sev] += 1
+        
+        if dns_snap and dns_snap.scan_metadata:
+            for t in dns_snap.scan_metadata.get("takeover_findings", []):
+                sev = t.get("severity", "high").lower()
+                if sev in proj_vulns:
+                    proj_vulns[sev] += 1
+        
+        # Calculate risk score for project
+        risk_score = (
+            proj_vulns["critical"] * 10 +
+            proj_vulns["high"] * 5 +
+            proj_vulns["medium"] * 2 +
+            proj_vulns["low"] * 1
+        )
+        
+        project_risks.append({
+            "id": project.id,
+            "name": project.name,
+            "domains": len(project.domains) if project.domains else 0,
+            "critical": proj_vulns["critical"],
+            "high": proj_vulns["high"],
+            "medium": proj_vulns["medium"],
+            "low": proj_vulns["low"],
+            "total_vulns": sum(proj_vulns.values()),
+            "risk_score": risk_score,
+            "last_scan": project.last_scan_at.isoformat() if project.last_scan_at else None
+        })
+    
+    # Sort by risk score descending
+    project_risks.sort(key=lambda x: x["risk_score"], reverse=True)
+    
+    # Last scan
+    last_scan = db.query(ScanLog).order_by(ScanLog.started_at.desc()).first()
+    
+    # === VULNERABILITY TREND (30 days) ===
+    vuln_trend = []
+    for i in range(30, -1, -1):
+        day = (now - timedelta(days=i)).date()
+        day_start = datetime.combine(day, datetime.min.time())
+        day_end = datetime.combine(day, datetime.max.time())
+        
+        day_vulns = db.query(Event).filter(
+            Event.created_at >= day_start,
+            Event.created_at <= day_end,
+            Event.type == EventType.VULNERABILITY_FOUND
+        ).count()
+        
+        vuln_trend.append({
+            "date": day.isoformat(),
+            "count": day_vulns
+        })
+    
+    # === ASSET GROWTH (last 8 weeks) ===
+    asset_growth = []
+    for i in range(7, -1, -1):
+        week_start = now - timedelta(weeks=i+1)
+        week_end = now - timedelta(weeks=i)
+        
+        week_subdomains = db.query(Event).filter(
+            Event.created_at >= week_start,
+            Event.created_at < week_end,
+            Event.type == EventType.SUBDOMAIN_NEW
+        ).count()
+        
+        asset_growth.append({
+            "week": f"W{8-i}",
+            "week_start": week_start.strftime("%b %d"),
+            "count": week_subdomains
+        })
+    
+    # === EVENT ACTIVITY HEATMAP (7 days x 24 hours) ===
+    event_heatmap = []
+    day_names = ["Sun", "Mon", "Tue", "Wed", "Thu", "Fri", "Sat"]
+    for day_offset in range(6, -1, -1):
+        day = now - timedelta(days=day_offset)
+        day_name = day_names[day.weekday()]
+        day_data = {"day": day_name, "hours": []}
+        
+        for hour in range(24):
+            hour_start = datetime.combine(day.date(), datetime.min.time()) + timedelta(hours=hour)
+            hour_end = hour_start + timedelta(hours=1)
+            
+            hour_events = db.query(Event).filter(
+                Event.created_at >= hour_start,
+                Event.created_at < hour_end
+            ).count()
+            
+            day_data["hours"].append(hour_events)
+        
+        event_heatmap.append(day_data)
+    
+    # === AVERAGE SCAN DURATION ===
+    completed_scans = db.query(ScanLog).filter(
+        ScanLog.status == "completed",
+        ScanLog.completed_at.isnot(None)
+    ).limit(50).all()
+    
+    if completed_scans:
+        total_duration = sum(
+            (scan.completed_at - scan.started_at).total_seconds() 
+            for scan in completed_scans
+        )
+        avg_scan_duration = round(total_duration / len(completed_scans) / 60, 1)  # minutes
+    else:
+        avg_scan_duration = 0
+    
+    # === TOP 5 VULNERABILITIES ===
+    vuln_names = {}
+    
+    # 1. Nuclei Findings
+    for snap in nuclei_snapshots:
+        if snap.data and "nuclei_findings" in snap.data:
+            for f in snap.data["nuclei_findings"]:
+                name = f.get("name") or f.get("template_id") or "Unknown"
+                severity = f.get("severity", "info").lower()
+                source = "Nuclei"
+                key = f"{name}|{severity}|{source}"
+                vuln_names[key] = vuln_names.get(key, 0) + 1
+
+    # 2. Shodan Findings
+    shodan_snapshots = db.query(Snapshot).filter(
+        Snapshot.type == SnapshotType.SHODAN
+    ).all()
+    for snap in shodan_snapshots:
+        if snap.data and "shodan_results" in snap.data:
+            for ip, data in snap.data["shodan_results"].items():
+                for vuln in data.get("vulns", []):
+                    # Shodan findings are typically just CVE IDs (strings)
+                    # We'll treat them as High severity by default unless typical CVE scoring suggests otherwise
+                    name = vuln
+                    severity = "high" 
+                    source = "Shodan"
+                    key = f"{name}|{severity}|{source}"
+                    vuln_names[key] = vuln_names.get(key, 0) + 1
+    
+    top_vulns = []
+    for key, count in sorted(vuln_names.items(), key=lambda x: x[1], reverse=True)[:5]:
+        parts = key.rsplit("|", 2)
+        if len(parts) == 3:
+            name, severity, source = parts
+        else:
+            # Fallback for legacy key format (shouldn't happen with new code but safe to have)
+            name, severity = key.rsplit("|", 1)
+            source = "Nuclei"
+
+        top_vulns.append({
+            "name": name[:50] + "..." if len(name) > 50 else name,
+            "severity": severity,
+            "source": source,
+            "count": count
+        })
+    
+    return {
+        # Security Score
+        "security_score": security_score,
+        "score_status": score_status,
+        "score_label": score_label,
+        
+        # Totals
+        "total_projects": total_projects,
+        "total_assets": total_subdomains,
+        "total_vulnerabilities": total_vulns,
+        "vuln_counts": vuln_counts,
+        
+        # Week over week
+        "events_this_week": events_this_week,
+        "events_change": events_change,
+        "events_change_pct": events_change_pct,
+        "high_sev_this_week": high_sev_this_week,
+        "high_sev_change": high_sev_change,
+        "new_subdomains_this_week": new_subdomain_events,
+        "new_vulns_this_week": new_vuln_events,
+        
+        # Projects
+        "project_risks": project_risks[:10],
+        
+        # Trend Data (NEW)
+        "vuln_trend": vuln_trend,
+        "asset_growth": asset_growth,
+        "event_heatmap": event_heatmap,
+        
+        # Scan Metrics (NEW)
+        "avg_scan_duration": avg_scan_duration,
+        "total_scans_completed": len(completed_scans),
+        
+        # Top Vulnerabilities (NEW)
+        "top_vulns": top_vulns,
+        
+        # Meta
+        "last_scan": last_scan.started_at.isoformat() if last_scan else None,
+        "generated_at": now.isoformat()
+    }

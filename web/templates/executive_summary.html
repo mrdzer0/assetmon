@@ -1,0 +1,1304 @@
+{% extends "base.html" %}
+
+{% block title %}Executive Summary - Asset Monitor{% endblock %}
+
+{% block extra_css %}
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800&display=swap" rel="stylesheet">
+<style>
+    :root {
+        --font-main: 'Inter', sans-serif;
+        --bg-primary: #f8fafc;
+        --card-bg: white;
+        --text-primary: #1e293b;
+        --text-secondary: #64748b;
+        --text-muted: #94a3b8;
+        --border-color: #e2e8f0;
+        --shadow-sm: 0 1px 2px rgba(0, 0, 0, 0.05);
+        --shadow-md: 0 4px 6px -1px rgba(0, 0, 0, 0.1);
+        --shadow-lg: 0 10px 15px -3px rgba(0, 0, 0, 0.1);
+        --gradient-success: linear-gradient(135deg, #10b981 0%, #059669 100%);
+        --gradient-warning: linear-gradient(135deg, #f59e0b 0%, #d97706 100%);
+        --gradient-danger: linear-gradient(135deg, #ef4444 0%, #dc2626 100%);
+        --gradient-primary: linear-gradient(135deg, #4f46e5 0%, #3b82f6 100%);
+        --gradient-purple: linear-gradient(135deg, #8b5cf6 0%, #7c3aed 100%);
+    }
+
+    body {
+        font-family: var(--font-main);
+        background-color: var(--bg-primary);
+    }
+
+    .exec-container {
+        max-width: 1400px;
+        margin: 0 auto;
+        padding: 2rem;
+    }
+
+    /* Header */
+    .exec-header {
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+        margin-bottom: 2.5rem;
+    }
+
+    .exec-header h1 {
+        font-size: 2rem;
+        font-weight: 800;
+        color: var(--text-primary);
+        letter-spacing: -0.03em;
+        margin: 0;
+    }
+
+    .exec-header .subtitle {
+        color: var(--text-secondary);
+        font-size: 0.875rem;
+        font-weight: 500;
+        margin-top: 0.25rem;
+    }
+
+    .header-meta {
+        text-align: right;
+        color: var(--text-muted);
+        font-size: 0.8125rem;
+    }
+
+    /* Security Posture Overview (Unified Card) */
+    .posture-overview-card {
+        background: var(--card-bg);
+        border-radius: 24px;
+        box-shadow: var(--shadow-lg);
+        border: 1px solid var(--border-color);
+        display: flex;
+        margin-bottom: 2.5rem;
+        overflow: hidden;
+        min-height: 320px;
+    }
+
+    .posture-left {
+        flex: 1;
+        padding: 2.5rem;
+        display: flex;
+        flex-direction: column;
+        align-items: center;
+        justify-content: center;
+        background: radial-gradient(circle at center, rgba(248, 250, 252, 0.5) 0%, transparent 70%);
+        min-width: 300px;
+        border-right: 1px solid var(--border-color);
+    }
+
+    .posture-right {
+        flex: 2;
+        padding: 2.5rem;
+        display: flex;
+        flex-direction: column;
+        justify-content: center;
+        gap: 2.5rem;
+    }
+
+    .posture-divider {
+        width: 1px;
+        background: var(--border-color);
+        display: none;
+        /* Handled by border-right above */
+    }
+
+    /* Score Gauge Tweaks */
+    .score-gauge-container {
+        position: relative;
+        width: 180px;
+        height: 180px;
+        margin-bottom: 1.5rem;
+    }
+
+    .score-circle {
+        width: 100%;
+        height: 100%;
+        border-radius: 50%;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        position: relative;
+    }
+
+    .score-circle.good {
+        background: conic-gradient(#10b981 calc(var(--score) * 1%), #e2e8f0 0%);
+    }
+
+    .score-circle.warning {
+        background: conic-gradient(#f59e0b calc(var(--score) * 1%), #e2e8f0 0%);
+    }
+
+    .score-circle.critical {
+        background: conic-gradient(#ef4444 calc(var(--score) * 1%), #e2e8f0 0%);
+    }
+
+    .score-inner {
+        width: 140px;
+        height: 140px;
+        background: white;
+        border-radius: 50%;
+        display: flex;
+        flex-direction: column;
+        align-items: center;
+        justify-content: center;
+        box-shadow: inset 0 2px 4px rgba(0, 0, 0, 0.05);
+    }
+
+    .score-value {
+        font-size: 3rem;
+        font-weight: 800;
+        line-height: 1;
+        margin-bottom: 0.25rem;
+    }
+
+    .score-value.good {
+        color: #10b981;
+    }
+
+    .score-value.warning {
+        color: #f59e0b;
+    }
+
+    .score-value.critical {
+        color: #ef4444;
+    }
+
+    .score-label {
+        font-size: 0.75rem;
+        text-transform: uppercase;
+        letter-spacing: 0.05em;
+        color: var(--text-secondary);
+        font-weight: 600;
+    }
+
+    .score-status-text {
+        font-size: 1.25rem;
+        font-weight: 700;
+        color: var(--text-primary);
+        display: flex;
+        align-items: center;
+        gap: 0.75rem;
+    }
+
+    .status-indicator {
+        width: 10px;
+        height: 10px;
+        border-radius: 50%;
+        display: block;
+    }
+
+    .status-indicator.good {
+        background: #10b981;
+        box-shadow: 0 0 0 4px rgba(16, 185, 129, 0.2);
+    }
+
+    .status-indicator.warning {
+        background: #f59e0b;
+        box-shadow: 0 0 0 4px rgba(245, 158, 11, 0.2);
+    }
+
+    .status-indicator.critical {
+        background: #ef4444;
+        box-shadow: 0 0 0 4px rgba(239, 68, 68, 0.2);
+    }
+
+    /* Metrics Row */
+    .metrics-row {
+        display: grid;
+        grid-template-columns: repeat(3, 1fr);
+        gap: 1.5rem;
+    }
+
+    .mini-metric {
+        display: flex;
+        align-items: center;
+        gap: 1rem;
+        padding: 1rem;
+        border-radius: 12px;
+        background: #f8fafc;
+        border: 1px solid transparent;
+        transition: all 0.2s;
+    }
+
+    .mini-metric:hover {
+        background: white;
+        border-color: var(--border-color);
+        box-shadow: var(--shadow-sm);
+        transform: translateY(-2px);
+    }
+
+    .mini-metric-icon {
+        width: 48px;
+        height: 48px;
+        border-radius: 12px;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        font-size: 1.25rem;
+        flex-shrink: 0;
+    }
+
+    .mini-metric-content {
+        display: flex;
+        flex-direction: column;
+    }
+
+    .mini-metric-label {
+        font-size: 0.75rem;
+        text-transform: uppercase;
+        letter-spacing: 0.05em;
+        color: var(--text-secondary);
+        font-weight: 600;
+        margin-bottom: 0.25rem;
+    }
+
+    .mini-metric-value {
+        font-size: 1.5rem;
+        font-weight: 800;
+        color: var(--text-primary);
+        line-height: 1;
+    }
+
+    /* Distribution Bar */
+    .vuln-distribution-bar {
+        width: 100%;
+    }
+
+    .dist-label {
+        font-size: 0.875rem;
+        font-weight: 600;
+        color: var(--text-primary);
+        margin-bottom: 1rem;
+    }
+
+    .dist-track {
+        height: 12px;
+        background: #e2e8f0;
+        border-radius: 6px;
+        display: flex;
+        overflow: hidden;
+        margin-bottom: 1rem;
+    }
+
+    .dist-segment {
+        height: 100%;
+        transition: width 0.5s ease;
+    }
+
+    .dist-segment.critical {
+        background: #ef4444;
+    }
+
+    .dist-segment.high {
+        background: #f97316;
+    }
+
+    .dist-segment.medium {
+        background: #f59e0b;
+    }
+
+    .dist-segment.low {
+        background: #10b981;
+    }
+
+    .dist-segment.empty {
+        background: #cbd5e1;
+    }
+
+    .dist-legend {
+        display: flex;
+        gap: 1.5rem;
+        flex-wrap: wrap;
+    }
+
+    .legend-item {
+        display: flex;
+        align-items: center;
+        gap: 0.5rem;
+        font-size: 0.8125rem;
+        font-weight: 500;
+        color: var(--text-secondary);
+    }
+
+    .dot {
+        width: 8px;
+        height: 8px;
+        border-radius: 50%;
+        display: block;
+    }
+
+    .dot.critical {
+        background: #ef4444;
+    }
+
+    .dot.high {
+        background: #f97316;
+    }
+
+    .dot.medium {
+        background: #f59e0b;
+    }
+
+    .dot.low {
+        background: #10b981;
+    }
+
+    @media (max-width: 1024px) {
+        .posture-overview-card {
+            flex-direction: column;
+            height: auto;
+        }
+
+        .posture-left {
+            border-right: none;
+            border-bottom: 1px solid var(--border-color);
+            padding: 2rem;
+        }
+
+        .posture-right {
+            padding: 2rem;
+        }
+
+        .metrics-row {
+            grid-template-columns: 1fr;
+        }
+    }
+
+    /* Week-over-Week Changes */
+    .changes-section {
+        margin-bottom: 2.5rem;
+    }
+
+    .section-title {
+        font-size: 1.25rem;
+        font-weight: 700;
+        color: var(--text-primary);
+        margin-bottom: 1.5rem;
+        display: flex;
+        align-items: center;
+        gap: 0.75rem;
+    }
+
+    .changes-grid {
+        display: grid;
+        grid-template-columns: repeat(4, 1fr);
+        gap: 1.5rem;
+    }
+
+    .change-card {
+        background: var(--card-bg);
+        border-radius: 16px;
+        padding: 1.5rem;
+        box-shadow: var(--shadow-md);
+        border: 1px solid var(--border-color);
+    }
+
+    .change-title {
+        font-size: 0.8125rem;
+        color: var(--text-secondary);
+        font-weight: 500;
+        margin-bottom: 0.75rem;
+    }
+
+    .change-value {
+        font-size: 2rem;
+        font-weight: 800;
+        color: var(--text-primary);
+        display: flex;
+        align-items: center;
+        gap: 0.75rem;
+    }
+
+    .change-indicator {
+        display: inline-flex;
+        align-items: center;
+        gap: 0.25rem;
+        font-size: 0.875rem;
+        font-weight: 600;
+        padding: 0.25rem 0.625rem;
+        border-radius: 20px;
+    }
+
+    .change-indicator.positive {
+        background: #dcfce7;
+        color: #16a34a;
+    }
+
+    .change-indicator.negative {
+        background: #fee2e2;
+        color: #dc2626;
+    }
+
+    .change-indicator.neutral {
+        background: #f1f5f9;
+        color: #64748b;
+    }
+
+    /* Vulnerability Breakdown */
+    .vuln-breakdown {
+        display: flex;
+        gap: 1rem;
+        margin-top: 1rem;
+    }
+
+    .vuln-pill {
+        display: flex;
+        align-items: center;
+        gap: 0.375rem;
+        font-size: 0.8125rem;
+        font-weight: 600;
+        padding: 0.375rem 0.75rem;
+        border-radius: 8px;
+    }
+
+    .vuln-pill.critical {
+        background: #fef2f2;
+        color: #dc2626;
+    }
+
+    .vuln-pill.high {
+        background: #fff7ed;
+        color: #ea580c;
+    }
+
+    .vuln-pill.medium {
+        background: #fefce8;
+        color: #ca8a04;
+    }
+
+    .vuln-pill.low {
+        background: #f0fdf4;
+        color: #16a34a;
+    }
+
+    .vuln-pill.info {
+        background: #eff6ff;
+        color: #2563eb;
+    }
+
+    /* Project Risk Table */
+    .risk-section {
+        background: var(--card-bg);
+        border-radius: 20px;
+        padding: 2rem;
+        box-shadow: var(--shadow-md);
+        border: 1px solid var(--border-color);
+    }
+
+    .risk-table {
+        width: 100%;
+        border-collapse: collapse;
+    }
+
+    .risk-table th {
+        text-align: left;
+        padding: 1rem;
+        font-size: 0.75rem;
+        font-weight: 600;
+        color: var(--text-secondary);
+        text-transform: uppercase;
+        letter-spacing: 0.05em;
+        border-bottom: 2px solid var(--border-color);
+    }
+
+    .risk-table td {
+        padding: 1rem;
+        border-bottom: 1px solid var(--border-color);
+        font-size: 0.9375rem;
+    }
+
+    .risk-table tr:last-child td {
+        border-bottom: none;
+    }
+
+    .risk-table tr:hover {
+        background: #f8fafc;
+    }
+
+    .project-name-link {
+        color: var(--text-primary);
+        font-weight: 600;
+        text-decoration: none;
+    }
+
+    .project-name-link:hover {
+        color: #3b82f6;
+    }
+
+    .risk-badge {
+        display: inline-flex;
+        align-items: center;
+        justify-content: center;
+        min-width: 48px;
+        padding: 0.375rem 0.75rem;
+        border-radius: 8px;
+        font-weight: 700;
+        font-size: 0.875rem;
+    }
+
+    .risk-badge.high-risk {
+        background: linear-gradient(135deg, #ef4444 0%, #dc2626 100%);
+        color: white;
+    }
+
+    .risk-badge.medium-risk {
+        background: linear-gradient(135deg, #f59e0b 0%, #d97706 100%);
+        color: white;
+    }
+
+    .risk-badge.low-risk {
+        background: linear-gradient(135deg, #10b981 0%, #059669 100%);
+        color: white;
+    }
+
+    .vuln-counts {
+        display: flex;
+        gap: 0.5rem;
+    }
+
+    .vuln-count {
+        padding: 0.25rem 0.5rem;
+        border-radius: 6px;
+        font-size: 0.75rem;
+        font-weight: 600;
+    }
+
+    .vuln-count.critical {
+        background: #fee2e2;
+        color: #dc2626;
+    }
+
+    .vuln-count.high {
+        background: #ffedd5;
+        color: #ea580c;
+    }
+
+    .vuln-count.medium {
+        background: #fef9c3;
+        color: #ca8a04;
+    }
+
+    .vuln-count.low {
+        background: #dcfce7;
+        color: #16a34a;
+    }
+
+    /* Print styles */
+    @media print {
+        .exec-container {
+            max-width: 100%;
+            padding: 0;
+        }
+
+        .score-card,
+        .metric-card,
+        .change-card,
+        .risk-section {
+            box-shadow: none;
+            border: 1px solid #e2e8f0;
+        }
+    }
+
+    /* Responsive */
+    @media (max-width: 1024px) {
+        .score-section {
+            grid-template-columns: 1fr;
+        }
+
+        .changes-grid {
+            grid-template-columns: repeat(2, 1fr);
+        }
+    }
+
+    @media (max-width: 640px) {
+
+        .metrics-grid,
+        .changes-grid {
+            grid-template-columns: 1fr;
+        }
+    }
+
+    /* Charts Section */
+    .charts-section {
+        display: grid;
+        grid-template-columns: 2fr 1fr;
+        gap: 2rem;
+        margin-bottom: 2.5rem;
+    }
+
+    .chart-card {
+        background: var(--card-bg);
+        border-radius: 20px;
+        padding: 1.5rem;
+        box-shadow: var(--shadow-md);
+        border: 1px solid var(--border-color);
+    }
+
+    .chart-title {
+        font-size: 1rem;
+        font-weight: 600;
+        color: var(--text-primary);
+        margin-bottom: 1rem;
+    }
+
+    /* Heatmap */
+    .heatmap-container {
+        overflow-x: auto;
+    }
+
+    .heatmap-grid {
+        display: grid;
+        grid-template-columns: 40px repeat(24, 1fr);
+        gap: 2px;
+        font-size: 0.625rem;
+    }
+
+    .heatmap-label {
+        display: flex;
+        align-items: center;
+        color: var(--text-secondary);
+        font-weight: 500;
+    }
+
+    .heatmap-cell {
+        aspect-ratio: 1;
+        border-radius: 3px;
+        min-width: 12px;
+        min-height: 12px;
+    }
+
+    .heatmap-header {
+        color: var(--text-muted);
+        text-align: center;
+        font-size: 0.5rem;
+    }
+
+    /* Top Vulnerabilities */
+    .top-vulns-list {
+        display: flex;
+        flex-direction: column;
+        gap: 0.75rem;
+    }
+
+    .vuln-item {
+        display: flex;
+        align-items: center;
+        gap: 0.75rem;
+        padding: 0.75rem;
+        background: #f8fafc;
+        border-radius: 10px;
+        border: 1px solid var(--border-color);
+    }
+
+    .vuln-rank {
+        width: 24px;
+        height: 24px;
+        border-radius: 50%;
+        background: var(--gradient-primary);
+        color: white;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        font-size: 0.75rem;
+        font-weight: 700;
+    }
+
+    .vuln-info {
+        flex: 1;
+        min-width: 0;
+    }
+
+    .vuln-name {
+        font-weight: 600;
+        color: var(--text-primary);
+        font-size: 0.875rem;
+        white-space: nowrap;
+        overflow: hidden;
+        text-overflow: ellipsis;
+    }
+
+    .vuln-sev-badge {
+        padding: 0.125rem 0.5rem;
+        border-radius: 4px;
+        font-size: 0.625rem;
+        font-weight: 700;
+        text-transform: uppercase;
+    }
+
+    .vuln-count-badge {
+        background: #e2e8f0;
+        color: var(--text-primary);
+        padding: 0.25rem 0.5rem;
+        border-radius: 6px;
+        font-size: 0.75rem;
+        font-weight: 700;
+    }
+
+    /* Scan Metrics */
+    .scan-metric {
+        display: flex;
+        align-items: center;
+        gap: 1rem;
+        margin-top: 1rem;
+    }
+
+    .scan-metric-value {
+        font-size: 2rem;
+        font-weight: 800;
+        color: var(--text-primary);
+    }
+
+    .scan-metric-label {
+        font-size: 0.8125rem;
+        color: var(--text-secondary);
+    }
+
+    .scan-metric {
+        display: flex;
+        align-items: center;
+        gap: 1rem;
+        margin-bottom: 1.25rem;
+        padding: 0.5rem;
+        border-radius: 12px;
+        transition: background 0.2s;
+    }
+
+    .scan-metric:hover {
+        background: #f8fafc;
+    }
+
+    .scan-metric:last-child {
+        margin-bottom: 0;
+    }
+
+    .scan-metric-icon {
+        width: 48px;
+        height: 48px;
+        border-radius: 50%;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        color: white;
+        font-size: 1.25rem;
+        flex-shrink: 0;
+        box-shadow: var(--shadow-sm);
+    }
+
+    .source-badge {
+        display: inline-flex;
+        align-items: center;
+        padding: 0.125rem 0.375rem;
+        border-radius: 4px;
+        font-size: 0.65rem;
+        font-weight: 700;
+        text-transform: uppercase;
+        margin-left: 0.5rem;
+        letter-spacing: 0.05em;
+        vertical-align: middle;
+    }
+
+    .source-badge.nuclei {
+        background: #dbeafe;
+        color: #1e40af;
+        border: 1px solid #bfdbfe;
+    }
+
+    .source-badge.shodan {
+        background: #fee2e2;
+        color: #991b1b;
+        border: 1px solid #fecaca;
+    }
+
+    @media (max-width: 1024px) {
+        .charts-section {
+            grid-template-columns: 1fr;
+        }
+    }
+</style>
+<script src="https://cdn.jsdelivr.net/npm/apexcharts"></script>
+{% endblock %}
+
+{% block content %}
+<div class="exec-container">
+    <!-- Header -->
+    <div class="exec-header">
+        <div>
+            <h1>Executive Summary</h1>
+            <p class="subtitle">Security posture overview for all monitored assets</p>
+        </div>
+        <div class="header-meta">
+            <div>Generated: <span class="local-date" data-date="{{ generated_at }}">{{ generated_at }}</span></div>
+            {% if last_scan %}
+            <div>Last Scan: <span class="local-date" data-date="{{ last_scan }}">{{ last_scan }}</span></div>
+            {% endif %}
+        </div>
+    </div>
+
+    <!-- Security Posture Overview (Redesigned) -->
+    <div class="posture-overview-card">
+        <div class="posture-left">
+            <div class="score-gauge-container">
+                <div class="score-circle {{ score_status }}" style="--score: {{ security_score }}">
+                    <div class="score-inner">
+                        <div class="score-value {{ score_status }}">{{ security_score }}</div>
+                        <div class="score-label">
+                            Security Score
+                            <i class="fas fa-info-circle help-icon"
+                                title="Score starts at 100. Deductions: Critical (-10), High (-5), Medium (-2), Low (-1)."></i>
+                        </div>
+                    </div>
+                </div>
+            </div>
+            <div class="score-status-text">
+                <span class="status-indicator {{ score_status }}"></span>
+                {{ score_label }}
+            </div>
+        </div>
+
+        <div class="posture-divider"></div>
+
+        <div class="posture-right">
+            <div class="metrics-row">
+                <div class="mini-metric">
+                    <div class="mini-metric-icon" style="background: rgba(79, 70, 229, 0.1); color: #4f46e5;">
+                        <i class="fas fa-layer-group"></i>
+                    </div>
+                    <div class="mini-metric-content">
+                        <div class="mini-metric-label">Active Projects</div>
+                        <div class="mini-metric-value">{{ total_projects }}</div>
+                    </div>
+                </div>
+
+                <div class="mini-metric">
+                    <div class="mini-metric-icon" style="background: rgba(139, 92, 246, 0.1); color: #8b5cf6;">
+                        <i class="fas fa-globe"></i>
+                    </div>
+                    <div class="mini-metric-content">
+                        <div class="mini-metric-label">Total Assets</div>
+                        <div class="mini-metric-value">{{ total_assets }}</div>
+                    </div>
+                </div>
+
+                <div class="mini-metric">
+                    <div class="mini-metric-icon" style="background: rgba(239, 68, 68, 0.1); color: #ef4444;">
+                        <i class="fas fa-shield-virus"></i>
+                    </div>
+                    <div class="mini-metric-content">
+                        <div class="mini-metric-label">Total Vulns</div>
+                        <div class="mini-metric-value">{{ total_vulnerabilities }}</div>
+                    </div>
+                </div>
+            </div>
+
+            <div class="vuln-distribution-bar">
+                <div class="dist-label">Vulnerability Distribution</div>
+                <div class="dist-track">
+                    {% set total = vuln_counts.critical + vuln_counts.high + vuln_counts.medium + vuln_counts.low %}
+                    {% if total > 0 %}
+                    <div class="dist-segment critical"
+                        style="width: {{ (vuln_counts.critical / total * 100)|round(1) }}%"
+                        title="Critical: {{ vuln_counts.critical }}"></div>
+                    <div class="dist-segment high" style="width: {{ (vuln_counts.high / total * 100)|round(1) }}%"
+                        title="High: {{ vuln_counts.high }}"></div>
+                    <div class="dist-segment medium" style="width: {{ (vuln_counts.medium / total * 100)|round(1) }}%"
+                        title="Medium: {{ vuln_counts.medium }}"></div>
+                    <div class="dist-segment low" style="width: {{ (vuln_counts.low / total * 100)|round(1) }}%"
+                        title="Low: {{ vuln_counts.low }}"></div>
+                    {% else %}
+                    <div class="dist-segment empty" style="width: 100%"></div>
+                    {% endif %}
+                </div>
+                <div class="dist-legend">
+                    <div class="legend-item"><span class="dot critical"></span> Critical ({{ vuln_counts.critical }})
+                    </div>
+                    <div class="legend-item"><span class="dot high"></span> High ({{ vuln_counts.high }})</div>
+                    <div class="legend-item"><span class="dot medium"></span> Medium ({{ vuln_counts.medium }})</div>
+                    <div class="legend-item"><span class="dot low"></span> Low ({{ vuln_counts.low }})</div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- What Changed This Week -->
+    <div class="changes-section">
+        <div class="section-title">
+            <i class="fas fa-calendar-week" style="color: var(--text-secondary);"></i>
+            What Changed This Week
+        </div>
+        <div class="changes-grid">
+            <div class="change-card">
+                <div class="change-title">Total Events</div>
+                <div class="change-value">
+                    {{ events_this_week }}
+                    {% if events_change > 0 %}
+                    <span class="change-indicator negative">
+                        <i class="fas fa-arrow-up"></i> {{ events_change_pct }}%
+                    </span>
+                    {% elif events_change < 0 %} <span class="change-indicator positive">
+                        <i class="fas fa-arrow-down"></i> {{ events_change_pct|abs }}%
+                        </span>
+                        {% else %}
+                        <span class="change-indicator neutral">
+                            <i class="fas fa-minus"></i> 0%
+                        </span>
+                        {% endif %}
+                </div>
+            </div>
+
+            <div class="change-card">
+                <div class="change-title">High Severity</div>
+                <div class="change-value">
+                    {{ high_sev_this_week }}
+                    {% if high_sev_change > 0 %}
+                    <span class="change-indicator negative">
+                        <i class="fas fa-arrow-up"></i> +{{ high_sev_change }}
+                    </span>
+                    {% elif high_sev_change < 0 %} <span class="change-indicator positive">
+                        <i class="fas fa-arrow-down"></i> {{ high_sev_change }}
+                        </span>
+                        {% else %}
+                        <span class="change-indicator neutral">
+                            <i class="fas fa-minus"></i> 0
+                        </span>
+                        {% endif %}
+                </div>
+            </div>
+
+            <div class="change-card">
+                <div class="change-title">New Subdomains</div>
+                <div class="change-value">
+                    {{ new_subdomains_this_week }}
+                    {% if new_subdomains_this_week > 0 %}
+                    <span class="change-indicator neutral">
+                        <i class="fas fa-plus"></i> New
+                    </span>
+                    {% endif %}
+                </div>
+            </div>
+
+            <div class="change-card">
+                <div class="change-title">New Vulnerabilities</div>
+                <div class="change-value">
+                    {{ new_vulns_this_week }}
+                    {% if new_vulns_this_week > 0 %}
+                    <span class="change-indicator negative">
+                        <i class="fas fa-exclamation"></i> Found
+                    </span>
+                    {% else %}
+                    <span class="change-indicator positive">
+                        <i class="fas fa-check"></i> None
+                    </span>
+                    {% endif %}
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Charts & Trends -->
+    <div class="charts-section">
+        <div>
+            <!-- Trend Charts -->
+            <div class="chart-card" style="margin-bottom: 1.5rem;">
+                <div class="chart-title">Vulnerability Trend (30 Days)</div>
+                <div id="vulnTrendChart"></div>
+            </div>
+
+            <div class="chart-card">
+                <div class="chart-title">Asset Growth (Last 8 Weeks)</div>
+                <div id="assetGrowthChart"></div>
+            </div>
+        </div>
+
+        <div>
+            <!-- Top Vulns & Scan Metrics -->
+            <div class="chart-card" style="margin-bottom: 1.5rem;">
+                <div class="chart-title">Top 5 Common Vulnerabilities</div>
+                <div class="top-vulns-list">
+                    {% for vuln in top_vulns %}
+                    <div class="vuln-item">
+                        <div class="vuln-rank">{{ loop.index }}</div>
+                        <div class="vuln-info">
+                            <div class="vuln-name" title="{{ vuln.name }}">
+                                {{ vuln.name }}
+                                {% if vuln.source %}
+                                <span class="source-badge {{ vuln.source|lower }}">{{ vuln.source }}</span>
+                                {% endif %}
+                            </div>
+                            <div style="display: flex; gap: 0.5rem; margin-top: 0.25rem;">
+                                <span class="vuln-sev-badge {{ vuln.severity }}"
+                                    style="background: {% if vuln.severity == 'critical' %}#fee2e2; color: #dc2626{% elif vuln.severity == 'high' %}#ffedd5; color: #ea580c{% elif vuln.severity == 'medium' %}#fef9c3; color: #ca8a04{% else %}#dcfce7; color: #16a34a{% endif %}">
+                                    {{ vuln.severity }}
+                                </span>
+                            </div>
+                        </div>
+                        <div class="vuln-count-badge">{{ vuln.count }}</div>
+                    </div>
+                    {% else %}
+                    <div style="text-align: center; padding: 1rem; color: var(--text-muted);">
+                        No vulnerabilities found yet.
+                    </div>
+                    {% endfor %}
+                </div>
+            </div>
+
+            <div class="chart-card">
+                <div class="chart-title">Scan Performance</div>
+                <div class="scan-metric">
+                    <div class="scan-metric-icon" style="background: var(--gradient-primary);">
+                        <i class="fas fa-stopwatch"></i>
+                    </div>
+                    <div>
+                        <div class="scan-metric-value">{{ avg_scan_duration }}m</div>
+                        <div class="scan-metric-label">Avg Scan Duration</div>
+                    </div>
+                </div>
+                <div class="scan-metric">
+                    <div class="scan-metric-icon" style="background: var(--gradient-success);">
+                        <i class="fas fa-check-circle"></i>
+                    </div>
+                    <div>
+                        <div class="scan-metric-value">{{ total_scans_completed }}</div>
+                        <div class="scan-metric-label">Completed Scans</div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Heatmap -->
+    <div class="chart-card" style="margin-bottom: 2.5rem;">
+        <div class="chart-title">Event Activity Heatmap (Last 7 Days)</div>
+        <div class="heatmap-container">
+            <div class="heatmap-grid">
+                <!-- Header Row -->
+                <div></div>
+                {% for i in range(24) %}
+                <div class="heatmap-header">{{ "%02d"|format(i) }}</div>
+                {% endfor %}
+
+                <!-- Data Rows -->
+                {% for day in event_heatmap %}
+                <div class="heatmap-label">{{ day.day }}</div>
+                {% for count in day.hours %}
+                <div class="heatmap-cell"
+                    style="background-color: rgba(79, 70, 229, {{ [count * 0.2, 1.0]|min if count > 0 else 0.05 }});"
+                    title="{{ day.day }} {{ " %02d:00"|format(loop.index0) }}: {{ count }} events">
+                </div>
+                {% endfor %}
+                {% endfor %}
+            </div>
+        </div>
+    </div>
+
+    <!-- Project Risk Ranking -->
+    <div class="risk-section">
+        <div class="section-title">
+            <i class="fas fa-sort-amount-down" style="color: var(--text-secondary);"></i>
+            Project Risk Ranking
+        </div>
+        <table class="risk-table">
+            <thead>
+                <tr>
+                    <th>Rank</th>
+                    <th>Project</th>
+                    <th>Domains</th>
+                    <th>Vulnerabilities</th>
+                    <th>Risk Score</th>
+                    <th>Last Scan</th>
+                </tr>
+            </thead>
+            <tbody>
+                {% for project in project_risks %}
+                <tr>
+                    <td>
+                        <span style="font-weight: 700; color: var(--text-muted);">#{{ loop.index }}</span>
+                    </td>
+                    <td>
+                        <a href="/projects/{{ project.id }}" class="project-name-link">{{ project.name }}</a>
+                    </td>
+                    <td>{{ project.domains }}</td>
+                    <td>
+                        <div class="vuln-counts">
+                            {% if project.critical > 0 %}
+                            <span class="vuln-count critical">C:{{ project.critical }}</span>
+                            {% endif %}
+                            {% if project.high > 0 %}
+                            <span class="vuln-count high">H:{{ project.high }}</span>
+                            {% endif %}
+                            {% if project.medium > 0 %}
+                            <span class="vuln-count medium">M:{{ project.medium }}</span>
+                            {% endif %}
+                            {% if project.low > 0 %}
+                            <span class="vuln-count low">L:{{ project.low }}</span>
+                            {% endif %}
+                            {% if project.total_vulns == 0 %}
+                            <span style="color: var(--text-muted);">None</span>
+                            {% endif %}
+                        </div>
+                    </td>
+                    <td>
+                        {% if project.risk_score >= 20 %}
+                        <span class="risk-badge high-risk">{{ project.risk_score }}</span>
+                        {% elif project.risk_score >= 5 %}
+                        <span class="risk-badge medium-risk">{{ project.risk_score }}</span>
+                        {% else %}
+                        <span class="risk-badge low-risk">{{ project.risk_score }}</span>
+                        {% endif %}
+                    </td>
+                    <td>
+                        {% if project.last_scan %}
+                        <span class="local-date" data-date="{{ project.last_scan }}">{{ project.last_scan }}</span>
+                        {% else %}
+                        <span style="color: var(--text-muted);">Never</span>
+                        {% endif %}
+                    </td>
+                </tr>
+                {% else %}
+                <tr>
+                    <td colspan="6" style="text-align: center; padding: 3rem; color: var(--text-muted);">
+                        <i class="fas fa-folder-open" style="font-size: 2rem; margin-bottom: 1rem; display: block;"></i>
+                        No projects found. Create a project to start monitoring.
+                    </td>
+                </tr>
+                {% endfor %}
+            </tbody>
+        </table>
+    </div>
+</div>
+{% endblock %}
+
+{% block extra_js %}
+<script>
+    document.addEventListener('DOMContentLoaded', () => {
+        // Update local dates
+        if (window.updateRelativeTimestamps) {
+            window.updateRelativeTimestamps();
+        }
+
+        // Initialize Charts
+        if (document.querySelector("#vulnTrendChart")) {
+            initVulnTrendChart();
+        }
+        if (document.querySelector("#assetGrowthChart")) {
+            initAssetGrowthChart();
+        }
+    });
+
+    function initVulnTrendChart() {
+        const data = {{ vuln_trend | tojson
+    }};
+    const options = {
+        series: [{
+            name: 'Vulnerabilities',
+            data: data.map(d => d.count)
+        }],
+        chart: {
+            type: 'area',
+            height: 300,
+            toolbar: { show: false },
+            fontFamily: 'Inter, sans-serif',
+            zoom: { enabled: false }
+        },
+        dataLabels: { enabled: false },
+        stroke: { curve: 'smooth', width: 2 },
+        xaxis: {
+            categories: data.map(d => d.date),
+            labels: { show: false }, // Cleaner look
+            axisBorder: { show: false },
+            axisTicks: { show: false },
+            tooltip: { enabled: false }
+        },
+        yaxis: {
+            show: true,
+            labels: {
+                style: { colors: '#64748b', fontFamily: 'Inter, sans-serif' },
+                formatter: (val) => Math.floor(val)
+            }
+        },
+        grid: {
+            borderColor: '#f1f5f9',
+            strokeDashArray: 4,
+            yaxis: { lines: { show: true } },
+            padding: { top: 0, right: 0, bottom: 0, left: 10 }
+        },
+        fill: {
+            type: 'gradient',
+            gradient: {
+                shadeIntensity: 1,
+                opacityFrom: 0.4,
+                opacityTo: 0.05,
+                stops: [0, 90, 100]
+            }
+        },
+        colors: ['#ef4444'],
+        tooltip: {
+            x: { format: 'dd MMM' },
+            theme: 'light',
+            style: { fontFamily: 'Inter, sans-serif' }
+        }
+    };
+
+    const chart = new ApexCharts(document.querySelector("#vulnTrendChart"), options);
+    chart.render();
+    }
+
+    function initAssetGrowthChart() {
+        const data = {{ asset_growth | tojson
+    }};
+    const options = {
+        series: [{
+            name: 'New Assets',
+            data: data.map(d => d.count)
+        }],
+        chart: {
+            type: 'bar',
+            height: 300,
+            toolbar: { show: false },
+            fontFamily: 'Inter, sans-serif',
+            zoom: { enabled: false }
+        },
+        plotOptions: {
+            bar: {
+                borderRadius: 4,
+                columnWidth: '50%',
+                dataLabels: { position: 'top' }
+            }
+        },
+        dataLabels: {
+            enabled: false
+        },
+        stroke: { width: 0 },
+        xaxis: {
+            categories: data.map(d => d.week),
+            labels: {
+                style: { colors: '#64748b', fontFamily: 'Inter, sans-serif' }
+            },
+            axisBorder: { show: false },
+            axisTicks: { show: false }
+        },
+        yaxis: {
+            show: true,
+            labels: {
+                style: { colors: '#64748b', fontFamily: 'Inter, sans-serif' },
+                formatter: (val) => Math.floor(val)
+            }
+        },
+        grid: {
+            borderColor: '#f1f5f9',
+            strokeDashArray: 4,
+            padding: { top: 0, right: 0, bottom: 0, left: 10 }
+        },
+        colors: ['#3b82f6'],
+        tooltip: {
+            y: { formatter: (val) => val + " assets" },
+            theme: 'light',
+            style: { fontFamily: 'Inter, sans-serif' }
+        }
+    };
+
+    const chart = new ApexCharts(document.querySelector("#assetGrowthChart"), options);
+    chart.render();
+    }
+</script>
+{% endblock %}
