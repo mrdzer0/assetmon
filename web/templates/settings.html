@@ -176,6 +176,25 @@
             <label>Waybackurls Path</label>
             <input type="text" class="form-control" value="{{ settings.waybackurls_path }}" readonly>
         </div>
+
+        <div class="setting-item">
+            <label>Nuclei Path</label>
+            <input type="text" class="form-control" value="{{ settings.nuclei_path }}" readonly>
+            <small class="text-muted">
+                {% if settings.nuclei_path %}
+                <i class="fas fa-check-circle" style="color: green;"></i> Configured
+                {% else %}
+                <i class="fas fa-times-circle" style="color: red;"></i> Not configured
+                {% endif %}
+            </small>
+        </div>
+
+        <div class="setting-item">
+            <label>Nuclei Templates Path</label>
+            <input type="text" class="form-control" value="{{ settings.nuclei_templates_path or 'Default Templates' }}"
+                readonly>
+            <small class="text-muted">Leave empty to use Nuclei's default templates</small>
+        </div>
     </div>
 
     <div class="section">

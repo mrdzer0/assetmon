@@ -7,7 +7,7 @@ from sqlalchemy.orm import Session
 from typing import List
 
 from app.db import get_db
-from app.models import Project, ScanLog
+from app.models import Project, ScanLog, Snapshot, SnapshotType, Event, EventType, SeverityLevel
 from app.schemas import ScanRequest, ScanResponse
 from app.services.orchestrator import ScanOrchestrator
 from app.services.notifiers.base import NotificationManager
@@ -305,3 +305,200 @@ def unschedule_scan(job_id: str):
             status_code=status.HTTP_404_NOT_FOUND,
             detail=f"Job {job_id} not found"
         )
+
+
+def run_nuclei_scan_background(project_id: int):
+    """Run Nuclei scan in background"""
+    from app.db import SessionLocal
+    from app.services.scanner.nuclei import NucleiScanner
+    from datetime import datetime
+    
+    db = SessionLocal()
+    scan_log = None
+    try:
+        project = db.query(Project).filter(Project.id == project_id).first()
+        if not project:
+            return
+        
+        # Create ScanLog entry
+        scan_log = ScanLog(
+            project_id=project_id,
+            scan_mode="nuclei",
+            status="running",
+            started_at=datetime.utcnow()
+        )
+        db.add(scan_log)
+        db.commit()
+        db.refresh(scan_log)
+        
+        config = project.config or {}
+        enabled_tools = config.get("enabled_tools", {})
+        nuclei_config = enabled_tools.get("nuclei", {})
+        
+        # Force enable for on-demand scan
+        nuclei_config["enabled"] = True
+        
+        # Get alive hosts from HTTP snapshot
+        http_snapshot = db.query(Snapshot).filter(
+            Snapshot.project_id == project_id,
+            Snapshot.type == SnapshotType.HTTP
+        ).order_by(Snapshot.created_at.desc()).first()
+        
+        if not http_snapshot:
+            if scan_log:
+                scan_log.status = "failed"
+                scan_log.completed_at = datetime.utcnow()
+                scan_log.errors = ["No HTTP snapshot available - run HTTP scan first"]
+                db.commit()
+            return
+        
+        http_records = http_snapshot.data.get("http_records", {})
+        targets = []
+        
+        # Debug logging
+        import logging
+        logger = logging.getLogger(__name__)
+        logger.info(f"Nuclei scan: Found {len(http_records)} HTTP records in snapshot")
+        
+        scan_alive_only = nuclei_config.get("scan_alive_only", True)
+        logger.info(f"Nuclei scan: scan_alive_only={scan_alive_only}")
+        
+        # Log sample records for debugging
+        sample_count = 0
+        for url, data in http_records.items():
+            status_code = data.get("status_code", 0)
+            if sample_count < 5:
+                logger.info(f"Nuclei scan: Sample record - URL: {url}, status_code: {status_code}")
+                sample_count += 1
+            
+            if scan_alive_only and status_code and 200 <= status_code < 400:
+                targets.append(url)
+            elif not scan_alive_only:
+                targets.append(url)
+        
+        logger.info(f"Nuclei scan: {len(targets)} targets passed filter")
+        
+        if not targets:
+            if scan_log:
+                scan_log.status = "completed"
+                scan_log.completed_at = datetime.utcnow()
+                scan_log.events_generated = 0
+                scan_log.errors = [f"No targets found: {len(http_records)} HTTP records, 0 passed filter (alive_only={scan_alive_only})"]
+                db.commit()
+            return
+        
+        # Run scan
+        scanner = NucleiScanner(project_id, nuclei_config)
+        results = scanner.scan(targets)
+        
+        if results.get("error"):
+            if scan_log:
+                scan_log.status = "failed"
+                scan_log.completed_at = datetime.utcnow()
+                scan_log.errors = [results.get("error")]
+                db.commit()
+            return
+        
+        findings = results.get("findings", [])
+        stats = results.get("stats", {})
+        
+        # Save snapshot
+        snapshot = Snapshot(
+            project_id=project_id,
+            type=SnapshotType.NUCLEI,
+            data={
+                "nuclei_findings": findings,
+                "stats": stats,
+                "scanned_at": results.get("scanned_at"),
+                "targets_count": results.get("targets_count")
+            }
+        )
+        db.add(snapshot)
+        
+        # Create events for findings
+        severity_map = {
+            "critical": SeverityLevel.CRITICAL,
+            "high": SeverityLevel.HIGH,
+            "medium": SeverityLevel.MEDIUM,
+            "low": SeverityLevel.LOW,
+            "info": SeverityLevel.INFO
+        }
+        
+        for finding in findings:
+            severity = finding.get("severity", "info").lower()
+            event = Event(
+                project_id=project_id,
+                type=EventType.VULNERABILITY_FOUND,
+                severity=severity_map.get(severity, SeverityLevel.INFO),
+                summary=f"Nuclei: {finding.get('template_name', 'Unknown')} on {finding.get('host', 'unknown')}",
+                details={
+                    "template_id": finding.get("template_id"),
+                    "template_name": finding.get("template_name"),
+                    "matched_at": finding.get("matched_at"),
+                    "severity": severity,
+                    "description": finding.get("description"),
+                    "source": "nuclei"
+                },
+                related_entities={
+                    "host": finding.get("host"),
+                    "template_id": finding.get("template_id")
+                }
+            )
+            db.add(event)
+        
+        # Update ScanLog
+        if scan_log:
+            scan_log.status = "completed"
+            scan_log.completed_at = datetime.utcnow()
+            scan_log.events_generated = len(findings)
+        
+        db.commit()
+        
+    except Exception as e:
+        if scan_log:
+            scan_log.status = "failed"
+            scan_log.completed_at = datetime.utcnow()
+            scan_log.errors = [str(e)]
+            db.commit()
+    finally:
+        db.close()
+
+
+
+@router.post("/nuclei/{project_id}")
+def trigger_nuclei_scan(
+    project_id: int,
+    background_tasks: BackgroundTasks,
+    db: Session = Depends(get_db)
+):
+    """
+    Trigger an on-demand Nuclei vulnerability scan
+    
+    Args:
+        project_id: Project ID to scan
+    """
+    project = db.query(Project).filter(Project.id == project_id).first()
+    if not project:
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail=f"Project {project_id} not found"
+        )
+    
+    # Check if nuclei is available
+    from app.config import settings
+    import shutil
+    
+    if not shutil.which(settings.nuclei_path):
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail="Nuclei is not installed or not found in PATH"
+        )
+    
+    # Queue background task
+    background_tasks.add_task(run_nuclei_scan_background, project_id)
+    
+    return {
+        "success": True,
+        "message": f"Nuclei scan queued for project {project.name}",
+        "project_id": project_id
+    }

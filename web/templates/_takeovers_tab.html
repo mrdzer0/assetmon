@@ -1,179 +1,244 @@
-    <!-- Tab: Takeovers -->
-    <div id="tab-takeovers" class="tab-content">
-        <div class="section">
-            <!-- Loading State -->
-            <div id="takeovers-loading" style="text-align: center; padding: 4rem 2rem;">
-                <div style="display: inline-block; padding: 2rem; background: linear-gradient(135deg, #ef4444 0%, #dc2626 100%); border-radius: 50%; margin-bottom: 1.5rem;">
-                    <i class="fas fa-spinner fa-spin" style="font-size: 3rem; color: white;"></i>
-                </div>
-                <h3 style="color: #1e293b; font-size: 1.5rem; margin-bottom: 0.5rem;">Loading Takeover Findings...</h3>
-                <p style="color: #64748b; font-size: 0.875rem;">Checking for subdomain takeover vulnerabilities</p>
-                <div style="width: 200px; height: 4px; background: #e2e8f0; border-radius: 4px; margin: 1.5rem auto; overflow: hidden;">
-                    <div style="width: 60%; height: 100%; background: linear-gradient(90deg, #ef4444, #dc2626); animation: loading 1.5s ease-in-out infinite;"></div>
+<!-- Tab: Takeovers -->
+<div id="tab-takeovers" class="tab-content">
+    <div class="section">
+        <!-- Loading State -->
+        <div id="takeovers-loading" style="text-align: center; padding: 4rem 2rem;">
+            <div
+                style="display: inline-block; padding: 2rem; background: linear-gradient(135deg, #ef4444 0%, #dc2626 100%); border-radius: 50%; margin-bottom: 1.5rem;">
+                <i class="fas fa-spinner fa-spin" style="font-size: 3rem; color: white;"></i>
+            </div>
+            <h3 style="color: #1e293b; font-size: 1.5rem; margin-bottom: 0.5rem;">Loading Takeover Findings...</h3>
+            <p style="color: #64748b; font-size: 0.875rem;">Checking for subdomain takeover vulnerabilities</p>
+            <div
+                style="width: 200px; height: 4px; background: #e2e8f0; border-radius: 4px; margin: 1.5rem auto; overflow: hidden;">
+                <div
+                    style="width: 60%; height: 100%; background: linear-gradient(90deg, #ef4444, #dc2626); animation: loading 1.5s ease-in-out infinite;">
                 </div>
             </div>
+        </div>
 
-            <!-- Main Content -->
-            <div id="takeovers-content" style="display: none;">
-                <!-- Critical Alert Banner -->
-                <div id="takeovers-alert" style="display: none; background: linear-gradient(135deg, #fee2e2 0%, #fecaca 100%); padding: 1rem 1.25rem; border-radius: 12px; border-left: 4px solid #ef4444; margin-bottom: 1.5rem;">
-                    <div style="display: flex; align-items: center; gap: 1rem;">
-                        <i class="fas fa-exclamation-triangle" style="font-size: 1.5rem; color: #dc2626;"></i>
-                        <div>
-                            <div style="font-weight: 600; color: #7f1d1d; margin-bottom: 0.25rem;">
-                                <span id="takeovers-count">0</span> potential subdomain takeover(s) detected!
-                            </div>
-                            <div style="font-size: 0.875rem; color: #991b1b;">
-                                Immediate action required to prevent subdomain hijacking
-                            </div>
+        <!-- Main Content -->
+        <div id="takeovers-content" style="display: none;">
+            <!-- Critical Alert Banner -->
+            <div id="takeovers-alert"
+                style="display: none; background: linear-gradient(135deg, #fee2e2 0%, #fecaca 100%); padding: 1rem 1.25rem; border-radius: 12px; border-left: 4px solid #ef4444; margin-bottom: 1.5rem;">
+                <div style="display: flex; align-items: center; gap: 1rem;">
+                    <i class="fas fa-exclamation-triangle" style="font-size: 1.5rem; color: #dc2626;"></i>
+                    <div>
+                        <div style="font-weight: 600; color: #7f1d1d; margin-bottom: 0.25rem;">
+                            <span id="takeovers-count">0</span> potential subdomain takeover(s) detected!
+                        </div>
+                        <div style="font-size: 0.875rem; color: #991b1b;">
+                            Immediate action required to prevent subdomain hijacking
                         </div>
                     </div>
                 </div>
+            </div>
 
-                <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 1.5rem;">
-                    <h3 style="margin: 0; color: #1e293b; font-size: 1.25rem;">
-                        <i class="fas fa-shield-alt"></i> Subdomain Takeover Findings
-                    </h3>
+            <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 1.5rem;">
+                <h3 style="margin: 0; color: #1e293b; font-size: 1.25rem;">
+                    <i class="fas fa-bug"></i> Vulnerability Findings
+                </h3>
+                <div style="display: flex; gap: 0.75rem; align-items: center;">
+                    <button onclick="triggerNucleiScan()" id="nuclei-scan-btn"
+                        style="padding: 0.5rem 1rem; background: linear-gradient(135deg, #8b5cf6 0%, #7c3aed 100%); color: white; border: none; border-radius: 8px; cursor: pointer; font-size: 0.875rem; font-weight: 600; display: flex; align-items: center; gap: 0.5rem;"
+                        title="Run Nuclei vulnerability scan">
+                        <i class="fas fa-crosshairs"></i> Run Nuclei Scan
+                    </button>
                     <div style="color: #64748b; font-size: 0.875rem;">
                         <i class="fas fa-clock"></i> Last scan: <span id="takeovers-last-scan">-</span>
                     </div>
                 </div>
+            </div>
 
-                <!-- Filters Bar -->
-                <div style="background: white; padding: 1.25rem; border-radius: 12px; box-shadow: 0 1px 3px rgba(0,0,0,0.1); margin-bottom: 1.5rem;">
-                    <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)); gap: 1rem; margin-bottom: 1rem;">
-                        <!-- Search -->
-                        <div>
-                            <label style="display: block; font-size: 0.75rem; font-weight: 600; color: #475569; margin-bottom: 0.5rem; text-transform: uppercase; letter-spacing: 0.5px;">
-                                <i class="fas fa-search"></i> Search
-                            </label>
-                            <input type="text" id="takeovers-search" placeholder="Search subdomain or CNAME..."
-                                   style="width: 100%; padding: 0.625rem 1rem; border: 2px solid #e2e8f0; border-radius: 8px; font-size: 0.875rem; transition: all 0.2s;"
-                                   onfocus="this.style.borderColor='#ef4444'"
-                                   onblur="this.style.borderColor='#e2e8f0'">
-                        </div>
-
-                        <!-- Severity Filter -->
-                        <div>
-                            <label style="display: block; font-size: 0.75rem; font-weight: 600; color: #475569; margin-bottom: 0.5rem; text-transform: uppercase; letter-spacing: 0.5px;">
-                                <i class="fas fa-exclamation-circle"></i> Severity
-                            </label>
-                            <select id="takeovers-severity"
-                                    style="width: 100%; padding: 0.625rem 1rem; border: 2px solid #e2e8f0; border-radius: 8px; font-size: 0.875rem; background: white; cursor: pointer;">
-                                <option value="">All Severity</option>
-                                <option value="critical">🔴 Critical</option>
-                                <option value="high">🟠 High</option>
-                                <option value="medium">🟡 Medium</option>
-                                <option value="low">🟢 Low</option>
-                            </select>
-                        </div>
-
-                        <!-- Service Filter -->
-                        <div>
-                            <label style="display: block; font-size: 0.75rem; font-weight: 600; color: #475569; margin-bottom: 0.5rem; text-transform: uppercase; letter-spacing: 0.5px;">
-                                <i class="fas fa-server"></i> Service
-                            </label>
-                            <select id="takeovers-service"
-                                    style="width: 100%; padding: 0.625rem 1rem; border: 2px solid #e2e8f0; border-radius: 8px; font-size: 0.875rem; background: white; cursor: pointer;">
-                                <option value="">All Services</option>
-                                <!-- Populated dynamically -->
-                            </select>
-                        </div>
-
-                        <!-- Per Page -->
-                        <div>
-                            <label style="display: block; font-size: 0.75rem; font-weight: 600; color: #475569; margin-bottom: 0.5rem; text-transform: uppercase; letter-spacing: 0.5px;">
-                                <i class="fas fa-list"></i> Per Page
-                            </label>
-                            <select id="takeovers-per-page"
-                                    style="width: 100%; padding: 0.625rem 1rem; border: 2px solid #e2e8f0; border-radius: 8px; font-size: 0.875rem; background: white; cursor: pointer;">
-                                <option value="25">25</option>
-                                <option value="50" selected>50</option>
-                                <option value="100">100</option>
-                                <option value="200">200</option>
-                            </select>
-                        </div>
+            <!-- Filters Bar -->
+            <div
+                style="background: white; padding: 1.25rem; border-radius: 12px; box-shadow: 0 1px 3px rgba(0,0,0,0.1); margin-bottom: 1.5rem;">
+                <div
+                    style="display: grid; grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)); gap: 1rem; margin-bottom: 1rem;">
+                    <!-- Search -->
+                    <div>
+                        <label
+                            style="display: block; font-size: 0.75rem; font-weight: 600; color: #475569; margin-bottom: 0.5rem; text-transform: uppercase; letter-spacing: 0.5px;">
+                            <i class="fas fa-search"></i> Search
+                        </label>
+                        <input type="text" id="takeovers-search" placeholder="Search subdomain or CNAME..."
+                            style="width: 100%; padding: 0.625rem 1rem; border: 2px solid #e2e8f0; border-radius: 8px; font-size: 0.875rem; transition: all 0.2s;"
+                            onfocus="this.style.borderColor='#ef4444'" onblur="this.style.borderColor='#e2e8f0'">
                     </div>
 
-                    <!-- Filter Actions -->
-                    <div style="display: flex; gap: 0.75rem; align-items: center;">
-                        <button onclick="applyTakeoversFilters()"
-                                style="padding: 0.625rem 1.25rem; background: linear-gradient(135deg, #ef4444 0%, #dc2626 100%); color: white; border: none; border-radius: 8px; cursor: pointer; font-size: 0.875rem; font-weight: 600; transition: transform 0.2s;"
-                                onmouseover="this.style.transform='translateY(-2px)'"
-                                onmouseout="this.style.transform='translateY(0)'">
-                            <i class="fas fa-filter"></i> Apply Filters
-                        </button>
-                        <button onclick="resetTakeoversFilters()"
-                                style="padding: 0.625rem 1.25rem; background: white; color: #64748b; border: 2px solid #e2e8f0; border-radius: 8px; cursor: pointer; font-size: 0.875rem; font-weight: 600;">
-                            <i class="fas fa-undo"></i> Reset
-                        </button>
-                        <div id="takeovers-filter-info" style="margin-left: auto; color: #64748b; font-size: 0.875rem; font-weight: 500;">
-                            <i class="fas fa-info-circle"></i> <span id="takeovers-count-display">0 findings</span>
-                        </div>
+                    <!-- Severity Filter -->
+                    <div>
+                        <label
+                            style="display: block; font-size: 0.75rem; font-weight: 600; color: #475569; margin-bottom: 0.5rem; text-transform: uppercase; letter-spacing: 0.5px;">
+                            <i class="fas fa-exclamation-circle"></i> Severity
+                        </label>
+                        <select id="takeovers-severity"
+                            style="width: 100%; padding: 0.625rem 1rem; border: 2px solid #e2e8f0; border-radius: 8px; font-size: 0.875rem; background: white; cursor: pointer;">
+                            <option value="">All Severity</option>
+                            <option value="critical">🔴 Critical</option>
+                            <option value="high">🟠 High</option>
+                            <option value="medium">🟡 Medium</option>
+                            <option value="low">🟢 Low</option>
+                        </select>
+                    </div>
+
+                    <!-- Service Filter -->
+                    <div>
+                        <label
+                            style="display: block; font-size: 0.75rem; font-weight: 600; color: #475569; margin-bottom: 0.5rem; text-transform: uppercase; letter-spacing: 0.5px;">
+                            <i class="fas fa-server"></i> Service
+                        </label>
+                        <select id="takeovers-service"
+                            style="width: 100%; padding: 0.625rem 1rem; border: 2px solid #e2e8f0; border-radius: 8px; font-size: 0.875rem; background: white; cursor: pointer;">
+                            <option value="">All Services</option>
+                            <!-- Populated dynamically -->
+                        </select>
+                    </div>
+
+                    <!-- Per Page -->
+                    <div>
+                        <label
+                            style="display: block; font-size: 0.75rem; font-weight: 600; color: #475569; margin-bottom: 0.5rem; text-transform: uppercase; letter-spacing: 0.5px;">
+                            <i class="fas fa-list"></i> Per Page
+                        </label>
+                        <select id="takeovers-per-page"
+                            style="width: 100%; padding: 0.625rem 1rem; border: 2px solid #e2e8f0; border-radius: 8px; font-size: 0.875rem; background: white; cursor: pointer;">
+                            <option value="25">25</option>
+                            <option value="50" selected>50</option>
+                            <option value="100">100</option>
+                            <option value="200">200</option>
+                        </select>
                     </div>
                 </div>
 
-                <!-- Table -->
-                <div style="background: white; border-radius: 12px; box-shadow: 0 1px 3px rgba(0,0,0,0.1); overflow: hidden;">
-                    <div class="table-responsive">
-                        <table class="table" style="margin: 0;">
-                            <thead style="background: linear-gradient(135deg, #fef2f2 0%, #fee2e2 100%); border-bottom: 2px solid #fecaca;">
-                                <tr>
-                                    <th style="padding: 1rem; font-weight: 600; color: #7f1d1d; font-size: 0.8125rem; text-transform: uppercase; letter-spacing: 0.5px;">#</th>
-                                    <th style="padding: 1rem; font-weight: 600; color: #7f1d1d; font-size: 0.8125rem; text-transform: uppercase; letter-spacing: 0.5px; width: 100px;">Severity</th>
-                                    <th style="padding: 1rem; font-weight: 600; color: #7f1d1d; font-size: 0.8125rem; text-transform: uppercase; letter-spacing: 0.5px;">Subdomain</th>
-                                    <th style="padding: 1rem; font-weight: 600; color: #7f1d1d; font-size: 0.8125rem; text-transform: uppercase; letter-spacing: 0.5px;">CNAME</th>
-                                    <th style="padding: 1rem; font-weight: 600; color: #7f1d1d; font-size: 0.8125rem; text-transform: uppercase; letter-spacing: 0.5px; width: 120px;">Service</th>
-                                    <th style="padding: 1rem; font-weight: 600; color: #7f1d1d; font-size: 0.8125rem; text-transform: uppercase; letter-spacing: 0.5px; width: 120px;">Reason</th>
-                                    <th style="padding: 1rem; font-weight: 600; color: #7f1d1d; font-size: 0.8125rem; text-transform: uppercase; letter-spacing: 0.5px;">Description</th>
-                                </tr>
-                            </thead>
-                            <tbody id="takeovers-table-body">
-                                <!-- Data loaded via AJAX -->
-                            </tbody>
-                        </table>
-                    </div>
-                </div>
-
-                <!-- Pagination -->
-                <div style="margin-top: 1.5rem; display: flex; justify-content: space-between; align-items: center; padding: 1rem; background: white; border-radius: 12px; box-shadow: 0 1px 3px rgba(0,0,0,0.1);">
-                    <div style="color: #64748b; font-size: 0.875rem; font-weight: 500;">
-                        Showing <span id="takeovers-showing-start" style="font-weight: 700; color: #475569;">0</span> -
-                        <span id="takeovers-showing-end" style="font-weight: 700; color: #475569;">0</span> of
-                        <span id="takeovers-total" style="font-weight: 700; color: #475569;">0</span> findings
-                    </div>
-                    <div id="takeovers-pagination" style="display: flex; gap: 0.5rem; align-items: center;">
-                        <!-- Pagination buttons loaded via JS -->
-                    </div>
-                </div>
-
-                <!-- Info Box -->
-                <div style="margin-top: 1.5rem; padding: 1rem 1.25rem; background: #fef2f2; border-radius: 12px; border-left: 4px solid #ef4444;">
-                    <div style="display: flex; align-items: start; gap: 1rem;">
-                        <i class="fas fa-info-circle" style="font-size: 1.25rem; color: #ef4444; margin-top: 0.125rem;"></i>
-                        <div style="font-size: 0.875rem; color: #475569; line-height: 1.6;">
-                            <strong style="color: #1e293b;">Subdomain Takeover</strong> occurs when a subdomain points to a service that's no longer active.
-                            Attackers can claim these services and potentially host malicious content under your domain.
-                            <strong style="color: #991b1b;">Immediate remediation recommended for all findings.</strong>
-                        </div>
+                <!-- Filter Actions -->
+                <div style="display: flex; gap: 0.75rem; align-items: center;">
+                    <button onclick="applyTakeoversFilters()"
+                        style="padding: 0.625rem 1.25rem; background: linear-gradient(135deg, #ef4444 0%, #dc2626 100%); color: white; border: none; border-radius: 8px; cursor: pointer; font-size: 0.875rem; font-weight: 600; transition: transform 0.2s;"
+                        onmouseover="this.style.transform='translateY(-2px)'"
+                        onmouseout="this.style.transform='translateY(0)'">
+                        <i class="fas fa-filter"></i> Apply Filters
+                    </button>
+                    <button onclick="resetTakeoversFilters()"
+                        style="padding: 0.625rem 1.25rem; background: white; color: #64748b; border: 2px solid #e2e8f0; border-radius: 8px; cursor: pointer; font-size: 0.875rem; font-weight: 600;">
+                        <i class="fas fa-undo"></i> Reset
+                    </button>
+                    <div id="takeovers-filter-info"
+                        style="margin-left: auto; color: #64748b; font-size: 0.875rem; font-weight: 500;">
+                        <i class="fas fa-info-circle"></i> <span id="takeovers-count-display">0 findings</span>
                     </div>
                 </div>
             </div>
 
-            <!-- Empty State -->
-            <div id="takeovers-empty" style="display: none; text-align: center; padding: 4rem 2rem;">
-                <div style="display: inline-block; padding: 2rem; background: #f0fdf4; border-radius: 50%; margin-bottom: 1.5rem;">
-                    <i class="fas fa-shield-alt" style="font-size: 3rem; color: #22c55e;"></i>
+            <!-- Table -->
+            <div
+                style="background: white; border-radius: 12px; box-shadow: 0 1px 3px rgba(0,0,0,0.1); overflow: hidden;">
+                <div class="table-responsive">
+                    <table class="table" style="margin: 0;">
+                        <thead
+                            style="background: linear-gradient(135deg, #fef2f2 0%, #fee2e2 100%); border-bottom: 2px solid #fecaca;">
+                            <tr>
+                                <th
+                                    style="padding: 1rem; font-weight: 600; color: #7f1d1d; font-size: 0.8125rem; text-transform: uppercase; letter-spacing: 0.5px;">
+                                    #</th>
+                                <th
+                                    style="padding: 1rem; font-weight: 600; color: #7f1d1d; font-size: 0.8125rem; text-transform: uppercase; letter-spacing: 0.5px; width: 80px;">
+                                    Source</th>
+                                <th
+                                    style="padding: 1rem; font-weight: 600; color: #7f1d1d; font-size: 0.8125rem; text-transform: uppercase; letter-spacing: 0.5px; width: 100px;">
+                                    Severity</th>
+                                <th
+                                    style="padding: 1rem; font-weight: 600; color: #7f1d1d; font-size: 0.8125rem; text-transform: uppercase; letter-spacing: 0.5px;">
+                                    Vulnerability</th>
+                                <th
+                                    style="padding: 1rem; font-weight: 600; color: #7f1d1d; font-size: 0.8125rem; text-transform: uppercase; letter-spacing: 0.5px;">
+                                    Matched At</th>
+                                <th
+                                    style="padding: 1rem; font-weight: 600; color: #7f1d1d; font-size: 0.8125rem; text-transform: uppercase; letter-spacing: 0.5px;">
+                                    Description</th>
+                            </tr>
+                        </thead>
+                        <tbody id="takeovers-table-body">
+                            <!-- Data loaded via AJAX -->
+                        </tbody>
+                    </table>
                 </div>
-                <h3 style="color: #64748b; font-size: 1.25rem; margin-bottom: 0.5rem;">No Takeover Vulnerabilities</h3>
-                <p style="color: #94a3b8; font-size: 0.875rem; margin-bottom: 1.5rem;">All subdomains are secure. No potential takeovers detected.</p>
+            </div>
+
+            <!-- Pagination -->
+            <div
+                style="margin-top: 1.5rem; display: flex; justify-content: space-between; align-items: center; padding: 1rem; background: white; border-radius: 12px; box-shadow: 0 1px 3px rgba(0,0,0,0.1);">
+                <div style="color: #64748b; font-size: 0.875rem; font-weight: 500;">
+                    Showing <span id="takeovers-showing-start" style="font-weight: 700; color: #475569;">0</span> -
+                    <span id="takeovers-showing-end" style="font-weight: 700; color: #475569;">0</span> of
+                    <span id="takeovers-total" style="font-weight: 700; color: #475569;">0</span> findings
+                </div>
+                <div id="takeovers-pagination" style="display: flex; gap: 0.5rem; align-items: center;">
+                    <!-- Pagination buttons loaded via JS -->
+                </div>
+            </div>
+
+            <!-- Info Box -->
+            <div
+                style="margin-top: 1.5rem; padding: 1rem 1.25rem; background: #fef2f2; border-radius: 12px; border-left: 4px solid #ef4444;">
+                <div style="display: flex; align-items: start; gap: 1rem;">
+                    <i class="fas fa-info-circle" style="font-size: 1.25rem; color: #ef4444; margin-top: 0.125rem;"></i>
+                    <div style="font-size: 0.875rem; color: #475569; line-height: 1.6;">
+                        <strong style="color: #1e293b;">Subdomain Takeover</strong> occurs when a subdomain points to a
+                        service that's no longer active.
+                        Attackers can claim these services and potentially host malicious content under your domain.
+                        <strong style="color: #991b1b;">Immediate remediation recommended for all findings.</strong>
+                    </div>
+                </div>
             </div>
         </div>
+
+        <!-- Empty State -->
+        <div id="takeovers-empty" style="display: none; text-align: center; padding: 4rem 2rem;">
+            <div
+                style="display: inline-block; padding: 2rem; background: #f0fdf4; border-radius: 50%; margin-bottom: 1.5rem;">
+                <i class="fas fa-shield-alt" style="font-size: 3rem; color: #22c55e;"></i>
+            </div>
+            <h3 style="color: #64748b; font-size: 1.25rem; margin-bottom: 0.5rem;">No Takeover Vulnerabilities</h3>
+            <p style="color: #94a3b8; font-size: 0.875rem; margin-bottom: 1.5rem;">All subdomains are secure. No
+                potential takeovers detected.</p>
+        </div>
     </div>
+</div>
 
 <style>
-@keyframes loading {
-    0% { transform: translateX(-100%); }
-    100% { transform: translateX(300%); }
-}
+    @keyframes loading {
+        0% {
+            transform: translateX(-100%);
+        }
+
+        100% {
+            transform: translateX(300%);
+        }
+    }
+
+    @keyframes slideIn {
+        from {
+            transform: translateX(100%);
+            opacity: 0;
+        }
+
+        to {
+            transform: translateX(0);
+            opacity: 1;
+        }
+    }
+
+    @keyframes slideOut {
+        from {
+            transform: translateX(0);
+            opacity: 1;
+        }
+
+        to {
+            transform: translateX(100%);
+            opacity: 0;
+        }
+    }
 </style>

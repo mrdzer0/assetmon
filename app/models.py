@@ -41,6 +41,7 @@ class SnapshotType(str, enum.Enum):
     HTTP = "http"
     SHODAN = "shodan"
     ENDPOINTS = "endpoints"
+    NUCLEI = "nuclei"
 
 
 class Project(Base):

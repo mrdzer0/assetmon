@@ -269,6 +269,83 @@
                     <input type="checkbox" name="endpoints_enabled" class="custom-checkbox">
                 </label>
             </div>
+
+            <!-- Nuclei Vulnerability Scanner -->
+            <div class="form-group" style="margin-top: 1.5rem; padding-top: 1.5rem; border-top: 1px solid #e2e8f0;">
+                <label class="toggle-switch">
+                    <div class="toggle-label">
+                        <i class="fas fa-crosshairs" style="color: #8b5cf6;"></i>
+                        <div>
+                            Nuclei Scanner (Weekly)
+                            <div class="toggle-desc">Template-based vulnerability scanning.</div>
+                        </div>
+                    </div>
+                    <input type="checkbox" name="nuclei_enabled" class="custom-checkbox"
+                        onchange="toggleSubOptions(this, 'nuclei-options')">
+                </label>
+
+                <div id="nuclei-options" class="sub-options"
+                    style="margin-top: 1rem; opacity: 0.5; pointer-events: none;">
+                    <!-- Row 1: Severity checkboxes -->
+                    <div style="margin-bottom: 1rem;">
+                        <label class="form-label" style="font-size: 0.8rem; margin-bottom: 0.5rem;">Severity
+                            Levels</label>
+                        <div style="display: flex; gap: 1.5rem; flex-wrap: wrap;">
+                            <label
+                                style="display: flex; align-items: center; gap: 0.5rem; font-size: 0.875rem; color: #475569; cursor: pointer;">
+                                <input type="checkbox" name="nuclei_severity_critical" class="custom-checkbox" checked>
+                                Critical
+                            </label>
+                            <label
+                                style="display: flex; align-items: center; gap: 0.5rem; font-size: 0.875rem; color: #475569; cursor: pointer;">
+                                <input type="checkbox" name="nuclei_severity_high" class="custom-checkbox" checked>
+                                High
+                            </label>
+                            <label
+                                style="display: flex; align-items: center; gap: 0.5rem; font-size: 0.875rem; color: #475569; cursor: pointer;">
+                                <input type="checkbox" name="nuclei_severity_medium" class="custom-checkbox">
+                                Medium
+                            </label>
+                            <label
+                                style="display: flex; align-items: center; gap: 0.5rem; font-size: 0.875rem; color: #475569; cursor: pointer;">
+                                <input type="checkbox" name="nuclei_severity_low" class="custom-checkbox">
+                                Low
+                            </label>
+                        </div>
+                    </div>
+
+                    <!-- Row 2: Performance inputs -->
+                    <div style="display: flex; gap: 1.5rem; flex-wrap: wrap; margin-bottom: 1rem;">
+                        <div style="flex: 1; min-width: 100px;">
+                            <label class="form-label" style="font-size: 0.8rem;">Rate Limit</label>
+                            <input type="number" name="nuclei_rate_limit" class="form-control" value="150" min="10"
+                                max="1000">
+                        </div>
+                        <div style="flex: 1; min-width: 100px;">
+                            <label class="form-label" style="font-size: 0.8rem;">Concurrency</label>
+                            <input type="number" name="nuclei_concurrency" class="form-control" value="25" min="1"
+                                max="100">
+                        </div>
+                        <div style="flex: 1; min-width: 100px;">
+                            <label class="form-label" style="font-size: 0.8rem;">Timeout (s)</label>
+                            <input type="number" name="nuclei_timeout" class="form-control" value="5" min="1" max="60">
+                        </div>
+                    </div>
+
+                    <!-- Row 3: Options -->
+                    <div
+                        style="display: flex; align-items: center; justify-content: space-between; flex-wrap: wrap; gap: 1rem;">
+                        <label
+                            style="display: flex; align-items: center; gap: 0.5rem; font-size: 0.875rem; color: #475569; cursor: pointer;">
+                            <input type="checkbox" name="nuclei_scan_alive_only" class="custom-checkbox" checked>
+                            Scan alive hosts only
+                        </label>
+                        <span style="font-size: 0.75rem; color: #94a3b8;">
+                            Excluded: dos, fuzz, intrusive
+                        </span>
+                    </div>
+                </div>
+            </div>
         </div>
 
         <!-- Section 3: Notifications -->
@@ -387,6 +464,20 @@
                     enabled: formData.get('endpoints_enabled') === 'on',
                     sources: ['waybackurls', 'gau'],
                     weekly_only: true
+                },
+                nuclei: {
+                    enabled: formData.get('nuclei_enabled') === 'on',
+                    severity: [
+                        formData.get('nuclei_severity_critical') === 'on' ? 'critical' : null,
+                        formData.get('nuclei_severity_high') === 'on' ? 'high' : null,
+                        formData.get('nuclei_severity_medium') === 'on' ? 'medium' : null,
+                        formData.get('nuclei_severity_low') === 'on' ? 'low' : null
+                    ].filter(Boolean),
+                    scan_alive_only: formData.get('nuclei_scan_alive_only') === 'on',
+                    rate_limit: parseInt(formData.get('nuclei_rate_limit') || '150'),
+                    concurrency: parseInt(formData.get('nuclei_concurrency') || '25'),
+                    timeout: parseInt(formData.get('nuclei_timeout') || '5'),
+                    exclude_tags: ['dos', 'fuzz', 'intrusive']
                 }
             }
         };

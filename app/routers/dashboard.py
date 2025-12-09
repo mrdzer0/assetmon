@@ -1187,6 +1187,132 @@ def get_project_takeovers(
     }
 
 
+@router.get("/api/projects/{project_id}/vulnerabilities")
+def get_project_vulnerabilities(
+    project_id: int,
+    page: int = 1,
+    per_page: int = 50,
+    search: str = "",
+    severity: str = "",
+    source: str = "",  # "nuclei", "takeover", or ""
+    db: Session = Depends(get_db),
+    current_user: User = Depends(get_current_user)
+):
+    """Get paginated vulnerability findings (Nuclei + Takeovers) for a project"""
+    from app.models import SnapshotType
+    
+    project = db.query(Project).filter(Project.id == project_id).first()
+    if not project:
+        return {"has_data": False, "vulnerabilities": [], "total": 0}
+    
+    all_vulns = []
+    nuclei_date = None
+    takeover_date = None
+    
+    # Get Nuclei findings
+    if source != "takeover":
+        nuclei_snapshot = db.query(Snapshot).filter(
+            Snapshot.project_id == project_id,
+            Snapshot.type == SnapshotType.NUCLEI
+        ).order_by(Snapshot.created_at.desc()).first()
+        
+        if nuclei_snapshot:
+            nuclei_date = nuclei_snapshot.created_at.isoformat()
+            findings = nuclei_snapshot.data.get("nuclei_findings", [])
+            for f in findings:
+                all_vulns.append({
+                    "source": "nuclei",
+                    "severity": f.get("severity", "info"),
+                    "name": f.get("template_name", "Unknown"),
+                    "host": f.get("host", ""),
+                    "matched_at": f.get("matched_at", ""),
+                    "template_id": f.get("template_id", ""),
+                    "description": f.get("description", ""),
+                    "timestamp": f.get("timestamp", ""),
+                    "reference": f.get("reference", [])
+                })
+    
+    # Get Takeover findings
+    if source != "nuclei":
+        dns_snapshot = db.query(Snapshot).filter(
+            Snapshot.project_id == project_id,
+            Snapshot.type == SnapshotType.DNS
+        ).order_by(Snapshot.created_at.desc()).first()
+        
+        if dns_snapshot and dns_snapshot.scan_metadata:
+            takeover_date = dns_snapshot.created_at.isoformat()
+            takeovers = dns_snapshot.scan_metadata.get("takeover_findings", [])
+            for t in takeovers:
+                all_vulns.append({
+                    "source": "takeover",
+                    "severity": t.get("severity", "high"),
+                    "name": f"Subdomain Takeover: {t.get('service', 'Unknown')}",
+                    "host": t.get("subdomain", ""),
+                    "matched_at": t.get("cname", ""),
+                    "template_id": "",
+                    "description": t.get("description", ""),
+                    "timestamp": takeover_date,
+                    "service": t.get("service", ""),
+                    "reason": t.get("reason", "")
+                })
+    
+    # Filter by search
+    if search:
+        search_lower = search.lower()
+        all_vulns = [
+            v for v in all_vulns
+            if search_lower in v.get("host", "").lower() or
+               search_lower in v.get("name", "").lower() or
+               search_lower in v.get("matched_at", "").lower()
+        ]
+    
+    # Filter by severity
+    if severity:
+        all_vulns = [
+            v for v in all_vulns
+            if v.get("severity", "").lower() == severity.lower()
+        ]
+    
+    # Sort by severity
+    severity_order = {"critical": 0, "high": 1, "medium": 2, "low": 3, "info": 4}
+    all_vulns.sort(key=lambda x: severity_order.get(x.get("severity", "info").lower(), 99))
+    
+    # Pagination
+    total_vulns = len(all_vulns)
+    total_pages = (total_vulns + per_page - 1) // per_page if total_vulns > 0 else 0
+    
+    start_idx = (page - 1) * per_page
+    end_idx = min(start_idx + per_page, total_vulns)
+    
+    paginated_vulns = all_vulns[start_idx:end_idx]
+    
+    # Stats
+    stats = {
+        "total": total_vulns,
+        "critical": sum(1 for v in all_vulns if v.get("severity", "").lower() == "critical"),
+        "high": sum(1 for v in all_vulns if v.get("severity", "").lower() == "high"),
+        "medium": sum(1 for v in all_vulns if v.get("severity", "").lower() == "medium"),
+        "low": sum(1 for v in all_vulns if v.get("severity", "").lower() == "low"),
+        "info": sum(1 for v in all_vulns if v.get("severity", "").lower() == "info"),
+        "nuclei_count": sum(1 for v in all_vulns if v.get("source") == "nuclei"),
+        "takeover_count": sum(1 for v in all_vulns if v.get("source") == "takeover")
+    }
+    
+    return {
+        "vulnerabilities": paginated_vulns,
+        "total": total_vulns,
+        "page": page,
+        "per_page": per_page,
+        "total_pages": total_pages,
+        "showing_start": start_idx + 1 if total_vulns > 0 else 0,
+        "showing_end": end_idx,
+        "has_data": total_vulns > 0,
+        "nuclei_date": nuclei_date,
+        "takeover_date": takeover_date,
+        "stats": stats
+    }
+
+
 @router.get("/api/projects/{project_id}/events")
 def get_project_events(
     project_id: int,

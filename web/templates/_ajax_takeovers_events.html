@@ -32,10 +32,10 @@
                 per_page: takeoversState.perPage,
                 search: takeoversState.search,
                 severity: takeoversState.severity,
-                service: takeoversState.service
+                source: takeoversState.service  // Reuse service filter as source filter
             });
 
-            const response = await fetch(`/api/projects/{{ project.id }}/takeovers?${params}`);
+            const response = await fetch(`/api/projects/{{ project.id }}/vulnerabilities?${params}`);
             const data = await response.json();
 
             takeoversState.cachedData = data;
@@ -114,7 +114,10 @@
         const tbody = document.getElementById('takeovers-table-body');
         tbody.innerHTML = '';
 
-        data.takeovers.forEach((takeover, index) => {
+        // Handle both old (takeovers) and new (vulnerabilities) response format
+        const items = data.vulnerabilities || data.takeovers || [];
+
+        items.forEach((vuln, index) => {
             const row = document.createElement('tr');
             row.style.borderBottom = '1px solid #e2e8f0';
             row.style.transition = 'background-color 0.2s';
@@ -128,37 +131,51 @@
                 'critical': 'background: linear-gradient(135deg, #dc2626 0%, #991b1b 100%); color: white;',
                 'high': 'background: linear-gradient(135deg, #f59e0b 0%, #d97706 100%); color: white;',
                 'medium': 'background: linear-gradient(135deg, #eab308 0%, #ca8a04 100%); color: white;',
-                'low': 'background: linear-gradient(135deg, #22c55e 0%, #16a34a 100%); color: white;'
+                'low': 'background: linear-gradient(135deg, #22c55e 0%, #16a34a 100%); color: white;',
+                'info': 'background: linear-gradient(135deg, #60a5fa 0%, #3b82f6 100%); color: white;'
             };
-            const severityStyle = severityColors[takeover.severity] || severityColors['medium'];
+            const severity = (vuln.severity || 'medium').toLowerCase();
+            const severityStyle = severityColors[severity] || severityColors['medium'];
+
+            // Source badge
+            const sourceColors = {
+                'nuclei': 'background: #7c3aed; color: white;',
+                'takeover': 'background: #dc2626; color: white;'
+            };
+            const source = vuln.source || 'takeover';
+            const sourceStyle = sourceColors[source] || sourceColors['takeover'];
+
+            // Handle different field names between takeover and nuclei
+            const host = vuln.host || vuln.subdomain || '-';
+            const name = vuln.name || `Takeover: ${vuln.service || 'Unknown'}`;
+            const matchedAt = vuln.matched_at || vuln.cname || '-';
+            const description = vuln.description || '-';
 
             row.innerHTML = `
             <td style="padding: 1rem; color: #64748b; font-weight: 600;">${globalIndex}</td>
             <td style="padding: 1rem;">
+                <span style="padding: 0.25rem 0.5rem; border-radius: 4px; font-size: 0.7rem; font-weight: 600; ${sourceStyle}">
+                    ${source.toUpperCase()}
+                </span>
+            </td>
+            <td style="padding: 1rem;">
                 <span style="padding: 0.375rem 0.75rem; border-radius: 9999px; font-size: 0.75rem; font-weight: 600; ${severityStyle}">
-                    ${takeover.severity.toUpperCase()}
+                    ${severity.toUpperCase()}
                 </span>
             </td>
             <td style="padding: 1rem;">
-                <code style="background: #f1f5f9; padding: 0.25rem 0.5rem; border-radius: 4px; font-size: 0.875rem; color: #475569;">
-                    ${takeover.subdomain}
+                <div style="font-weight: 500; color: #1e293b; margin-bottom: 0.25rem;">${name}</div>
+                <code style="background: #f1f5f9; padding: 0.25rem 0.5rem; border-radius: 4px; font-size: 0.75rem; color: #475569;">
+                    ${host}
                 </code>
             </td>
             <td style="padding: 1rem;">
-                <code style="background: #fef3c7; padding: 0.25rem 0.5rem; border-radius: 4px; font-size: 0.875rem; color: #78350f;">
-                    ${takeover.cname || '-'}
+                <code style="background: #fef3c7; padding: 0.25rem 0.5rem; border-radius: 4px; font-size: 0.75rem; color: #78350f;">
+                    ${matchedAt}
                 </code>
             </td>
-            <td style="padding: 1rem;">
-                <span style="padding: 0.375rem 0.75rem; background: #fee2e2; color: #7f1d1d; border-radius: 6px; font-size: 0.75rem; font-weight: 600;">
-                    ${takeover.service || 'unknown'}
-                </span>
-            </td>
-            <td style="padding: 1rem;">
-                <code style="font-size: 0.75rem; color: #64748b;">${takeover.reason || '-'}</code>
-            </td>
-            <td style="padding: 1rem; color: #475569; font-size: 0.875rem;">
-                ${takeover.description || '-'}
+            <td style="padding: 1rem; color: #475569; font-size: 0.875rem; max-width: 300px; overflow: hidden; text-overflow: ellipsis;">
+                ${description}
             </td>
         `;
 
@@ -230,6 +247,87 @@
         takeoversState.perPage = 50;
         takeoversState.currentPage = 1;
         loadTakeoversData(true);
+    }
+
+    async function triggerNucleiScan() {
+        const btn = document.getElementById('nuclei-scan-btn');
+        const originalContent = btn.innerHTML;
+
+        // Disable button and show loading state
+        btn.disabled = true;
+        btn.innerHTML = '<i class="fas fa-spinner fa-spin"></i> Scanning...';
+        btn.style.opacity = '0.7';
+        btn.style.cursor = 'not-allowed';
+
+        try {
+            const response = await fetch('/api/scans/nuclei/{{ project.id }}', {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json'
+                }
+            });
+
+            const data = await response.json();
+
+            if (response.ok && data.success) {
+                // Show success notification
+                showNotification('success', 'Nuclei scan started! Results will appear shortly.');
+
+                // Poll for results after a delay
+                setTimeout(() => {
+                    takeoversState.loaded = false;
+                    loadTakeoversData(true);
+                }, 5000);
+            } else {
+                showNotification('error', data.detail || 'Failed to start Nuclei scan');
+            }
+        } catch (error) {
+            console.error('Error triggering Nuclei scan:', error);
+            showNotification('error', 'Failed to start Nuclei scan. Please try again.');
+        } finally {
+            // Restore button state
+            btn.disabled = false;
+            btn.innerHTML = originalContent;
+            btn.style.opacity = '1';
+            btn.style.cursor = 'pointer';
+        }
+    }
+
+    function showNotification(type, message) {
+        // Create notification element
+        const notification = document.createElement('div');
+        notification.style.cssText = `
+            position: fixed;
+            top: 20px;
+            right: 20px;
+            padding: 1rem 1.5rem;
+            border-radius: 12px;
+            color: white;
+            font-weight: 600;
+            font-size: 0.875rem;
+            z-index: 9999;
+            display: flex;
+            align-items: center;
+            gap: 0.75rem;
+            animation: slideIn 0.3s ease;
+            box-shadow: 0 10px 40px rgba(0,0,0,0.2);
+        `;
+
+        if (type === 'success') {
+            notification.style.background = 'linear-gradient(135deg, #22c55e 0%, #16a34a 100%)';
+            notification.innerHTML = '<i class="fas fa-check-circle"></i> ' + message;
+        } else {
+            notification.style.background = 'linear-gradient(135deg, #ef4444 0%, #dc2626 100%)';
+            notification.innerHTML = '<i class="fas fa-exclamation-circle"></i> ' + message;
+        }
+
+        document.body.appendChild(notification);
+
+        // Remove after 5 seconds
+        setTimeout(() => {
+            notification.style.animation = 'slideOut 0.3s ease';
+            setTimeout(() => notification.remove(), 300);
+        }, 5000);
     }
 
     // ==================== EVENTS SECTION ====================

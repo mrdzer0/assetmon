@@ -16,6 +16,7 @@ from app.services.scanner.dns_monitor import monitor_dns
 from app.services.scanner.http_monitor import monitor_http
 from app.services.scanner.shodan_monitor import scan_with_shodan
 from app.services.scanner.endpoints import discover_endpoints
+from app.services.scanner.nuclei import NucleiScanner
 from app.services.diff import subdomains as diff_subs
 from app.services.diff import dns as diff_dns
 from app.services.diff import http as diff_http
@@ -130,6 +131,14 @@ class ScanOrchestrator:
                 all_events.extend(events)
                 if snapshot:
                     snapshots_created["endpoints"] = snapshot
+
+            # 6. Nuclei Vulnerability Scan (weekly only, if enabled)
+            nuclei_config = enabled_tools.get("nuclei", {})
+            if mode == "weekly" and nuclei_config.get("enabled", False):
+                events, snapshot = self._run_nuclei_scan(project, snapshots_created, nuclei_config)
+                all_events.extend(events)
+                if snapshot:
+                    snapshots_created["nuclei"] = snapshot
 
             # Save all events
             for event_data in all_events:
@@ -751,3 +760,102 @@ class ScanOrchestrator:
                 ip_to_subdomains[ip].append(subdomain)
 
         return ip_to_subdomains
+
+    def _run_nuclei_scan(self, project: Project, snapshots: Dict, nuclei_config: Dict):
+        """Run Nuclei vulnerability scanning"""
+        logger.info(f"Running Nuclei scan for project {project.id}")
+        events = []
+
+        try:
+            # Get targets from HTTP snapshot (only alive hosts)
+            targets = []
+            http_snapshot = snapshots.get("http")
+            
+            if http_snapshot:
+                http_records = http_snapshot.data.get("http_records", {})
+            else:
+                # Get from latest HTTP snapshot
+                snapshot = self.db.query(Snapshot).filter(
+                    Snapshot.project_id == project.id,
+                    Snapshot.type == SnapshotType.HTTP
+                ).order_by(Snapshot.created_at.desc()).first()
+                
+                http_records = snapshot.data.get("http_records", {}) if snapshot else {}
+            
+            # Filter to only alive hosts if configured
+            scan_alive_only = nuclei_config.get("scan_alive_only", True)
+            
+            for url, data in http_records.items():
+                status_code = data.get("status_code", 0)
+                if scan_alive_only:
+                    # Only include 2xx and 3xx status codes
+                    if 200 <= status_code < 400:
+                        targets.append(url)
+                else:
+                    targets.append(url)
+            
+            if not targets:
+                logger.warning(f"No targets for Nuclei scan in project {project.id}")
+                return [], None
+            
+            # Run Nuclei scan
+            scanner = NucleiScanner(project.id, nuclei_config)
+            results = scanner.scan(targets)
+            
+            if results.get("error"):
+                self.errors.append(f"Nuclei scan error: {results['error']}")
+                return [], None
+            
+            findings = results.get("findings", [])
+            stats = results.get("stats", {})
+            
+            # Create events for findings
+            for finding in findings:
+                severity = finding.get("severity", "info").lower()
+                severity_map = {
+                    "critical": SeverityLevel.CRITICAL,
+                    "high": SeverityLevel.HIGH,
+                    "medium": SeverityLevel.MEDIUM,
+                    "low": SeverityLevel.LOW,
+                    "info": SeverityLevel.INFO
+                }
+                
+                event = {
+                    "type": EventType.VULNERABILITY_FOUND,
+                    "severity": severity_map.get(severity, SeverityLevel.INFO),
+                    "summary": f"Nuclei: {finding.get('template_name', 'Unknown')} on {finding.get('host', 'unknown')}",
+                    "details": {
+                        "template_id": finding.get("template_id"),
+                        "template_name": finding.get("template_name"),
+                        "matched_at": finding.get("matched_at"),
+                        "severity": severity,
+                        "description": finding.get("description"),
+                        "source": "nuclei"
+                    },
+                    "related_entities": {
+                        "host": finding.get("host"),
+                        "template_id": finding.get("template_id")
+                    }
+                }
+                events.append(event)
+            
+            # Save snapshot
+            snapshot = Snapshot(
+                project_id=project.id,
+                type=SnapshotType.NUCLEI,
+                data={
+                    "nuclei_findings": findings,
+                    "stats": stats,
+                    "scanned_at": results.get("scanned_at"),
+                    "targets_count": results.get("targets_count")
+                }
+            )
+            self.db.add(snapshot)
+            
+            logger.info(f"Nuclei scan completed: {len(findings)} findings")
+            return events, snapshot
+
+        except Exception as e:
+            logger.error(f"Nuclei scan failed: {e}", exc_info=True)
+            self.errors.append(f"Nuclei scan failed: {str(e)}")
+            return [], None

@@ -45,6 +45,8 @@ class Settings(BaseSettings):
     katana_path: str = "katana"
     waybackurls_path: str = "waybackurls"
     amass_path: str = "amass"
+    nuclei_path: str = "nuclei"
+    nuclei_templates_path: Optional[str] = None  # Custom templates directory (uses default if None)
 
     # Subdomain Takeover Detection
     takeover_patterns_cname: str = "vercel.app,netlify.app,github.io,herokuapp.com,s3.amazonaws.com,azurewebsites.net,cloudfront.net"
@@ -83,6 +85,7 @@ class Settings(BaseSettings):
             "gau": self.gau_path,
             "katana": self.katana_path,
             "waybackurls": self.waybackurls_path,
+            "nuclei": self.nuclei_path,
         }
 
         results = {}

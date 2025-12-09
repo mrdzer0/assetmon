@@ -136,7 +136,7 @@
             <i class="fas fa-table"></i> All Assets
         </button>
         <button id="tab-btn-takeovers" class="tab-btn" onclick="switchTab('takeovers')">
-            <i class="fas fa-exclamation-triangle"></i> Takeovers
+            <i class="fas fa-bug"></i> Vulnerabilities
             {% if latest_snapshots.dns and latest_snapshots.dns.scan_metadata and
             latest_snapshots.dns.scan_metadata.takeover_findings %}
             ({{ latest_snapshots.dns.scan_metadata.takeover_findings|length }})
