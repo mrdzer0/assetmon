@@ -46,6 +46,9 @@ def dashboard_home(
         if e.severity in [SeverityLevel.HIGH, SeverityLevel.CRITICAL]
     )
 
+    # Get last scan time across all projects
+    last_scan = db.query(ScanLog).order_by(ScanLog.started_at.desc()).first()
+
     # Filtered Projects Query
     query = db.query(Project).filter(Project.is_active == True)
     
@@ -77,6 +80,7 @@ def dashboard_home(
         "total_events_today": len(today_events),
         "high_severity_events": high_severity_count,
         "recent_scans": recent_scans,
+        "last_scan": last_scan,
         # Pagination Context
         "current_page": page,
         "total_pages": total_pages,

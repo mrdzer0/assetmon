@@ -190,6 +190,9 @@ class ScanLog(Base):
     # Tool execution details
     tools_executed = Column(JSON, nullable=True)  # {"subfinder": {"duration": 12.5, "results_count": 50}, ...}
 
+    # Relationships
+    project = relationship("Project")
+
     def __repr__(self):
         return f"<ScanLog(id={self.id}, project_id={self.project_id}, mode='{self.scan_mode}', status='{self.status}')>"
 

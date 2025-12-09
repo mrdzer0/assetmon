@@ -127,11 +127,24 @@ function initTooltips() {
 // Hydrate server-side rendered dates
 function hydrateDates() {
     const elements = document.querySelectorAll('.local-date');
-    console.log(`Hydrating ${elements.length} date elements...`);
+    if (elements.length > 0) {
+        console.log(`Hydrating ${elements.length} date elements...`);
+        elements.forEach(el => {
+            const dateStr = el.getAttribute('data-date');
+            if (dateStr) {
+                el.textContent = formatDate(dateStr);
+            }
+        });
+    }
+}
+
+// Update all relative timestamps
+function updateRelativeTimestamps() {
+    const elements = document.querySelectorAll('[data-timestamp]');
     elements.forEach(el => {
-        const dateStr = el.getAttribute('data-date');
-        if (dateStr) {
-            el.textContent = formatDate(dateStr);
+        const timestamp = el.getAttribute('data-timestamp');
+        if (timestamp) {
+            el.textContent = formatRelativeTime(timestamp);
         }
     });
 }
@@ -140,14 +153,10 @@ function hydrateDates() {
 document.addEventListener('DOMContentLoaded', () => {
     initTooltips();
     hydrateDates();
+    updateRelativeTimestamps();
 
-    // Update relative timestamps
-    setInterval(() => {
-        document.querySelectorAll('[data-timestamp]').forEach(el => {
-            const timestamp = el.getAttribute('data-timestamp');
-            el.textContent = formatRelativeTime(timestamp);
-        });
-    }, 60000); // Update every minute
+    // Update relative timestamps every minute
+    setInterval(updateRelativeTimestamps, 60000);
 });
 
 // Export functions for use in templates

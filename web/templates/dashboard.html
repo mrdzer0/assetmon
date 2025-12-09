@@ -437,7 +437,15 @@
             <div class="stat-icon-wrapper" style="background: var(--gradient-purple);">
                 <i class="fas fa-stopwatch"></i>
             </div>
-            <div class="stat-value" id="last-scan-time" style="font-size: 1.75rem;">-</div>
+            <div class="stat-value" id="last-scan-time" style="font-size: 1.75rem;">
+                {% if last_scan %}
+                <span data-timestamp="{{ last_scan.started_at.isoformat() }}">
+                    {{ last_scan.started_at.strftime('%Y-%m-%d %H:%M') }}
+                </span>
+                {% else %}
+                -
+                {% endif %}
+            </div>
             <div class="stat-label">Last Scan</div>
         </div>
     </div>
@@ -569,7 +577,12 @@
                 <tbody>
                     {% for scan in recent_scans %}
                     <tr class="scan-row">
-                        <td>Project #{{ scan.project_id }}</td>
+                        <td>
+                            <a href="/projects/{{ scan.project_id }}"
+                                style="text-decoration: none; color: var(--text-primary); font-weight: 500;">
+                                {{ scan.project.name }}
+                            </a>
+                        </td>
                         <td>
                             <span
                                 style="font-family: monospace; font-size: 0.75rem; background: #e0e7ff; color: #3730a3; padding: 2px 6px; border-radius: 4px;">{{
@@ -591,8 +604,7 @@
                             {% endif %}
                         </td>
                         <td>
-                            <span class="local-date" data-date="{{ scan.started_at.isoformat() }}"
-                                style="color: #64748b;">
+                            <span data-timestamp="{{ scan.started_at.isoformat() }}" style="color: #64748b;">
                                 {{ scan.started_at.strftime('%d %b, %H:%M') }}
                             </span>
                         </td>
@@ -623,6 +635,18 @@
 
 {% block extra_js %}
 <script>
+    // Force update of relative timestamps in case main.js runs before DOM is ready
+    document.addEventListener('DOMContentLoaded', () => {
+        if (window.updateRelativeTimestamps) {
+            window.updateRelativeTimestamps();
+        } else {
+            // Retry if function not yet available
+            setTimeout(() => {
+                if (window.updateRelativeTimestamps) window.updateRelativeTimestamps();
+            }, 500);
+        }
+    });
+
     function triggerScan(projectId, mode) {
         if (!confirm(`Start ${mode} scan for project ${projectId}?`)) return;
 
