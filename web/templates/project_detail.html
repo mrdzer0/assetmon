@@ -68,6 +68,74 @@
         background: #e2e8f0;
         color: #475569;
     }
+
+    /* Modal Styles */
+    .modal {
+        display: none;
+        position: fixed;
+        top: 0;
+        left: 0;
+        width: 100%;
+        height: 100%;
+        background: rgba(15, 23, 42, 0.6);
+        backdrop-filter: blur(4px);
+        z-index: 1000;
+        justify-content: center;
+        align-items: center;
+    }
+
+    .modal-content {
+        background: white;
+        width: 90%;
+        max-width: 500px;
+        border-radius: 12px;
+        box-shadow: 0 25px 50px -12px rgba(0, 0, 0, 0.25);
+        margin: auto;
+        position: relative;
+        top: 50%;
+        transform: translateY(-50%);
+    }
+
+    .modal-header {
+        padding: 1rem 1.5rem;
+        border-bottom: 1px solid #e2e8f0;
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+        background: #f8fafc;
+        border-radius: 12px 12px 0 0;
+    }
+
+    .modal-header h3 {
+        margin: 0;
+        font-size: 1.1rem;
+        color: #0f172a;
+    }
+
+    .modal-body {
+        padding: 1.5rem;
+    }
+
+    .modal-footer {
+        padding: 1rem 1.5rem;
+        border-top: 1px solid #e2e8f0;
+        display: flex;
+        justify-content: flex-end;
+        gap: 0.5rem;
+    }
+
+    .close-btn {
+        background: none;
+        border: none;
+        font-size: 1.5rem;
+        color: #64748b;
+        cursor: pointer;
+        line-height: 1;
+    }
+
+    .close-btn:hover {
+        color: #0f172a;
+    }
 </style>
 {% endblock %}
 
@@ -84,6 +152,9 @@
             </button>
             <button class="btn btn-primary" onclick="triggerScan({{ project.id }}, 'weekly')">
                 <i class="fas fa-calendar-week"></i> Weekly Scan
+            </button>
+            <button class="btn btn-info" onclick="openReportModal({{ project.id }})">
+                <i class="fas fa-file-alt"></i> Report
             </button>
             <a href="/projects/{{ project.id }}/edit" class="btn btn-secondary">
                 <i class="fas fa-edit"></i> Edit
@@ -2034,8 +2105,164 @@
         // All Assets pagination is now handled server-side
     });
 
+    // ============ Report Generation ============
+    function openReportModal(projectId) {
+        const modal = document.getElementById('reportModal');
+        document.getElementById('reportProjectId').value = projectId;
+        modal.style.display = 'block';
+    }
+
+    function closeReportModal() {
+        document.getElementById('reportModal').style.display = 'none';
+    }
+
+    function generateReport() {
+        const projectId = document.getElementById('reportProjectId').value;
+        const format = document.getElementById('reportFormat').value;
+
+        // Gather selected sections
+        const sections = {
+            executive_summary: document.getElementById('section-summary').checked,
+            subdomains: document.getElementById('section-subdomains').checked,
+            dns_records: document.getElementById('section-dns').checked,
+            http_endpoints: document.getElementById('section-http').checked,
+            vulnerabilities: document.getElementById('section-vulns').checked,
+            scan_history: document.getElementById('section-scans').checked
+        };
+
+        // Gather company info
+        const company = {
+            name: document.getElementById('company-name').value || '',
+            website: document.getElementById('company-website').value || '',
+            email: document.getElementById('company-email').value || ''
+        };
+
+        const btn = document.querySelector('#reportModal .btn-primary');
+        const originalText = btn.innerHTML;
+        btn.innerHTML = '<i class="fas fa-spinner fa-spin"></i> Generating...';
+        btn.disabled = true;
+
+        fetch('/api/reports/generate', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({
+                project_ids: [parseInt(projectId)],
+                format: format,
+                sections: sections,
+                company: company
+            })
+        })
+            .then(response => {
+                if (!response.ok) throw new Error('Report generation failed');
+                return response.blob();
+            })
+            .then(blob => {
+                // Create download link
+                const url = window.URL.createObjectURL(blob);
+                const a = document.createElement('a');
+                a.href = url;
+                a.download = `report_${projectId}_${new Date().toISOString().slice(0, 10)}.${format}`;
+                document.body.appendChild(a);
+                a.click();
+                window.URL.revokeObjectURL(url);
+                a.remove();
+
+                closeReportModal();
+                showToast('Report downloaded successfully!', 'success');
+            })
+            .catch(err => {
+                showToast('Failed to generate report: ' + err.message, 'error');
+            })
+            .finally(() => {
+                btn.innerHTML = originalText;
+                btn.disabled = false;
+            });
+    }
+
+    // Close modal when clicking outside
+    window.onclick = function (event) {
+        const modal = document.getElementById('reportModal');
+        if (event.target === modal) {
+            modal.style.display = 'none';
+        }
+    }
+
 
 </script>
+
+<!-- Report Modal -->
+<div id="reportModal" class="modal" style="display: none;">
+    <div class="modal-content" style="max-width: 500px;">
+        <div class="modal-header">
+            <h3><i class="fas fa-file-alt"></i> Generate Report</h3>
+            <button class="close-btn" onclick="closeReportModal()">&times;</button>
+        </div>
+        <div class="modal-body">
+            <input type="hidden" id="reportProjectId" value="">
+
+            <div class="form-group" style="margin-bottom: 1rem;">
+                <label style="font-weight: 600; margin-bottom: 0.5rem; display: block;">Report Format</label>
+                <select id="reportFormat"
+                    style="width: 100%; padding: 0.5rem; border: 1px solid var(--border); border-radius: 0.375rem;">
+                    <option value="pdf">PDF Document</option>
+                    <option value="html">HTML File</option>
+                </select>
+            </div>
+
+            <!-- Company Info (for cover page) -->
+            <div class="form-group" style="margin-bottom: 1rem;">
+                <label style="font-weight: 600; margin-bottom: 0.5rem; display: block;">
+                    <i class="fas fa-building" style="margin-right: 0.25rem;"></i> Company Info (Cover Page)
+                </label>
+                <div style="display: flex; flex-direction: column; gap: 0.5rem;">
+                    <input type="text" id="company-name" placeholder="Company Name"
+                        style="width: 100%; padding: 0.5rem; border: 1px solid var(--border); border-radius: 0.375rem;">
+                    <input type="text" id="company-website" placeholder="Website (e.g., https://example.com)"
+                        style="width: 100%; padding: 0.5rem; border: 1px solid var(--border); border-radius: 0.375rem;">
+                    <input type="email" id="company-email" placeholder="Email (e.g., contact@example.com)"
+                        style="width: 100%; padding: 0.5rem; border: 1px solid var(--border); border-radius: 0.375rem;">
+                </div>
+            </div>
+
+            <div class="form-group">
+                <label style="font-weight: 600; margin-bottom: 0.5rem; display: block;">Include Sections</label>
+                <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 0.5rem;">
+                    <label style="display: flex; align-items: center; gap: 0.5rem; cursor: pointer;">
+                        <input type="checkbox" id="section-summary" checked>
+                        <span>Executive Summary</span>
+                    </label>
+                    <label style="display: flex; align-items: center; gap: 0.5rem; cursor: pointer;">
+                        <input type="checkbox" id="section-subdomains" checked>
+                        <span>Subdomains</span>
+                    </label>
+                    <label style="display: flex; align-items: center; gap: 0.5rem; cursor: pointer;">
+                        <input type="checkbox" id="section-dns" checked>
+                        <span>DNS Records</span>
+                    </label>
+                    <label style="display: flex; align-items: center; gap: 0.5rem; cursor: pointer;">
+                        <input type="checkbox" id="section-http" checked>
+                        <span>HTTP Endpoints</span>
+                    </label>
+                    <label style="display: flex; align-items: center; gap: 0.5rem; cursor: pointer;">
+                        <input type="checkbox" id="section-vulns" checked>
+                        <span>Vulnerabilities</span>
+                    </label>
+                    <label style="display: flex; align-items: center; gap: 0.5rem; cursor: pointer;">
+                        <input type="checkbox" id="section-scans" checked>
+                        <span>Scan History</span>
+                    </label>
+                </div>
+            </div>
+        </div>
+        <div class="modal-footer"
+            style="display: flex; justify-content: flex-end; gap: 0.5rem; padding-top: 1rem; border-top: 1px solid var(--border);">
+            <button class="btn btn-secondary" onclick="closeReportModal()">Cancel</button>
+            <button class="btn btn-primary" onclick="generateReport()">
+                <i class="fas fa-download"></i> Download Report
+            </button>
+        </div>
+    </div>
+</div>
 
 {% include '_ajax_endpoints_jsfiles.html' %}
 

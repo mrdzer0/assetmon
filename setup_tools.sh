@@ -135,6 +135,12 @@ main() {
     print_info "Installing prerequisites..."
     sudo apt install -y wget curl git build-essential python3-pip >/dev/null 2>&1
     print_success "Prerequisites installed"
+    
+    # Install weasyprint dependencies (for PDF report generation)
+    print_info "Installing PDF report dependencies (weasyprint)..."
+    sudo apt install -y libpango-1.0-0 libpangocairo-1.0-0 libgdk-pixbuf2.0-0 libffi-dev >/dev/null 2>&1
+    pip3 install weasyprint >/dev/null 2>&1
+    print_success "PDF report dependencies installed"
     echo ""
 
     # Install Go
