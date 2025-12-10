@@ -266,12 +266,17 @@ def update_schedule(
         )
 
         # Update project config to store the new schedule
-        config = project.config or {}
+        config = project.config.copy() if project.config else {}
         if 'schedule' not in config:
             config['schedule'] = {}
 
         config['schedule'][scan_mode] = cron_expression
+        config['schedule'][f'{scan_mode}_enabled'] = True  # Also mark as enabled
         project.config = config
+        
+        # Mark as modified to ensure SQLAlchemy detects the change
+        from sqlalchemy.orm.attributes import flag_modified
+        flag_modified(project, 'config')
         db.commit()
 
         return {
