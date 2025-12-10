@@ -145,16 +145,19 @@ class PortScanner:
                 "-p", self.ports,
                 "-json",
                 "-silent",
-                "-rate", "500"  # Rate limit to avoid issues
+                "-rate", "1000"  # Increased rate for faster scanning
             ]
             
             logger.info(f"Running naabu: {' '.join(cmd)}")
+            
+            # Naabu needs more time for many targets - use 10 minutes minimum
+            naabu_timeout = max(settings.tool_timeout, 600)
             
             result = subprocess.run(
                 cmd,
                 capture_output=True,
                 text=True,
-                timeout=settings.tool_timeout
+                timeout=naabu_timeout
             )
             
             # Parse JSON lines output
@@ -177,11 +180,34 @@ class PortScanner:
             
             logger.info(f"Naabu found {sum(len(p) for p in open_ports.values())} open ports on {len(open_ports)} hosts")
             
-        except subprocess.TimeoutExpired:
-            logger.error("Naabu scan timed out")
+        except subprocess.TimeoutExpired as e:
+            logger.warning(f"Naabu scan timed out after {naabu_timeout}s - trying to capture partial results")
             self.stats["failed"] += 1
+            # Try to parse any partial output that was captured before timeout
+            if e.stdout:
+                try:
+                    partial_output = e.stdout if isinstance(e.stdout, str) else e.stdout.decode('utf-8', errors='ignore')
+                    for line in partial_output.strip().split('\n'):
+                        if not line:
+                            continue
+                        try:
+                            data = json.loads(line)
+                            host = data.get("host") or data.get("ip", "")
+                            port = data.get("port")
+                            if host and port:
+                                if host not in open_ports:
+                                    open_ports[host] = []
+                                if port not in open_ports[host]:
+                                    open_ports[host].append(port)
+                        except json.JSONDecodeError:
+                            continue
+                    if open_ports:
+                        logger.info(f"Captured {sum(len(p) for p in open_ports.values())} ports from partial output")
+                except Exception:
+                    pass
+            logger.info("Continuing with next scan phase despite timeout...")
         except Exception as e:
-            logger.error(f"Naabu scan failed: {e}")
+            logger.error(f"Naabu scan failed: {e} - continuing with next phase")
             self.stats["failed"] += 1
         
         return open_ports
