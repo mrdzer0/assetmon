@@ -2139,9 +2139,10 @@
 
         const btn = document.querySelector('#reportModal .btn-primary');
         const originalText = btn.innerHTML;
-        btn.innerHTML = '<i class="fas fa-spinner fa-spin"></i> Generating...';
+        btn.innerHTML = '<i class="fas fa-spinner fa-spin"></i> Starting...';
         btn.disabled = true;
 
+        // Step 1: Start report generation (async)
         fetch('/api/reports/generate', {
             method: 'POST',
             headers: { 'Content-Type': 'application/json' },
@@ -2153,30 +2154,72 @@
             })
         })
             .then(response => {
-                if (!response.ok) throw new Error('Report generation failed');
-                return response.blob();
+                if (!response.ok) throw new Error('Report generation failed to start');
+                return response.json();
             })
-            .then(blob => {
-                // Create download link
-                const url = window.URL.createObjectURL(blob);
-                const a = document.createElement('a');
-                a.href = url;
-                a.download = `report_${projectId}_${new Date().toISOString().slice(0, 10)}.${format}`;
-                document.body.appendChild(a);
-                a.click();
-                window.URL.revokeObjectURL(url);
-                a.remove();
+            .then(data => {
+                const jobId = data.job_id;
+                btn.innerHTML = '<i class="fas fa-spinner fa-spin"></i> Generating...';
 
-                closeReportModal();
-                showToast('Report downloaded successfully!', 'success');
+                // Step 2: Poll for completion
+                pollReportStatus(jobId, btn, originalText, format, projectId);
             })
             .catch(err => {
-                showToast('Failed to generate report: ' + err.message, 'error');
-            })
-            .finally(() => {
+                showToast('Failed to start report generation: ' + err.message, 'error');
                 btn.innerHTML = originalText;
                 btn.disabled = false;
             });
+    }
+
+    function pollReportStatus(jobId, btn, originalText, format, projectId) {
+        let pollCount = 0;
+        const maxPolls = 120; // 2 minutes max (1 poll per second)
+
+        const pollInterval = setInterval(() => {
+            pollCount++;
+
+            fetch(`/api/reports/status/${jobId}`)
+                .then(response => response.json())
+                .then(data => {
+                    if (data.status === 'completed') {
+                        clearInterval(pollInterval);
+                        btn.innerHTML = '<i class="fas fa-download"></i> Downloading...';
+
+                        // Download the report
+                        window.location.href = `/api/reports/download/${jobId}`;
+
+                        setTimeout(() => {
+                            closeReportModal();
+                            showToast('Report downloaded successfully!', 'success');
+                            btn.innerHTML = originalText;
+                            btn.disabled = false;
+                        }, 1000);
+
+                    } else if (data.status === 'failed') {
+                        clearInterval(pollInterval);
+                        showToast('Report generation failed: ' + (data.error || 'Unknown error'), 'error');
+                        btn.innerHTML = originalText;
+                        btn.disabled = false;
+
+                    } else if (pollCount >= maxPolls) {
+                        clearInterval(pollInterval);
+                        showToast('Report generation timed out. Please try again.', 'error');
+                        btn.innerHTML = originalText;
+                        btn.disabled = false;
+
+                    } else {
+                        // Still processing - update button text
+                        const elapsed = pollCount;
+                        btn.innerHTML = `<i class="fas fa-spinner fa-spin"></i> Generating... (${elapsed}s)`;
+                    }
+                })
+                .catch(err => {
+                    clearInterval(pollInterval);
+                    showToast('Failed to check report status', 'error');
+                    btn.innerHTML = originalText;
+                    btn.disabled = false;
+                });
+        }, 1000); // Poll every 1 second
     }
 
     // Close modal when clicking outside
