@@ -14,6 +14,7 @@
 secrets.yaml
 secrets.json
 credentials.json
+static/screenshots/*
 
 # Database files
 *.db
