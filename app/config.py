@@ -47,6 +47,11 @@ class Settings(BaseSettings):
     amass_path: str = "amass"
     nuclei_path: str = "nuclei"
     nuclei_templates_path: Optional[str] = None  # Custom templates directory (uses default if None)
+    naabu_path: str = "naabu"
+    
+    # Port Scanning Configuration
+    # Common web ports (excluding 80,443 which are scanned by httpx)
+    web_ports: str = "8080,8443,8000,8888,3000,3443,5000,9000,9443,4443,2083,2087"
 
     # Subdomain Takeover Detection
     takeover_patterns_cname: str = "vercel.app,netlify.app,github.io,herokuapp.com,s3.amazonaws.com,azurewebsites.net,cloudfront.net"
@@ -86,6 +91,7 @@ class Settings(BaseSettings):
             "katana": self.katana_path,
             "waybackurls": self.waybackurls_path,
             "nuclei": self.nuclei_path,
+            "naabu": self.naabu_path,
         }
 
         results = {}

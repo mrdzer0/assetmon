@@ -12,7 +12,7 @@ from fastapi.responses import RedirectResponse
 from app.db import init_db, SessionLocal
 from app.config import settings
 from app.jobs import setup_default_jobs, get_job_manager
-from app.routers import projects, scans, events, dashboard, auth, reports
+from app.routers import projects, scans, events, dashboard, auth, reports, settings as settings_router
 
 # Setup logging
 logging.basicConfig(
@@ -106,6 +106,7 @@ app.include_router(projects.router)  # API routes - auth required
 app.include_router(scans.router)  # API routes - auth required
 app.include_router(events.router)  # API routes - auth required
 app.include_router(reports.router)  # Reports API - auth required
+app.include_router(settings_router.router)  # Settings API - auth required
 
 
 @app.get("/health")

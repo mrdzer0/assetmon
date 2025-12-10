@@ -239,6 +239,8 @@
         display: flex;
         gap: 0.75rem;
         margin-top: auto;
+        position: relative;
+        z-index: 10;
     }
 
     .btn-action {
@@ -509,7 +511,7 @@
 
                 <div class="card-actions">
                     <button class="btn-action btn-scan"
-                        onclick="event.stopPropagation(); triggerScan({{ project.id }}, 'normal')">
+                        onclick="event.stopPropagation(); ScanModal.open({{ project.id }})">
                         <i class="fas fa-play"></i> Scan
                     </button>
                     <a href="/projects/{{ project.id }}/edit" class="btn-action btn-edit"
@@ -654,25 +656,7 @@
         }
     });
 
-    function triggerScan(projectId, mode) {
-        if (!confirm(`Start ${mode} scan for project ${projectId}?`)) return;
-
-        showToast('🚀 Scan initialized...', 'info');
-
-        fetch('/api/scans/trigger', {
-            method: 'POST',
-            headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({ project_id: projectId, mode: mode })
-        })
-            .then(res => res.json())
-            .then(data => {
-                showToast('✅ Scan started successfully!', 'success');
-                setTimeout(() => location.reload(), 2000);
-            })
-            .catch(err => {
-                showToast('❌ Failed to start scan: ' + err.message, 'error');
-            });
-    }
+    // triggerScan is now handled by ScanModal module
 
     function refreshStats() {
         const btn = document.querySelector('.refresh-btn i');
@@ -680,4 +664,7 @@
         setTimeout(() => location.reload(), 500);
     }
 </script>
+
+{% include '_partials/scan_modal.html' %}
+
 {% endblock %}

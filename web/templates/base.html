@@ -34,8 +34,12 @@
                 <a href="/projects/new" class="nav-item">
                     <i class="fas fa-plus"></i> New Project
                 </a>
-                <a href="/settings" class="nav-item {% if '/settings' in request.url.path %}active{% endif %}">
+                <a href="/settings" class="nav-item {% if request.url.path == '/settings' %}active{% endif %}">
                     <i class="fas fa-cog"></i> Settings
+                </a>
+                <a href="/settings/scanners"
+                    class="nav-item {% if '/settings/scanners' in request.url.path %}active{% endif %}">
+                    <i class="fas fa-sliders-h"></i> Scanner Config
                 </a>
             </nav>
             <div class="sidebar-footer">

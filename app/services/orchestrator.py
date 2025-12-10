@@ -17,11 +17,13 @@ from app.services.scanner.http_monitor import monitor_http
 from app.services.scanner.shodan_monitor import scan_with_shodan
 from app.services.scanner.endpoints import discover_endpoints
 from app.services.scanner.nuclei import NucleiScanner
+from app.services.scanner.port_scanner import PortScanner
 from app.services.diff import subdomains as diff_subs
 from app.services.diff import dns as diff_dns
 from app.services.diff import http as diff_http
 from app.services.diff import shodan as diff_shodan
 from app.services.diff import endpoints as diff_endpoints
+from app.routers.settings import get_scanner_config
 from app.services.notifiers.base import NotificationManager
 
 logger = logging.getLogger(__name__)
@@ -43,18 +45,21 @@ class ScanOrchestrator:
         self.scan_log = None
         self.errors = []
 
-    def run_scan(self, project_id: int, mode: str = "normal") -> Dict:
+    def run_scan(self, project_id: int, mode: str = "normal", modules: list = None) -> Dict:
         """
         Execute a complete scan for a project
 
         Args:
             project_id: Project ID to scan
-            mode: Scan mode ("normal" or "weekly")
+            mode: Scan mode ("normal", "weekly", or "custom")
+            modules: List of modules to run when mode is "custom"
+                     Options: "normal", "endpoints", "shodan", "nuclei", "ports"
 
         Returns:
             Dict with scan results and statistics
         """
-        logger.info(f"Starting {mode} scan for project {project_id}")
+        logger.info(f"Starting {mode} scan for project {project_id}" + 
+                    (f" with modules {modules}" if modules else ""))
 
         # Load project
         project = self.db.query(Project).filter(Project.id == project_id).first()
@@ -69,14 +74,27 @@ class ScanOrchestrator:
         if not domains:
             raise ValueError(f"No active domains in project {project_id}")
 
-        # Create scan log
-        self.scan_log = ScanLog(
-            project_id=project_id,
-            scan_mode=mode,
-            status="running",
-            tools_executed={}
-        )
-        self.db.add(self.scan_log)
+        # Find existing queued scan log (created by API) or create new one
+        self.scan_log = self.db.query(ScanLog).filter(
+            ScanLog.project_id == project_id,
+            ScanLog.status == "queued"
+        ).order_by(ScanLog.started_at.desc()).first()
+
+        if self.scan_log:
+            # Update existing queued log
+            self.scan_log.status = "running"
+            self.scan_log.scan_mode = mode
+            self.scan_log.tools_executed = {}
+        else:
+            # Create new scan log if none exists
+            self.scan_log = ScanLog(
+                project_id=project_id,
+                scan_mode=mode,
+                status="running",
+                tools_executed={}
+            )
+            self.db.add(self.scan_log)
+        
         self.db.commit()
 
         all_events = []
@@ -87,15 +105,36 @@ class ScanOrchestrator:
             config = project.config or {}
             enabled_tools = config.get("enabled_tools", {})
 
+            # Determine which modules to run based on mode and modules list
+            run_base = True  # Always run base (subdomain, dns, http) unless explicitly disabled
+            run_endpoints = False
+            run_shodan = False
+            run_nuclei = False
+            run_ports = False
+
+            if mode == "weekly":
+                # Weekly runs everything
+                run_endpoints = True
+                run_shodan = True
+                run_nuclei = True
+                run_ports = True
+            elif mode == "custom" and modules:
+                # Custom mode - run selected modules
+                run_base = "normal" in modules
+                run_endpoints = "endpoints" in modules
+                run_shodan = "shodan" in modules
+                run_nuclei = "nuclei" in modules
+                run_ports = "ports" in modules
+
             # 1. Subdomain Discovery
-            if enabled_tools.get("subdomains", {}).get("enabled", True):
+            if run_base and enabled_tools.get("subdomains", {}).get("enabled", True):
                 events, snapshot = self._run_subdomain_scan(project, domains, enabled_tools)
                 all_events.extend(events)
                 if snapshot:
                     snapshots_created["subdomains"] = snapshot
 
             # 2. DNS Monitoring
-            if enabled_tools.get("dns", {}).get("enabled", True):
+            if run_base and enabled_tools.get("dns", {}).get("enabled", True):
                 # Get subdomains from snapshot or previous scan
                 subdomains = self._get_current_subdomains(project_id, snapshots_created)
                 if subdomains:
@@ -105,7 +144,7 @@ class ScanOrchestrator:
                         snapshots_created["dns"] = snapshot
 
             # 3. HTTP Monitoring
-            if enabled_tools.get("http", {}).get("enabled", True):
+            if run_base and enabled_tools.get("http", {}).get("enabled", True):
                 subdomains = self._get_current_subdomains(project_id, snapshots_created)
                 if subdomains:
                     events, snapshot = self._run_http_scan(project, subdomains, enabled_tools)
@@ -113,8 +152,36 @@ class ScanOrchestrator:
                     if snapshot:
                         snapshots_created["http"] = snapshot
 
-            # 4. Shodan Monitoring
-            if enabled_tools.get("shodan", {}).get("enabled", False):
+            # 4. Port Scanning (for non-standard web ports)
+            # Get port config from database (ScannerConfig table) where UI saves it
+            # This picks up screenshot_enabled and other settings saved via /settings/scanners
+            db_port_config = get_scanner_config(self.db, "port_config")
+            port_config = {**enabled_tools.get("ports", {}), **db_port_config}
+            if run_ports and port_config.get("enabled", True):
+                subdomains = self._get_current_subdomains(project_id, snapshots_created)
+                # Get DNS snapshot from current scan or fetch from previous scan
+                dns_snapshot = snapshots_created.get("dns")
+                if not dns_snapshot:
+                    # Fetch most recent DNS snapshot from database
+                    dns_snapshot = self.db.query(Snapshot).filter(
+                        Snapshot.project_id == project_id,
+                        Snapshot.type == SnapshotType.DNS
+                    ).order_by(Snapshot.created_at.desc()).first()
+                
+                if subdomains and dns_snapshot:
+                    events, snapshot = self._run_port_scan(project, subdomains, dns_snapshot, port_config)
+                    all_events.extend(events)
+                    if snapshot:
+                        snapshots_created["ports"] = snapshot
+                elif not subdomains:
+                    logger.warning(f"Port scan skipped: no subdomains found for project {project_id}")
+                elif not dns_snapshot:
+                    logger.warning(f"Port scan skipped: no DNS snapshot found for project {project_id}")
+
+            # 5. Shodan Monitoring
+            # In custom mode, run if user selected it. In weekly mode, check config.
+            shodan_enabled = enabled_tools.get("shodan", {}).get("enabled", False) if mode != "custom" else True
+            if run_shodan and shodan_enabled:
                 ips = self._get_current_ips(project_id, snapshots_created)
                 if ips:
                     # Get IP to subdomain mapping from DNS records
@@ -123,18 +190,25 @@ class ScanOrchestrator:
                     all_events.extend(events)
                     if snapshot:
                         snapshots_created["shodan"] = snapshot
+                else:
+                    logger.warning(f"Shodan scan skipped: no IPs found for project {project_id}")
 
-            # 5. Endpoint Discovery (weekly only)
-            if mode == "weekly" and enabled_tools.get("endpoints", {}).get("enabled", False):
+            # 6. Endpoint Discovery
+            endpoints_enabled = enabled_tools.get("endpoints", {}).get("enabled", False) if mode != "custom" else True
+            if run_endpoints and endpoints_enabled:
                 subdomains = self._get_current_subdomains(project_id, snapshots_created)
-                events, snapshot = self._run_endpoint_scan(project, domains, subdomains, enabled_tools)
-                all_events.extend(events)
-                if snapshot:
-                    snapshots_created["endpoints"] = snapshot
+                if subdomains:
+                    events, snapshot = self._run_endpoint_scan(project, domains, subdomains, enabled_tools)
+                    all_events.extend(events)
+                    if snapshot:
+                        snapshots_created["endpoints"] = snapshot
+                else:
+                    logger.warning(f"Endpoints scan skipped: no subdomains found for project {project_id}")
 
-            # 6. Nuclei Vulnerability Scan (weekly only, if enabled)
+            # 7. Nuclei Vulnerability Scan
             nuclei_config = enabled_tools.get("nuclei", {})
-            if mode == "weekly" and nuclei_config.get("enabled", False):
+            nuclei_enabled = nuclei_config.get("enabled", False) if mode != "custom" else True
+            if run_nuclei and nuclei_enabled:
                 events, snapshot = self._run_nuclei_scan(project, snapshots_created, nuclei_config)
                 all_events.extend(events)
                 if snapshot:
@@ -760,6 +834,88 @@ class ScanOrchestrator:
                 ip_to_subdomains[ip].append(subdomain)
 
         return ip_to_subdomains
+
+    def _run_port_scan(self, project: Project, subdomains: List[str], dns_snapshot: Snapshot, config: Dict):
+        """Run port scanning for non-standard web ports"""
+        logger.info(f"Running port scan for project {project.id}")
+        events = []
+        
+        try:
+            # Get DNS records from snapshot
+            dns_records = dns_snapshot.data.get("dns_records", {})
+            
+            # Get custom ports if configured
+            custom_ports = config.get("ports")
+            
+            # Check if screenshots are enabled
+            screenshot_enabled = config.get("screenshot_enabled", False)
+            screenshot_dir = None
+            
+            if screenshot_enabled:
+                # Create project-specific screenshot directory in web/static where FastAPI serves from
+                import os
+                base_screenshot_dir = os.path.join("web", "static", "screenshots", "ports", str(project.id))
+                os.makedirs(base_screenshot_dir, exist_ok=True)
+                screenshot_dir = base_screenshot_dir
+                logger.info(f"Port scan screenshots enabled, dir: {screenshot_dir}")
+            
+            # Run port scanner
+            scanner = PortScanner(
+                ports=custom_ports,
+                screenshot_enabled=screenshot_enabled,
+                screenshot_dir=screenshot_dir
+            )
+            result = scanner.scan(subdomains, dns_records)
+            
+            # Generate events for discovered services
+            port_events = scanner.get_findings_for_events()
+            
+            for pe in port_events:
+                events.append({
+                    "type": EventType.PORT_NEW,
+                    "severity": SeverityLevel.MEDIUM,
+                    "summary": pe["title"],
+                    "details": {
+                        "description": pe["description"],
+                        "source": pe.get("source", "naabu"),
+                        "status_code": pe.get("status_code"),
+                        "technologies": pe.get("technologies", [])
+                    },
+                    "related_entities": {
+                        "host": pe.get("host"),
+                        "port": pe.get("port"),
+                        "url": pe.get("url"),
+                        "source": "naabu"
+                    }
+                })
+            
+            # Create snapshot
+            snapshot = Snapshot(
+                project_id=project.id,
+                type=SnapshotType.PORTS,
+                data={
+                    "scan_type": "port_scan",
+                    "port_findings": result.get("port_findings", {}),
+                    "stats": result.get("stats", {}),
+                    "ports_scanned": result.get("ports_scanned", "")
+                },
+                scan_metadata={
+                    "ports": result.get("ports_scanned"),
+                    "targets": result.get("stats", {}).get("total_targets", 0),
+                    "open_ports": result.get("stats", {}).get("open_ports_found", 0),
+                    "http_services": result.get("stats", {}).get("http_services_found", 0)
+                }
+            )
+            self.db.add(snapshot)
+            self.db.commit()
+            
+            logger.info(f"Port scan completed: {len(port_events)} services found")
+            return events, snapshot
+            
+        except Exception as e:
+            logger.error(f"Port scan failed: {e}")
+            self.errors.append(f"Port scan failed: {str(e)}")
+            return events, None
 
     def _run_nuclei_scan(self, project: Project, snapshots: Dict, nuclei_config: Dict):
         """Run Nuclei vulnerability scanning"""

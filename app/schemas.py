@@ -117,12 +117,13 @@ class Event(EventBase):
 # Scan Request/Response Schemas
 class ScanRequest(BaseModel):
     project_id: int
-    mode: str = Field("normal", description="Scan mode: 'normal' or 'weekly'")
+    mode: str = Field("normal", description="Scan mode: 'normal', 'weekly', or 'custom'")
+    modules: Optional[List[str]] = Field(None, description="Custom modules to run: normal, endpoints, shodan, nuclei, ports")
 
     @validator("mode")
     def validate_mode(cls, v):
-        if v not in ["normal", "weekly"]:
-            raise ValueError("Mode must be 'normal' or 'weekly'")
+        if v not in ["normal", "weekly", "custom"]:
+            raise ValueError("Mode must be 'normal', 'weekly', or 'custom'")
         return v
 
 

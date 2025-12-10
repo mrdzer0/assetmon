@@ -42,6 +42,8 @@ class SnapshotType(str, enum.Enum):
     SHODAN = "shodan"
     ENDPOINTS = "endpoints"
     NUCLEI = "nuclei"
+    PORTS = "ports"
+    OTHER = "other"
 
 
 class Project(Base):
@@ -221,3 +223,81 @@ class User(Base):
 
     def __repr__(self):
         return f"<User(id={self.id}, username='{self.username}', is_active={self.is_active})>"
+
+
+class ScannerConfig(Base):
+    """
+    ScannerConfig stores global scanner configuration settings
+    Key-value store with JSON values for flexibility
+    """
+    __tablename__ = "scanner_configs"
+
+    id = Column(Integer, primary_key=True, index=True)
+    key = Column(String(100), unique=True, nullable=False, index=True)
+    value = Column(JSON, nullable=False)
+    description = Column(Text, nullable=True)
+    updated_at = Column(DateTime, default=datetime.utcnow, onupdate=datetime.utcnow, nullable=False)
+
+    def __repr__(self):
+        return f"<ScannerConfig(key='{self.key}')>"
+
+    # Default configurations
+    DEFAULTS = {
+        "subdomain_sources": {
+            "value": {
+                "subfinder": {"enabled": True},
+                "assetfinder": {"enabled": True},
+                "amass": {"enabled": False},
+                "crtsh": {"enabled": True},
+                "chaos": {"enabled": True}
+            },
+            "description": "Subdomain discovery sources"
+        },
+        "dns_config": {
+            "value": {
+                "rate_limit": 100,
+                "record_types": ["A", "AAAA", "CNAME", "MX", "TXT"]
+            },
+            "description": "DNS resolution configuration"
+        },
+        "http_config": {
+            "value": {
+                "threads": 50,
+                "timeout": 10,
+                "follow_redirects": True
+            },
+            "description": "HTTP probing configuration"
+        },
+        "port_config": {
+            "value": {
+                "enabled": True,
+                "ports": "8080,8443,8000,8888,3000,3443,5000,9000,9443,4443,2083,2087",
+                "rate": 500
+            },
+            "description": "Port scanning configuration (naabu)"
+        },
+        "nuclei_config": {
+            "value": {
+                "enabled": True,
+                "severity_filter": ["critical", "high", "medium"],
+                "templates_path": "",
+                "concurrency": 25
+            },
+            "description": "Nuclei vulnerability scanning configuration"
+        },
+        "endpoint_sources": {
+            "value": {
+                "waybackurls": {"enabled": True},
+                "gau": {"enabled": True},
+                "katana": {"enabled": True}
+            },
+            "description": "Endpoint discovery sources"
+        },
+        "shodan_config": {
+            "value": {
+                "enabled": True
+            },
+            "description": "Shodan integration configuration"
+        }
+    }
+

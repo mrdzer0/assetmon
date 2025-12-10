@@ -147,11 +147,8 @@
             <p class="text-muted">{{ project.description or 'No description' }}</p>
         </div>
         <div class="header-actions">
-            <button class="btn btn-success" onclick="triggerScan({{ project.id }}, 'normal')">
+            <button class="btn btn-success" onclick="ScanModal.open({{ project.id }})">
                 <i class="fas fa-play"></i> Run Scan
-            </button>
-            <button class="btn btn-primary" onclick="triggerScan({{ project.id }}, 'weekly')">
-                <i class="fas fa-calendar-week"></i> Weekly Scan
             </button>
             <button class="btn btn-info" onclick="openReportModal({{ project.id }})">
                 <i class="fas fa-file-alt"></i> Report
@@ -218,6 +215,12 @@
         </button>
         <button id="tab-btn-jsfiles" class="tab-btn" onclick="switchTab('jsfiles')">
             <i class="fas fa-file-code"></i> JS Files
+        </button>
+        <button id="tab-btn-ports" class="tab-btn" onclick="switchTab('ports')">
+            <i class="fas fa-plug"></i> Ports
+            {% if latest_snapshots.ports and latest_snapshots.ports.data.stats %}
+            ({{ latest_snapshots.ports.data.stats.get('open_ports_found', 0) }})
+            {% endif %}
         </button>
         <button id="tab-btn-events" class="tab-btn" onclick="switchTab('events')">
             <i class="fas fa-bell"></i> Events
@@ -969,6 +972,10 @@
 
     {% include '_jsfiles_tab.html' %}
 
+    <!-- Tab: Ports -->
+    <div id="tab-ports" class="tab-content">
+        {% include '_partials/port_scan_results.html' %}
+    </div>
 
     {% include '_events_tab.html' %}
 
@@ -2029,26 +2036,7 @@
         });
     }
 
-    // Trigger scan
-    function triggerScan(projectId, mode) {
-        if (!confirm(`Start ${mode} scan?`)) return;
-
-        showToast('Starting scan...', 'info');
-
-        fetch('/api/scans/trigger', {
-            method: 'POST',
-            headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({ project_id: projectId, mode: mode })
-        })
-            .then(res => res.json())
-            .then(data => {
-                showToast('Scan started successfully! Check back in a few minutes.', 'success');
-                setTimeout(() => location.reload(), 3000);
-            })
-            .catch(err => {
-                showToast('Failed to start scan: ' + err.message, 'error');
-            });
-    }
+    // triggerScan is now handled by shared ScanModal module from _partials/scan_modal.html
 
     // Show asset changes modal
     function showAssetChanges(subdomain, events) {
@@ -2104,6 +2092,9 @@
         // filterTable(); // Initialize counts for JS Files table
         // All Assets pagination is now handled server-side
     });
+
+    // ============ Scan Mode Modal ============
+    // Now handled by shared ScanModal module from _partials/scan_modal.html
 
     // ============ Report Generation ============
     function openReportModal(projectId) {
@@ -2224,14 +2215,21 @@
 
     // Close modal when clicking outside
     window.onclick = function (event) {
-        const modal = document.getElementById('reportModal');
-        if (event.target === modal) {
-            modal.style.display = 'none';
+        const reportModal = document.getElementById('reportModal');
+        const scanModal = document.getElementById('scanModal');
+        if (event.target === reportModal) {
+            reportModal.style.display = 'none';
+        }
+        if (event.target === scanModal) {
+            scanModal.style.display = 'none';
         }
     }
 
 
 </script>
+
+<!-- Scan Modal - now included from shared partial -->
+{% include '_partials/scan_modal.html' %}
 
 <!-- Report Modal -->
 <div id="reportModal" class="modal" style="display: none;">

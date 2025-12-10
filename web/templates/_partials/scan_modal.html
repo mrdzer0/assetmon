@@ -1,0 +1,405 @@
+<!-- Reusable Scan Modal Component -->
+<!-- Include this in any template that needs scan functionality -->
+
+<div id="scanModal" class="modal" style="display: none;">
+    <div class="modal-content" style="max-width: 520px;">
+        <div class="modal-header">
+            <h3><i class="fas fa-play"></i> Run Scan</h3>
+            <button class="close-btn" onclick="ScanModal.close()">&times;</button>
+        </div>
+        <div class="modal-body">
+            <input type="hidden" id="scanProjectId" value="">
+            <p style="color: var(--text-light); margin-bottom: 1rem; font-size: 0.9rem;">
+                Select scan modules to run. You can combine multiple options.
+            </p>
+
+            <div style="display: flex; flex-direction: column; gap: 0.5rem;">
+                <!-- Base Scan -->
+                <label class="scan-option" id="opt-normal">
+                    <input type="checkbox" name="scanModules" value="normal" checked>
+                    <div class="scan-option-content">
+                        <div class="scan-option-header">
+                            <strong>Base Scan</strong>
+                            <span class="scan-badge base">Recommended</span>
+                        </div>
+                        <p>Subdomain discovery, DNS resolution, HTTP probing</p>
+                    </div>
+                </label>
+
+                <div style="border-top: 1px solid var(--border); margin: 0.5rem 0; padding-top: 0.5rem;">
+                    <small style="color: var(--text-light); font-weight: 500;">Additional Modules:</small>
+                </div>
+
+                <!-- Endpoints -->
+                <label class="scan-option" id="opt-endpoints">
+                    <input type="checkbox" name="scanModules" value="endpoints">
+                    <div class="scan-option-content">
+                        <div class="scan-option-header">
+                            <strong>Endpoints</strong>
+                        </div>
+                        <p>URL discovery via waybackurls, gau, katana</p>
+                    </div>
+                </label>
+
+                <!-- Shodan -->
+                <label class="scan-option" id="opt-shodan">
+                    <input type="checkbox" name="scanModules" value="shodan">
+                    <div class="scan-option-content">
+                        <div class="scan-option-header">
+                            <strong>Shodan</strong>
+                        </div>
+                        <p>IP/port/CVE intelligence from Shodan API</p>
+                    </div>
+                </label>
+
+                <!-- Nuclei -->
+                <label class="scan-option" id="opt-nuclei">
+                    <input type="checkbox" name="scanModules" value="nuclei">
+                    <div class="scan-option-content">
+                        <div class="scan-option-header">
+                            <strong>Nuclei</strong>
+                        </div>
+                        <p>Vulnerability scanning with templates</p>
+                    </div>
+                </label>
+
+                <!-- Port Scan -->
+                <label class="scan-option" id="opt-ports">
+                    <input type="checkbox" name="scanModules" value="ports">
+                    <div class="scan-option-content">
+                        <div class="scan-option-header">
+                            <strong>Port Scan (Naabu)</strong>
+                        </div>
+                        <p>Non-standard web ports (8080, 8443, 3000, etc.)</p>
+                    </div>
+                </label>
+            </div>
+
+            <!-- Quick Presets -->
+            <div style="margin-top: 1rem; padding-top: 1rem; border-top: 1px solid var(--border);">
+                <small style="color: var(--text-light); font-weight: 500;">Quick Presets:</small>
+                <div style="display: flex; flex-wrap: wrap; gap: 0.5rem; margin-top: 0.5rem;">
+                    <button type="button" class="preset-btn" onclick="ScanModal.setPreset('normal')">Base Only</button>
+                    <button type="button" class="preset-btn" onclick="ScanModal.setPreset('weekly')">Full (All)</button>
+                    <button type="button" class="preset-btn" onclick="ScanModal.setPreset('recon')">Recon</button>
+                    <button type="button" class="preset-btn" onclick="ScanModal.setPreset('vuln')">Vuln Scan</button>
+                </div>
+            </div>
+        </div>
+        <div class="modal-footer"
+            style="display: flex; justify-content: space-between; align-items: center; padding-top: 1rem; border-top: 1px solid var(--border);">
+            <span id="selectedModulesLabel" style="font-size: 0.8rem; color: var(--text-light);"></span>
+            <div style="display: flex; gap: 0.5rem;">
+                <button class="btn btn-secondary" onclick="ScanModal.close()">Cancel</button>
+                <button class="btn btn-success" onclick="ScanModal.run()">
+                    <i class="fas fa-play"></i> Start Scan
+                </button>
+            </div>
+        </div>
+    </div>
+</div>
+
+<style>
+    /* Modal Overlay */
+    #scanModal.modal {
+        display: none;
+        position: fixed;
+        top: 0;
+        left: 0;
+        width: 100%;
+        height: 100%;
+        background: rgba(0, 0, 0, 0.5);
+        z-index: 9999;
+        overflow: auto;
+    }
+
+    #scanModal .modal-content {
+        background: white;
+        margin: 5% auto;
+        padding: 0;
+        border-radius: 12px;
+        box-shadow: 0 20px 25px -5px rgba(0, 0, 0, 0.1), 0 10px 10px -5px rgba(0, 0, 0, 0.04);
+        max-width: 520px;
+        position: relative;
+    }
+
+    #scanModal .modal-header {
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+        padding: 1rem 1.5rem;
+        border-bottom: 1px solid #e2e8f0;
+    }
+
+    #scanModal .modal-header h3 {
+        margin: 0;
+        font-size: 1.1rem;
+        color: #1e293b;
+    }
+
+    #scanModal .close-btn {
+        background: none;
+        border: none;
+        font-size: 1.5rem;
+        cursor: pointer;
+        color: #94a3b8;
+        padding: 0;
+        line-height: 1;
+    }
+
+    #scanModal .close-btn:hover {
+        color: #64748b;
+    }
+
+    #scanModal .modal-body {
+        padding: 1.5rem;
+    }
+
+    #scanModal .modal-footer {
+        padding: 1rem 1.5rem;
+        border-top: 1px solid #e2e8f0;
+    }
+
+    /* Scan Options */
+    .scan-option {
+        display: flex;
+        align-items: flex-start;
+        gap: 0.75rem;
+        padding: 0.75rem;
+        border: 1px solid var(--border, #e2e8f0);
+        border-radius: 8px;
+        cursor: pointer;
+        transition: all 0.2s;
+        background: white;
+    }
+
+    .scan-option:hover {
+        border-color: var(--primary, #3b82f6);
+        background: #f8fafc;
+    }
+
+    .scan-option:has(input:checked) {
+        border-color: var(--primary, #3b82f6);
+        background: #eff6ff;
+    }
+
+    .scan-option input[type="checkbox"] {
+        width: 18px;
+        height: 18px;
+        margin-top: 2px;
+        cursor: pointer;
+    }
+
+    .scan-option-content {
+        flex: 1;
+    }
+
+    .scan-option-header {
+        display: flex;
+        align-items: center;
+        gap: 0.5rem;
+    }
+
+    .scan-option-header strong {
+        color: var(--text, #1e293b);
+    }
+
+    .scan-option-content p {
+        margin: 0;
+        font-size: 0.8rem;
+        color: var(--text-light, #64748b);
+    }
+
+    .scan-badge {
+        font-size: 0.65rem;
+        padding: 0.15rem 0.4rem;
+        border-radius: 4px;
+        font-weight: 500;
+    }
+
+    .scan-badge.base {
+        background: #dcfce7;
+        color: #166534;
+    }
+
+    .preset-btn {
+        padding: 0.35rem 0.75rem;
+        font-size: 0.8rem;
+        border: 1px solid var(--border, #e2e8f0);
+        border-radius: 4px;
+        background: white;
+        cursor: pointer;
+        transition: all 0.2s;
+    }
+
+    .preset-btn:hover {
+        background: var(--primary, #3b82f6);
+        color: white;
+        border-color: var(--primary, #3b82f6);
+    }
+
+    /* Buttons */
+    #scanModal .btn {
+        padding: 0.5rem 1rem;
+        border-radius: 6px;
+        font-weight: 500;
+        cursor: pointer;
+        border: none;
+        display: inline-flex;
+        align-items: center;
+        gap: 0.5rem;
+    }
+
+    #scanModal .btn-secondary {
+        background: #e2e8f0;
+        color: #475569;
+    }
+
+    #scanModal .btn-secondary:hover {
+        background: #cbd5e1;
+    }
+
+    #scanModal .btn-success {
+        background: #10b981;
+        color: white;
+    }
+
+    #scanModal .btn-success:hover {
+        background: #059669;
+    }
+</style>
+
+<script>
+    /**
+     * ScanModal - Reusable scan modal module
+     * Usage: ScanModal.open(projectId) to open the modal
+     */
+    const ScanModal = {
+        open(projectId) {
+            const modal = document.getElementById('scanModal');
+            document.getElementById('scanProjectId').value = projectId;
+            this.setPreset('normal');
+            this.updateLabel();
+            modal.style.display = 'block';
+
+            // Setup change handlers
+            document.querySelectorAll('input[name="scanModules"]').forEach(cb => {
+                cb.onchange = () => this.updateLabel();
+            });
+        },
+
+        close() {
+            document.getElementById('scanModal').style.display = 'none';
+        },
+
+        setPreset(preset) {
+            const checkboxes = document.querySelectorAll('input[name="scanModules"]');
+            checkboxes.forEach(cb => cb.checked = false);
+
+            switch (preset) {
+                case 'normal':
+                    document.querySelector('input[value="normal"]').checked = true;
+                    break;
+                case 'weekly':
+                    checkboxes.forEach(cb => cb.checked = true);
+                    break;
+                case 'recon':
+                    document.querySelector('input[value="normal"]').checked = true;
+                    document.querySelector('input[value="shodan"]').checked = true;
+                    break;
+                case 'vuln':
+                    document.querySelector('input[value="normal"]').checked = true;
+                    document.querySelector('input[value="nuclei"]').checked = true;
+                    break;
+            }
+            this.updateLabel();
+        },
+
+        updateLabel() {
+            const selected = [];
+            document.querySelectorAll('input[name="scanModules"]:checked').forEach(cb => {
+                const label = cb.closest('.scan-option')?.querySelector('strong')?.textContent || cb.value;
+                selected.push(label);
+            });
+            const labelEl = document.getElementById('selectedModulesLabel');
+            if (labelEl) {
+                labelEl.textContent = selected.length > 0 ? `Selected: ${selected.join(' + ')}` : 'No modules selected';
+            }
+        },
+
+        getSelectedModules() {
+            const modules = [];
+            document.querySelectorAll('input[name="scanModules"]:checked').forEach(cb => {
+                modules.push(cb.value);
+            });
+            return modules;
+        },
+
+        run() {
+            const projectId = document.getElementById('scanProjectId').value;
+            const modules = this.getSelectedModules();
+
+            if (modules.length === 0) {
+                if (typeof showToast === 'function') {
+                    showToast('Please select at least one scan module', 'error');
+                } else {
+                    alert('Please select at least one scan module');
+                }
+                return;
+            }
+
+            // Determine mode
+            let mode = 'custom';
+            if (modules.length === 1 && modules[0] === 'normal') {
+                mode = 'normal';
+            } else if (modules.length === 5) {
+                mode = 'weekly';
+            }
+
+            this.close();
+            this.triggerScan(parseInt(projectId), mode, modules);
+        },
+
+        triggerScan(projectId, mode, modules) {
+            const modulesText = modules.join(', ');
+            if (!confirm(`Start scan with: ${modulesText}?`)) return;
+
+            if (typeof showToast === 'function') {
+                showToast('Starting scan...', 'info');
+            }
+
+            const body = { project_id: projectId, mode: mode };
+            if (modules.length > 0) {
+                body.modules = modules;
+            }
+
+            fetch('/api/scans/trigger', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify(body)
+            })
+                .then(res => res.json())
+                .then(data => {
+                    if (typeof showToast === 'function') {
+                        showToast('Scan started successfully!', 'success');
+                    }
+                    setTimeout(() => location.reload(), 2000);
+                })
+                .catch(err => {
+                    if (typeof showToast === 'function') {
+                        showToast('Failed to start scan: ' + err.message, 'error');
+                    } else {
+                        alert('Failed to start scan: ' + err.message);
+                    }
+                });
+        }
+    };
+
+    // Close modal on outside click
+    window.addEventListener('click', function (event) {
+        const modal = document.getElementById('scanModal');
+        if (event.target === modal) {
+            ScanModal.close();
+        }
+    });
+</script>

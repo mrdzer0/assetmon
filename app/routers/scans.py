@@ -41,15 +41,15 @@ def create_notification_manager(db: Session, project_id: int) -> NotificationMan
     return manager
 
 
-def run_scan_background(project_id: int, mode: str):
-    """Run scan in background"""
+def run_scan_background(project_id: int, mode: str, modules: list = None):
+    """Run scan in background thread"""
     from app.db import SessionLocal
 
     db = SessionLocal()
     try:
         notification_manager = create_notification_manager(db, project_id)
         orchestrator = ScanOrchestrator(db, notification_manager)
-        orchestrator.run_scan(project_id, mode=mode)
+        orchestrator.run_scan(project_id, mode=mode, modules=modules)
     finally:
         db.close()
 
@@ -92,7 +92,8 @@ def trigger_scan(
     background_tasks.add_task(
         run_scan_background,
         scan_request.project_id,
-        scan_request.mode
+        scan_request.mode,
+        scan_request.modules
     )
 
     return ScanResponse(

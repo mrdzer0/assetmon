@@ -150,6 +150,15 @@ def project_detail(
         if ep_snap:
             latest_snapshots["endpoints"] = ep_snap
 
+    # Fetch port scan snapshot
+    port_scan_snap = db.query(Snapshot).filter(
+        Snapshot.project_id == project_id,
+        Snapshot.type == SnapshotType.PORTS
+    ).order_by(Snapshot.created_at.desc()).first()
+    
+    if port_scan_snap:
+        latest_snapshots["ports"] = port_scan_snap
+
     # Get recent events (last 7 days) and changes for filtering
     week_ago = datetime.utcnow() - timedelta(days=7)
     recent_events = db.query(Event).filter(
@@ -712,6 +721,15 @@ def settings_page(request: Request, current_user: User = Depends(get_current_use
         "request": request,
         "current_user": current_user,
         "settings": settings
+    })
+
+
+@router.get("/settings/scanners", response_class=HTMLResponse)
+def scanners_config_page(request: Request, current_user: User = Depends(get_current_user)):
+    """Scanner configuration page"""
+    return templates.TemplateResponse("scanners_config.html", {
+        "request": request,
+        "current_user": current_user
     })
 
 

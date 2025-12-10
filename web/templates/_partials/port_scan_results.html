@@ -1,0 +1,421 @@
+<!-- Port Scan Results Tab - Enhanced UI with Screenshots -->
+<div class="section">
+    <h3 style="display: flex; align-items: center; gap: 0.5rem; margin-bottom: 1.5rem;">
+        <i class="fas fa-plug" style="color: #f59e0b;"></i>
+        Open Ports (Non-Standard)
+    </h3>
+
+    {% if latest_snapshots.ports %}
+    {% set port_data = latest_snapshots.ports.data %}
+    {% set port_findings = port_data.get('port_findings', {}) %}
+    {% set stats = port_data.get('stats', {}) %}
+
+    <!-- Calculate actual stats from port_findings -->
+    {% set total_ports = namespace(count=0) %}
+    {% set total_services = namespace(count=0) %}
+    {% set total_screenshots = namespace(count=0) %}
+    {% for host, findings_list in port_findings.items() %}
+    {% for finding in findings_list %}
+    {% set total_ports.count = total_ports.count + 1 %}
+    {% if finding.status_code and finding.status_code >= 200 and finding.status_code < 600 %} {% set
+        total_services.count=total_services.count + 1 %} {% endif %} {% if finding.screenshot %} {% set
+        total_screenshots.count=total_screenshots.count + 1 %} {% endif %} {% endfor %} {% endfor %} <!-- Stats Cards
+        -->
+        <div
+            style="display: grid; grid-template-columns: repeat(auto-fit, minmax(120px, 1fr)); gap: 1rem; margin-bottom: 1.5rem;">
+            <div
+                style="background: linear-gradient(135deg, #f59e0b 0%, #d97706 100%); padding: 1rem 1.25rem; border-radius: 12px; color: white; box-shadow: 0 4px 15px rgba(245, 158, 11, 0.3);">
+                <div style="font-size: 2rem; font-weight: bold;">{{ total_ports.count }}</div>
+                <div style="font-size: 0.8rem; opacity: 0.9;">Open Ports</div>
+            </div>
+            <div
+                style="background: linear-gradient(135deg, #10b981 0%, #059669 100%); padding: 1rem 1.25rem; border-radius: 12px; color: white; box-shadow: 0 4px 15px rgba(16, 185, 129, 0.3);">
+                <div style="font-size: 2rem; font-weight: bold;">{{ total_services.count }}</div>
+                <div style="font-size: 0.8rem; opacity: 0.9;">HTTP Services</div>
+            </div>
+            <div
+                style="background: linear-gradient(135deg, #6366f1 0%, #4f46e5 100%); padding: 1rem 1.25rem; border-radius: 12px; color: white; box-shadow: 0 4px 15px rgba(99, 102, 241, 0.3);">
+                <div style="font-size: 2rem; font-weight: bold;">{{ port_findings|length }}</div>
+                <div style="font-size: 0.8rem; opacity: 0.9;">Hosts</div>
+            </div>
+            <div
+                style="background: linear-gradient(135deg, #8b5cf6 0%, #7c3aed 100%); padding: 1rem 1.25rem; border-radius: 12px; color: white; box-shadow: 0 4px 15px rgba(139, 92, 246, 0.3);">
+                <div style="font-size: 2rem; font-weight: bold;">{{ total_screenshots.count }}</div>
+                <div style="font-size: 0.8rem; opacity: 0.9;">Screenshots</div>
+            </div>
+        </div>
+
+        {% if port_findings %}
+        <!-- Filters Row -->
+        <div
+            style="display: flex; gap: 0.5rem; flex-wrap: wrap; margin-bottom: 1rem; align-items: center; padding: 0.75rem 1rem; background: #f8fafc; border-radius: 10px; border: 1px solid #e2e8f0;">
+            <input type="text" id="portSearchInput" placeholder="🔍 Search..."
+                style="flex: 1; min-width: 150px; padding: 0.5rem 0.75rem; border: 1px solid #e2e8f0; border-radius: 6px; font-size: 0.8rem;"
+                oninput="filterPortResults()">
+            <input type="text" id="portExcludeInput" placeholder="⛔ Exclude..."
+                style="flex: 1; min-width: 120px; padding: 0.5rem 0.75rem; border: 1px solid #e2e8f0; border-radius: 6px; font-size: 0.8rem;"
+                oninput="filterPortResults()">
+            <select id="portStatusFilter"
+                style="padding: 0.5rem; border: 1px solid #e2e8f0; border-radius: 6px; font-size: 0.8rem; background: white;"
+                onchange="filterPortResults()">
+                <option value="">Status</option>
+                <option value="2xx">2xx</option>
+                <option value="3xx">3xx</option>
+                <option value="4xx">4xx</option>
+                <option value="5xx">5xx</option>
+            </select>
+            <select id="portPortFilter"
+                style="padding: 0.5rem; border: 1px solid #e2e8f0; border-radius: 6px; font-size: 0.8rem; background: white;"
+                onchange="filterPortResults()">
+                <option value="">Port</option>
+                {% set unique_ports = [] %}
+                {% for host, findings in port_findings.items() %}{% for finding in findings %}{% if finding.port not in
+                unique_ports %}{% set _ = unique_ports.append(finding.port) %}{% endif %}{% endfor %}{% endfor %}
+                {% for port in unique_ports|sort %}<option value="{{ port }}">{{ port }}</option>{% endfor %}
+            </select>
+            <select id="portImageFilter"
+                style="padding: 0.5rem; border: 1px solid #e2e8f0; border-radius: 6px; font-size: 0.8rem; background: white;"
+                onchange="filterPortResults()">
+                <option value="">📷 All</option>
+                <option value="has">Has Image</option>
+                <option value="no">No Image</option>
+            </select>
+            <button onclick="resetPortFilters()"
+                style="padding: 0.5rem 0.6rem; border: none; border-radius: 6px; background: #64748b; color: white; cursor: pointer; font-size: 0.75rem;">Reset</button>
+            <button onclick="exportPortsToCSV()"
+                style="padding: 0.5rem 0.6rem; border: none; border-radius: 6px; background: #10b981; color: white; cursor: pointer; font-size: 0.75rem;"><i
+                    class="fas fa-download"></i></button>
+        </div>
+
+        <!-- Results Info -->
+        <div
+            style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 0.5rem; font-size: 0.8rem; color: #64748b;">
+            <span id="portResultsCount">Showing all results</span>
+            <div style="display: flex; align-items: center; gap: 0.25rem;">
+                <span>Per page:</span>
+                <select id="portPerPage"
+                    style="padding: 0.25rem; border: 1px solid #e2e8f0; border-radius: 4px; font-size: 0.8rem;"
+                    onchange="filterPortResults()">
+                    <option value="25">25</option>
+                    <option value="50" selected>50</option>
+                    <option value="100">100</option>
+                    <option value="all">All</option>
+                </select>
+            </div>
+        </div>
+
+        <!-- Port Findings Table -->
+        <div style="overflow-x: auto; border-radius: 12px; border: 1px solid #e2e8f0;">
+            <table id="portResultsTable" style="width: 100%; border-collapse: collapse; font-size: 0.8rem;">
+                <thead>
+                    <tr style="background: linear-gradient(135deg, #f8fafc 0%, #f1f5f9 100%);">
+                        <th
+                            style="padding: 0.75rem 0.5rem; text-align: center; font-weight: 600; color: #475569; border-bottom: 2px solid #e2e8f0; width: 80px;">
+                            <i class="fas fa-camera" style="color: #8b5cf6;"></i> Screenshot
+                        </th>
+                        <th
+                            style="padding: 0.75rem 0.5rem; text-align: left; font-weight: 600; color: #475569; border-bottom: 2px solid #e2e8f0;">
+                            <i class="fas fa-globe" style="color: #667eea;"></i> URL
+                        </th>
+                        <th
+                            style="padding: 0.75rem 0.5rem; text-align: center; font-weight: 600; color: #475569; border-bottom: 2px solid #e2e8f0; width: 60px;">
+                            Port
+                        </th>
+                        <th
+                            style="padding: 0.75rem 0.5rem; text-align: center; font-weight: 600; color: #475569; border-bottom: 2px solid #e2e8f0; width: 50px;">
+                            Status
+                        </th>
+                        <th
+                            style="padding: 0.75rem 0.5rem; text-align: left; font-weight: 600; color: #475569; border-bottom: 2px solid #e2e8f0;">
+                            Title
+                        </th>
+                        <th
+                            style="padding: 0.75rem 0.5rem; text-align: left; font-weight: 600; color: #475569; border-bottom: 2px solid #e2e8f0;">
+                            Technologies
+                        </th>
+                        <th
+                            style="padding: 0.75rem 0.5rem; text-align: center; font-weight: 600; color: #475569; border-bottom: 2px solid #e2e8f0; width: 90px;">
+                            <i class="fas fa-clock" style="color: #64748b;"></i> Scan Date
+                        </th>
+                    </tr>
+                </thead>
+                <tbody id="portResultsBody">
+                    {% for host, findings in port_findings.items() %}
+                    {% for finding in findings %}
+                    <tr class="port-row" data-host="{{ host }}" data-subdomain="{{ finding.subdomain|default(host) }}"
+                        data-port="{{ finding.port }}" data-status="{{ finding.status_code|default(0) }}"
+                        data-title="{{ finding.title|default('')|lower }}"
+                        data-url="{{ finding.url|default('')|lower }}"
+                        data-scandate="{{ finding.scan_date|default('') }}"
+                        data-hasimage="{{ 'yes' if finding.screenshot and finding.screenshot|length > 0 else 'no' }}"
+                        style="border-bottom: 1px solid #f1f5f9; transition: all 0.15s ease;"
+                        onmouseover="this.style.background='#f8fafc';"
+                        onmouseout="this.style.background='transparent';">
+                        <!-- Screenshot Column -->
+                        <td style="padding: 0.5rem; text-align: center; vertical-align: middle;">
+                            {% if finding.screenshot %}
+                            <div class="screenshot-container"
+                                style="width: 60px; height: 40px; display: inline-block; position: relative;">
+                                <img class="port-screenshot lazy" data-src="{{ finding.screenshot }}"
+                                    src="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='60' height='40' viewBox='0 0 60 40'%3E%3Crect fill='%23f1f5f9' width='60' height='40'/%3E%3Ctext x='50%25' y='50%25' fill='%2394a3b8' font-size='8' text-anchor='middle' dy='.3em'%3E...%3C/text%3E%3C/svg%3E"
+                                    alt="Screenshot"
+                                    style="width: 60px; height: 40px; object-fit: cover; border-radius: 6px; cursor: pointer; border: 1px solid #e2e8f0;"
+                                    onclick="openPortScreenshot('{{ finding.screenshot }}', '{{ finding.subdomain|default(host) }}:{{ finding.port }}')"
+                                    loading="lazy"
+                                    onerror="this.style.display='none'; this.nextElementSibling.style.display='flex';">
+                                <div class="screenshot-placeholder"
+                                    style="display: none; width: 60px; height: 40px; background: #f1f5f9; border-radius: 6px; border: 1px solid #e2e8f0; align-items: center; justify-content: center;">
+                                    <i class="fas fa-image" style="color: #94a3b8; font-size: 14px;"></i>
+                                </div>
+                            </div>
+                            {% else %}
+                            <div
+                                style="width: 60px; height: 40px; background: #f8fafc; border-radius: 6px; border: 1px solid #e2e8f0; display: inline-flex; align-items: center; justify-content: center;">
+                                <i class="fas fa-image" style="color: #cbd5e1; font-size: 14px;"></i>
+                            </div>
+                            {% endif %}
+                        </td>
+                        <!-- URL Column -->
+                        <td style="padding: 0.5rem;">
+                            <a href="{{ finding.url }}" target="_blank" rel="noopener"
+                                style="color: #3b82f6; text-decoration: none; font-weight: 500;">
+                                {{ finding.subdomain|default(host) }}:{{ finding.port }}
+                            </a>
+                            <div style="font-size: 0.65rem; color: #94a3b8;">
+                                {{ finding.port_name|default('') }}
+                            </div>
+                        </td>
+                        <!-- Port Column -->
+                        <td style="padding: 0.5rem; text-align: center;">
+                            <span
+                                style="background: #f59e0b; color: white; padding: 0.25rem 0.5rem; border-radius: 6px; font-weight: 600; font-size: 0.75rem;">
+                                {{ finding.port }}
+                            </span>
+                        </td>
+                        <!-- Status Column -->
+                        <td style="padding: 0.5rem; text-align: center;">
+                            {% set status = finding.status_code|default(0) %}
+                            {% if status >= 200 and status < 300 %} <span
+                                style="background: #10b981; color: white; padding: 0.2rem 0.4rem; border-radius: 4px; font-size: 0.7rem;">
+                                {{ status }}</span>
+                                {% elif status >= 300 and status < 400 %} <span
+                                    style="background: #3b82f6; color: white; padding: 0.2rem 0.4rem; border-radius: 4px; font-size: 0.7rem;">
+                                    {{ status }}</span>
+                                    {% elif status >= 400 and status < 500 %} <span
+                                        style="background: #f59e0b; color: white; padding: 0.2rem 0.4rem; border-radius: 4px; font-size: 0.7rem;">
+                                        {{ status }}</span>
+                                        {% elif status >= 500 %}
+                                        <span
+                                            style="background: #ef4444; color: white; padding: 0.2rem 0.4rem; border-radius: 4px; font-size: 0.7rem;">{{
+                                            status }}</span>
+                                        {% else %}
+                                        <span
+                                            style="background: #94a3b8; color: white; padding: 0.2rem 0.4rem; border-radius: 4px; font-size: 0.7rem;">{{
+                                            status }}</span>
+                                        {% endif %}
+                        </td>
+                        <!-- Title Column -->
+                        <td style="padding: 0.5rem; max-width: 200px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap;"
+                            title="{{ finding.title|default('') }}">
+                            {{ finding.title|default('—')|truncate(35) }}
+                        </td>
+                        <!-- Technologies Column -->
+                        <td style="padding: 0.5rem; min-width: 120px;">
+                            {% if finding.technologies %}
+                            <div style="display: flex; gap: 0.2rem; flex-wrap: wrap;">
+                                {% for tech in finding.technologies %}
+                                <span
+                                    style="background: #e2e8f0; color: #475569; padding: 0.15rem 0.4rem; border-radius: 4px; font-size: 0.65rem; white-space: nowrap;">{{
+                                    tech }}</span>
+                                {% endfor %}
+                            </div>
+                            {% else %}
+                            <span style="color: #cbd5e1;">—</span>
+                            {% endif %}
+                        </td>
+                        <!-- Scan Date Column -->
+                        <td style="padding: 0.5rem; text-align: center; font-size: 0.7rem; color: #64748b;">
+                            {% if finding.scan_date %}
+                            <span class="local-date" data-date="{{ finding.scan_date }}">
+                                {{ finding.scan_date[:10] }}
+                            </span>
+                            {% else %}
+                            <span style="color: #cbd5e1;">—</span>
+                            {% endif %}
+                        </td>
+                    </tr>
+                    {% endfor %}
+                    {% endfor %}
+                </tbody>
+            </table>
+        </div>
+
+        <!-- Pagination -->
+        <div id="portPagination"
+            style="display: flex; justify-content: center; align-items: center; gap: 0.25rem; margin-top: 1rem; flex-wrap: wrap;">
+        </div>
+
+        {% else %}
+        <div style="text-align: center; padding: 3rem 2rem; color: #94a3b8; background: #f8fafc; border-radius: 12px;">
+            <i class="fas fa-plug" style="font-size: 2.5rem; margin-bottom: 1rem; opacity: 0.5;"></i>
+            <p style="font-size: 1rem;">No open ports found</p>
+        </div>
+        {% endif %}
+        {% else %}
+        <div style="text-align: center; padding: 3rem 2rem; color: #94a3b8; background: #f8fafc; border-radius: 12px;">
+            <i class="fas fa-plug" style="font-size: 2.5rem; margin-bottom: 1rem; opacity: 0.5;"></i>
+            <p style="font-size: 1rem;">No port scan data available</p>
+            <p style="font-size: 0.8rem;">Run a port scan to discover non-standard web services.</p>
+        </div>
+        {% endif %}
+</div>
+
+<!-- Screenshot Modal -->
+<div id="portScreenshotModal"
+    style="display: none; position: fixed; z-index: 10000; left: 0; top: 0; width: 100%; height: 100%; background: rgba(0,0,0,0.85); padding: 1rem;"
+    onclick="if(event.target===this)this.style.display='none'">
+    <div
+        style="position: relative; max-width: 90%; max-height: 90%; margin: auto; display: flex; flex-direction: column; align-items: center; justify-content: center; height: 100%;">
+        <button onclick="document.getElementById('portScreenshotModal').style.display='none'"
+            style="position: absolute; top: 1rem; right: 1rem; background: white; border: none; border-radius: 50%; width: 36px; height: 36px; cursor: pointer; font-size: 1.2rem; z-index: 1;">×</button>
+        <h4 id="portScreenshotTitle" style="color: white; margin-bottom: 0.5rem; font-size: 0.9rem;"></h4>
+        <img id="portScreenshotImage" src=""
+            style="max-width: 100%; max-height: 85vh; border-radius: 8px; box-shadow: 0 10px 40px rgba(0,0,0,0.5);">
+    </div>
+</div>
+
+<script>
+    // Lazy load screenshots using Intersection Observer
+    const lazyLoadPortScreenshots = () => {
+        const lazyImages = document.querySelectorAll('img.lazy:not(.loaded)');
+
+        if ('IntersectionObserver' in window) {
+            const observer = new IntersectionObserver((entries) => {
+                entries.forEach(entry => {
+                    if (entry.isIntersecting) {
+                        const img = entry.target;
+                        if (img.dataset.src) {
+                            img.src = img.dataset.src;
+                            img.classList.add('loaded');
+                            observer.unobserve(img);
+                        }
+                    }
+                });
+            }, { rootMargin: '50px' });
+
+            lazyImages.forEach(img => observer.observe(img));
+        } else {
+            // Fallback for older browsers
+            lazyImages.forEach(img => {
+                if (img.dataset.src) {
+                    img.src = img.dataset.src;
+                    img.classList.add('loaded');
+                }
+            });
+        }
+    };
+
+    function openPortScreenshot(src, title) {
+        document.getElementById('portScreenshotImage').src = src;
+        document.getElementById('portScreenshotTitle').textContent = title;
+        document.getElementById('portScreenshotModal').style.display = 'block';
+    }
+
+    let portCurrentPage = 1;
+
+    function filterPortResults() {
+        const searchTerm = document.getElementById('portSearchInput')?.value.toLowerCase() || '';
+        const excludeTerm = document.getElementById('portExcludeInput')?.value.toLowerCase() || '';
+        const statusFilter = document.getElementById('portStatusFilter')?.value || '';
+        const portFilter = document.getElementById('portPortFilter')?.value || '';
+        const imageFilter = document.getElementById('portImageFilter')?.value || '';
+        const perPage = document.getElementById('portPerPage')?.value || '50';
+
+        const rows = document.querySelectorAll('#portResultsBody .port-row');
+        const excludePatterns = excludeTerm ? excludeTerm.split(',').map(p => p.trim()).filter(p => p) : [];
+
+        let visibleRows = [];
+
+        rows.forEach(row => {
+            const searchableText = `${row.dataset.host} ${row.dataset.subdomain} ${row.dataset.title} ${row.dataset.url} ${row.dataset.port}`.toLowerCase();
+            const status = parseInt(row.dataset.status) || 0;
+            const port = row.dataset.port || '';
+            const hasImage = row.dataset.hasimage || 'no';
+
+            let matchesSearch = !searchTerm || searchableText.includes(searchTerm);
+            let matchesExclude = excludePatterns.length === 0 || !excludePatterns.some(p => searchableText.includes(p));
+
+            let matchesStatus = true;
+            if (statusFilter === '2xx') matchesStatus = status >= 200 && status < 300;
+            else if (statusFilter === '3xx') matchesStatus = status >= 300 && status < 400;
+            else if (statusFilter === '4xx') matchesStatus = status >= 400 && status < 500;
+            else if (statusFilter === '5xx') matchesStatus = status >= 500;
+
+            let matchesPort = !portFilter || port === portFilter;
+
+            let matchesImage = true;
+            if (imageFilter === 'has') matchesImage = hasImage === 'yes';
+            else if (imageFilter === 'no') matchesImage = hasImage === 'no';
+
+            if (matchesSearch && matchesExclude && matchesStatus && matchesPort && matchesImage) visibleRows.push(row);
+            row.style.display = 'none';
+        });
+
+        const totalResults = visibleRows.length;
+        const itemsPerPage = perPage === 'all' ? totalResults : parseInt(perPage);
+        const totalPages = Math.ceil(totalResults / itemsPerPage) || 1;
+
+        if (portCurrentPage > totalPages) portCurrentPage = 1;
+
+        const startIndex = (portCurrentPage - 1) * itemsPerPage;
+        const endIndex = Math.min(startIndex + itemsPerPage, totalResults);
+
+        visibleRows.forEach((row, i) => { if (i >= startIndex && i < endIndex) row.style.display = ''; });
+
+        document.getElementById('portResultsCount').textContent = totalResults === 0 ? 'No results' :
+            (perPage === 'all' ? `${totalResults} results` : `${startIndex + 1}-${endIndex} of ${totalResults}`);
+
+        renderPortPagination(totalPages);
+        lazyLoadPortScreenshots();
+    }
+
+    function renderPortPagination(totalPages) {
+        const container = document.getElementById('portPagination');
+        if (!container || totalPages <= 1) { container.innerHTML = ''; return; }
+
+        let html = `<button onclick="goToPortPage(${portCurrentPage - 1})" ${portCurrentPage === 1 ? 'disabled' : ''} style="padding: 0.4rem 0.8rem; border: 1px solid #e2e8f0; border-radius: 6px; background: white; cursor: ${portCurrentPage === 1 ? 'not-allowed' : 'pointer'}; font-size: 0.8rem; opacity: ${portCurrentPage === 1 ? '0.5' : '1'};">← Prev</button>`;
+
+        for (let i = Math.max(1, portCurrentPage - 2); i <= Math.min(totalPages, portCurrentPage + 2); i++) {
+            html += `<button onclick="goToPortPage(${i})" style="padding: 0.4rem 0.6rem; border: 1px solid ${i === portCurrentPage ? '#667eea' : '#e2e8f0'}; border-radius: 6px; background: ${i === portCurrentPage ? '#667eea' : 'white'}; color: ${i === portCurrentPage ? 'white' : '#475569'}; cursor: pointer; font-size: 0.8rem;">${i}</button>`;
+        }
+
+        html += `<button onclick="goToPortPage(${portCurrentPage + 1})" ${portCurrentPage === totalPages ? 'disabled' : ''} style="padding: 0.4rem 0.8rem; border: 1px solid #e2e8f0; border-radius: 6px; background: white; cursor: ${portCurrentPage === totalPages ? 'not-allowed' : 'pointer'}; font-size: 0.8rem; opacity: ${portCurrentPage === totalPages ? '0.5' : '1'};">Next →</button>`;
+
+        container.innerHTML = html;
+    }
+
+    function goToPortPage(page) { portCurrentPage = page; filterPortResults(); }
+    function resetPortFilters() {
+        ['portSearchInput', 'portExcludeInput'].forEach(id => document.getElementById(id).value = '');
+        ['portStatusFilter', 'portPortFilter', 'portImageFilter'].forEach(id => document.getElementById(id).value = '');
+        document.getElementById('portPerPage').value = '50';
+        portCurrentPage = 1;
+        filterPortResults();
+    }
+
+    function exportPortsToCSV() {
+        const rows = document.querySelectorAll('#portResultsBody .port-row');
+        let csv = 'URL,Port,Status,Title,Scan Date\n';
+        rows.forEach(row => {
+            if (row.style.display !== 'none') {
+                csv += `"${row.dataset.subdomain}:${row.dataset.port}","${row.dataset.port}","${row.dataset.status}","${row.dataset.title.replace(/"/g, '""')}","${row.dataset.scandate}"\n`;
+            }
+        });
+        const a = document.createElement('a');
+        a.href = URL.createObjectURL(new Blob([csv], { type: 'text/csv' }));
+        a.download = 'port_scan_results.csv';
+        a.click();
+    }
+
+    document.addEventListener('DOMContentLoaded', () => { if (document.getElementById('portResultsBody')) { filterPortResults(); } });
+</script>

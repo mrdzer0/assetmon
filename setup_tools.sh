@@ -141,6 +141,19 @@ main() {
     sudo apt install -y libpango-1.0-0 libpangocairo-1.0-0 libgdk-pixbuf2.0-0 libffi-dev >/dev/null 2>&1
     pip3 install weasyprint >/dev/null 2>&1
     print_success "PDF report dependencies installed"
+    
+    # Install Chromium (for httpx screenshot functionality)
+    print_info "Installing Chromium (for screenshots)..."
+    if check_command chromium-browser || check_command chromium; then
+        print_success "Chromium already installed"
+    else
+        sudo apt install -y chromium-browser >/dev/null 2>&1 || sudo apt install -y chromium >/dev/null 2>&1
+        if check_command chromium-browser || check_command chromium; then
+            print_success "Chromium installed successfully"
+        else
+            print_warning "Chromium installation failed - screenshots may not work"
+        fi
+    fi
     echo ""
 
     # Install Go
@@ -163,6 +176,7 @@ main() {
     install_go_tool "waybackurls" "github.com/tomnomnom/waybackurls@latest"
     install_go_tool "gau" "github.com/lc/gau/v2/cmd/gau@latest"
     install_go_tool "katana" "github.com/projectdiscovery/katana/cmd/katana@latest"
+    install_go_tool "naabu" "github.com/projectdiscovery/naabu/v2/cmd/naabu@latest"
 
     # Optional: Amass (commented out by default as it's heavy)
     # print_info "Install Amass? (heavy tool, takes time) (y/n)"
