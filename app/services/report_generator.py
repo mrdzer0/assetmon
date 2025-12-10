@@ -39,7 +39,71 @@ class ReportGenerator:
             "domains": [d.name for d in project.domains if d.is_active],
         }
         
-        # Subdomains with HTTP probe info
+        # Get DNS Records first (needed for IP mapping)
+        dns_snapshot = self.db.query(Snapshot).filter(
+            Snapshot.project_id == project.id,
+            Snapshot.type == SnapshotType.DNS
+        ).order_by(Snapshot.created_at.desc()).first()
+        
+        dns_records = dns_snapshot.data.get("dns_records", {}) if dns_snapshot else {}
+        data["dns_records"] = dns_records
+        data["dns_count"] = len(dns_records)
+        
+        # Build IP to subdomains mapping from DNS
+        ip_to_subdomains = {}  # {ip: [subdomain1, subdomain2, ...]}
+        for subdomain, records in dns_records.items():
+            if isinstance(records, dict):
+                # Handle both "a" (from scanner) and "A" (legacy) keys
+                a_records = records.get("a", records.get("A", []))
+                for ip in a_records:
+                    if ip not in ip_to_subdomains:
+                        ip_to_subdomains[ip] = []
+                    ip_to_subdomains[ip].append(subdomain)
+        
+        # Get HTTP data - stored as http_records dict keyed by URL
+        http_snapshot = self.db.query(Snapshot).filter(
+            Snapshot.project_id == project.id,
+            Snapshot.type == SnapshotType.HTTP
+        ).order_by(Snapshot.created_at.desc()).first()
+        
+        # http_records is a dict: {url: {status_code, title, technologies, ...}}
+        http_records = http_snapshot.data.get("http_records", {}) if http_snapshot else {}
+        http_endpoints_list = list(http_records.values())  # Convert dict values to list
+        data["http_endpoints"] = http_endpoints_list
+        data["http_count"] = len(http_endpoints_list)
+        
+        # Build http_map for subdomain enrichment (extract hostname from URL)
+        http_map = {}
+        for url, record in http_records.items():
+            try:
+                from urllib.parse import urlparse
+                hostname = urlparse(url).netloc
+                if hostname not in http_map:
+                    http_map[hostname] = record
+            except:
+                pass
+        
+        # Calculate status code distribution for charts
+        status_2xx = 0
+        status_3xx = 0
+        status_4xx_5xx = 0
+        for ep in http_endpoints_list:
+            status = ep.get("status_code", 0)
+            if isinstance(status, int):
+                if 200 <= status < 300:
+                    status_2xx += 1
+                elif 300 <= status < 400:
+                    status_3xx += 1
+                elif status >= 400:
+                    status_4xx_5xx += 1
+        
+        data["status_codes"] = {
+            "2xx": status_2xx,
+            "3xx": status_3xx,
+            "4xx_5xx": status_4xx_5xx
+        }
+        
+        # Subdomains with HTTP probe info and DNS records
         if sections.get("subdomains", True):
             sub_snapshot = self.db.query(Snapshot).filter(
                 Snapshot.project_id == project.id,
@@ -48,133 +112,109 @@ class ReportGenerator:
             
             subdomains = sub_snapshot.data.get("subdomains", []) if sub_snapshot else []
             
-            # Get HTTP data to enrich subdomains
-            http_snapshot = self.db.query(Snapshot).filter(
-                Snapshot.project_id == project.id,
-                Snapshot.type == SnapshotType.HTTP
-            ).order_by(Snapshot.created_at.desc()).first()
-            
-            http_map = {}
-            if http_snapshot:
-                for h in http_snapshot.data.get("http_results", []):
-                    url = h.get("url", "")
-                    # Extract hostname from URL
-                    try:
-                        from urllib.parse import urlparse
-                        hostname = urlparse(url).netloc
-                        if hostname not in http_map:
-                            http_map[hostname] = h
-                    except:
-                        pass
-            
-            # Build subdomain table data with HTTP info
+            # Build subdomain table data with HTTP info and DNS records
             subdomain_table = []
             for sub in subdomains:
                 http_info = http_map.get(sub, {})
+                # Get DNS records for this subdomain
+                sub_dns = dns_records.get(sub, {})
                 subdomain_table.append({
                     "subdomain": sub,
                     "status_code": http_info.get("status_code", "-"),
                     "title": http_info.get("title", "-"),
                     "technologies": http_info.get("technologies", []),
-                    "content_length": http_info.get("content_length", "-")
+                    "content_length": http_info.get("content_length", "-"),
+                    # DNS records
+                    "dns": {
+                        "a": sub_dns.get("a", sub_dns.get("A", [])),
+                        "aaaa": sub_dns.get("aaaa", sub_dns.get("AAAA", [])),
+                        "cname": sub_dns.get("cname", sub_dns.get("CNAME", [])),
+                        "mx": sub_dns.get("mx", sub_dns.get("MX", [])),
+                        "txt": sub_dns.get("txt", sub_dns.get("TXT", []))
+                    }
                 })
+            
+            # Sort: entries with HTTP status first (not "-"), then alphabetically
+            def sort_key(item):
+                has_status = item["status_code"] != "-"
+                return (0 if has_status else 1, item["subdomain"])
+            
+            subdomain_table.sort(key=sort_key)
             
             data["subdomains"] = subdomain_table
             data["subdomain_count"] = len(subdomains)
         
-        # DNS Records with IP info
-        if sections.get("dns_records", True):
-            dns_snapshot = self.db.query(Snapshot).filter(
-                Snapshot.project_id == project.id,
-                Snapshot.type == SnapshotType.DNS
-            ).order_by(Snapshot.created_at.desc()).first()
-            
-            dns_records = dns_snapshot.data.get("dns_records", {}) if dns_snapshot else {}
-            data["dns_records"] = dns_records
-            data["dns_count"] = len(dns_records)
-            
-            # Build IP table - extract unique IPs from DNS records
-            ip_table = []
-            seen_ips = set()
-            for subdomain, records in dns_records.items():
-                if isinstance(records, dict):
-                    for ip in records.get("A", []):
-                        if ip not in seen_ips:
-                            seen_ips.add(ip)
-                            ip_table.append({
-                                "ip": ip,
-                                "subdomain": subdomain,
-                                "ports": [],
-                                "vulns": []
-                            })
-            data["ip_table"] = ip_table
-        
-        # HTTP Endpoints
-        if sections.get("http_endpoints", True):
-            http_snapshot = self.db.query(Snapshot).filter(
-                Snapshot.project_id == project.id,
-                Snapshot.type == SnapshotType.HTTP
-            ).order_by(Snapshot.created_at.desc()).first()
-            
-            data["http_endpoints"] = http_snapshot.data.get("http_results", []) if http_snapshot else []
-            data["http_count"] = len(data["http_endpoints"])
-        
-        # Shodan Data - ports and vulnerabilities
-        if sections.get("vulnerabilities", True):
-            shodan_snapshot = self.db.query(Snapshot).filter(
-                Snapshot.project_id == project.id,
-                Snapshot.type == SnapshotType.SHODAN
-            ).order_by(Snapshot.created_at.desc()).first()
-            
-            shodan_data = shodan_snapshot.data if shodan_snapshot else {}
-            data["shodan_hosts"] = shodan_data.get("hosts", [])
-            data["shodan_vulns"] = []
-            
-            # Extract vulnerabilities from Shodan
-            for host in data.get("shodan_hosts", []):
-                ip = host.get("ip_str", "")
-                ports = host.get("ports", [])
-                vulns = host.get("vulns", [])
-                
-                # Update IP table with Shodan data
-                for ip_entry in data.get("ip_table", []):
-                    if ip_entry["ip"] == ip:
-                        ip_entry["ports"] = ports
-                        ip_entry["vulns"] = vulns
-                
-                for vuln_id in vulns:
-                    data["shodan_vulns"].append({
-                        "id": vuln_id,
-                        "ip": ip,
-                        "source": "shodan"
-                    })
-        
-        # Nuclei Vulnerabilities
-        if sections.get("vulnerabilities", True):
-            nuclei_snapshot = self.db.query(Snapshot).filter(
-                Snapshot.project_id == project.id,
-                Snapshot.type == SnapshotType.NUCLEI
-            ).order_by(Snapshot.created_at.desc()).first()
-            
-            data["nuclei_vulns"] = nuclei_snapshot.data.get("findings", []) if nuclei_snapshot else []
-            data["vuln_count"] = len(data["nuclei_vulns"]) + len(data.get("shodan_vulns", []))
-            
-            # Count by severity
-            data["vuln_by_severity"] = {"critical": 0, "high": 0, "medium": 0, "low": 0, "info": 0}
-            for vuln in data["nuclei_vulns"]:
-                sev = vuln.get("severity", "info").lower()
-                if sev in data["vuln_by_severity"]:
-                    data["vuln_by_severity"][sev] += 1
-        
-        # Takeover findings from DNS scan metadata
-        dns_snapshot = self.db.query(Snapshot).filter(
+        # Shodan Data - correctly access shodan_results dictionary
+        shodan_snapshot = self.db.query(Snapshot).filter(
             Snapshot.project_id == project.id,
-            Snapshot.type == SnapshotType.DNS
+            Snapshot.type == SnapshotType.SHODAN
         ).order_by(Snapshot.created_at.desc()).first()
         
+        shodan_results = {}
+        if shodan_snapshot and shodan_snapshot.data:
+            shodan_results = shodan_snapshot.data.get("shodan_results", {})
+        
+        data["shodan_vulns"] = []
+        shodan_vuln_count = 0
+        
+        # Build IP table with Shodan data
+        # IP table format: {ip, subdomains[], ports[], org, vulns[]}
+        ip_table = []
+        for ip, subdomains_list in ip_to_subdomains.items():
+            shodan_info = shodan_results.get(ip, {})
+            ports = shodan_info.get("ports", [])
+            vulns = shodan_info.get("vulns", [])
+            org = shodan_info.get("org", "")
+            country = shodan_info.get("country", "")
+            
+            ip_table.append({
+                "ip": ip,
+                "subdomains": subdomains_list,  # List of subdomains resolving to this IP
+                "ports": ports,
+                "vulns": vulns,
+                "org": org,
+                "country": country
+            })
+            
+            # Count Shodan vulns
+            for vuln_id in vulns:
+                shodan_vuln_count += 1
+                data["shodan_vulns"].append({
+                    "id": vuln_id,
+                    "ip": ip,
+                    "source": "shodan"
+                })
+        
+        data["ip_table"] = ip_table
+        
+        # Nuclei Vulnerabilities
+        nuclei_snapshot = self.db.query(Snapshot).filter(
+            Snapshot.project_id == project.id,
+            Snapshot.type == SnapshotType.NUCLEI
+        ).order_by(Snapshot.created_at.desc()).first()
+        
+        nuclei_vulns = nuclei_snapshot.data.get("findings", []) if nuclei_snapshot else []
+        data["nuclei_vulns"] = nuclei_vulns
+        
+        # Takeover findings from DNS scan metadata
         data["takeover_findings"] = []
         if dns_snapshot and dns_snapshot.scan_metadata:
             data["takeover_findings"] = dns_snapshot.scan_metadata.get("takeover_findings", [])
+        
+        # Total vulnerability count = Nuclei + Shodan + Takeovers
+        data["vuln_count"] = len(nuclei_vulns) + shodan_vuln_count + len(data["takeover_findings"])
+        
+        # Get Events data for severity chart (from Events tab)
+        events = self.db.query(Event).filter(
+            Event.project_id == project.id
+        ).all()
+        
+        data["events_by_severity"] = {"critical": 0, "high": 0, "medium": 0, "low": 0, "info": 0}
+        for event in events:
+            sev = event.severity.value.lower() if event.severity else "info"
+            if sev in data["events_by_severity"]:
+                data["events_by_severity"][sev] += 1
+        data["total_events"] = len(events)
         
         # Scan History
         if sections.get("scan_history", True):
@@ -201,28 +241,39 @@ class ReportGenerator:
         total_subdomains = sum(p.get("subdomain_count", 0) for p in projects_data)
         total_http = sum(p.get("http_count", 0) for p in projects_data)
         total_vulns = sum(p.get("vuln_count", 0) for p in projects_data)
+        total_events = sum(p.get("total_events", 0) for p in projects_data)
         
-        # Aggregate vulnerabilities by severity
-        vuln_severity = {"critical": 0, "high": 0, "medium": 0, "low": 0, "info": 0}
+        # Aggregate events by severity (from Events tab data)
+        events_by_severity = {"critical": 0, "high": 0, "medium": 0, "low": 0, "info": 0}
         for p in projects_data:
-            for sev, count in p.get("vuln_by_severity", {}).items():
-                vuln_severity[sev] += count
+            for sev, count in p.get("events_by_severity", {}).items():
+                events_by_severity[sev] += count
         
-        # Calculate security score (simplified)
-        critical_weight = vuln_severity["critical"] * 40
-        high_weight = vuln_severity["high"] * 20
-        medium_weight = vuln_severity["medium"] * 5
-        low_weight = vuln_severity["low"] * 1
+        # Calculate security score based on events severity
+        critical_weight = events_by_severity["critical"] * 40
+        high_weight = events_by_severity["high"] * 20
+        medium_weight = events_by_severity["medium"] * 5
+        low_weight = events_by_severity["low"] * 1
         
         total_penalty = critical_weight + high_weight + medium_weight + low_weight
         security_score = max(0, min(100, 100 - total_penalty))
+        
+        # Aggregate status codes for charts
+        status_codes = {"2xx": 0, "3xx": 0, "4xx_5xx": 0}
+        for p in projects_data:
+            sc = p.get("status_codes", {})
+            status_codes["2xx"] += sc.get("2xx", 0)
+            status_codes["3xx"] += sc.get("3xx", 0)
+            status_codes["4xx_5xx"] += sc.get("4xx_5xx", 0)
         
         return {
             "total_projects": len(projects_data),
             "total_subdomains": total_subdomains,
             "total_http_endpoints": total_http,
             "total_vulnerabilities": total_vulns,
-            "vuln_by_severity": vuln_severity,
+            "total_events": total_events,
+            "events_by_severity": events_by_severity,
+            "status_codes": status_codes,
             "security_score": security_score,
             "generated_at": datetime.utcnow()
         }
