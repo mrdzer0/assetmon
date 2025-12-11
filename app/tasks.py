@@ -18,27 +18,40 @@ def create_notification_manager(db, project_id):
     from app.models import Project
     from app.services.notifiers.slack import SlackNotifier
     from app.services.notifiers.telegram import TelegramNotifier
+    import json
     
     project = db.query(Project).filter(Project.id == project_id).first()
     if not project:
         return NotificationManager()
     
     manager = NotificationManager()
-    notif_config = project.notification_config or {}
+    
+    # Parse notification_config - might be string or dict
+    notif_config = project.notification_config
+    if isinstance(notif_config, str):
+        try:
+            notif_config = json.loads(notif_config)
+        except (json.JSONDecodeError, TypeError):
+            notif_config = {}
+    elif notif_config is None:
+        notif_config = {}
     
     # Add Discord notifier if configured
-    if notif_config.get("discord", {}).get("enabled", False):
-        webhook_url = notif_config.get("discord", {}).get("webhook_url")
+    discord_config = notif_config.get("discord", {}) if isinstance(notif_config, dict) else {}
+    if discord_config.get("enabled", False):
+        webhook_url = discord_config.get("webhook_url")
         if webhook_url:
             manager.add_notifier(DiscordNotifier(webhook_url))
     
-    # Add Slack notifier if configured
-    if notif_config.get("slack", {}).get("enabled", False):
-        manager.add_notifier(SlackNotifier(notif_config.get("slack", {})))
+    # Add Slack notifier if configured  
+    slack_config = notif_config.get("slack", {}) if isinstance(notif_config, dict) else {}
+    if slack_config.get("enabled", False):
+        manager.add_notifier(SlackNotifier(slack_config))
     
     # Add Telegram notifier if configured
-    if notif_config.get("telegram", {}).get("enabled", False):
-        manager.add_notifier(TelegramNotifier(notif_config.get("telegram", {})))
+    telegram_config = notif_config.get("telegram", {}) if isinstance(notif_config, dict) else {}
+    if telegram_config.get("enabled", False):
+        manager.add_notifier(TelegramNotifier(telegram_config))
     
     return manager
 
