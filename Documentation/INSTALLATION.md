@@ -16,8 +16,8 @@ git clone https://github.com/yourusername/assetmon.git
 cd assetmon
 
 # 2. Install security tools
-chmod +x setup_tools.sh
-./setup_tools.sh
+chmod +x scripts/setup_tools.sh
+./scripts/setup_tools.sh
 
 # 3. Reload shell (important!)
 source ~/.bashrc
@@ -34,7 +34,7 @@ cp .env.example .env
 nano .env  # Edit with your settings
 
 # 7. Start the application
-./start_web.sh
+./start.sh
 ```
 
 ## Detailed Installation Steps
@@ -56,6 +56,8 @@ The `setup_tools.sh` script automatically installs:
 | Naabu | Port scanning |
 | Nuclei | Vulnerability scanning |
 | Chromium | Screenshot capture |
+| Redis | Background task broker |
+| Celery | Task queue worker |
 
 ### 2. Environment Configuration
 
@@ -83,7 +85,7 @@ PORT=8000
 The database is automatically created on first run. For existing installations with new features:
 
 ```bash
-python migrate_db.py
+python scripts/migrate_db.py
 ```
 
 ### 4. User Management
@@ -98,18 +100,19 @@ python manage_users.py user list
 
 ## Verification
 
-Run the verification script to check all tools:
+Run the check script to verify installation:
 
 ```bash
-./verify_tools.sh
+./scripts/check_setup.sh
 ```
 
 ## Running the Application
 
 ### Development Mode
 ```bash
-./start_web.sh
-# or
+./start.sh
+# This starts both Celery worker and web server
+# or for web server only:
 uvicorn app.main:app --host 0.0.0.0 --port 8000 --reload
 ```
 
@@ -137,7 +140,7 @@ sudo apt install -y chromium
 
 ### Database errors after update
 ```bash
-python migrate_db.py
+python scripts/migrate_db.py
 ```
 
 ## Next Steps

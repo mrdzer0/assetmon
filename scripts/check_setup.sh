@@ -121,6 +121,38 @@ else
 fi
 
 echo ""
+echo "Checking Background Task Queue..."
+
+# Check Redis
+if command -v redis-cli &> /dev/null; then
+    if redis-cli ping &> /dev/null; then
+        echo "  ✓ Redis server running"
+    else
+        echo "  ⚠ Redis installed but not running (start: sudo systemctl start redis)"
+        WARNINGS=$((WARNINGS+1))
+    fi
+else
+    echo "  ⚠ Redis not installed (install: sudo apt install redis-server)"
+    WARNINGS=$((WARNINGS+1))
+fi
+
+# Check Celery
+if python3 -c "import celery" 2>/dev/null; then
+    echo "  ✓ Celery package installed"
+else
+    echo "  ⚠ Celery not installed (install: pip install celery[redis])"
+    WARNINGS=$((WARNINGS+1))
+fi
+
+# Check jsbeautifier
+if python3 -c "import jsbeautifier" 2>/dev/null; then
+    echo "  ✓ jsbeautifier package installed"
+else
+    echo "  ⚠ jsbeautifier not installed"
+    WARNINGS=$((WARNINGS+1))
+fi
+
+echo ""
 echo "=========================================="
 
 if [ $ERRORS -eq 0 ]; then

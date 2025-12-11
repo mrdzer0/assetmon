@@ -8,6 +8,7 @@ Automated attack surface discovery and monitoring platform. Track changes in you
 - **DNS & HTTP Monitoring** — Track record changes, status codes, technologies
 - **Port Scanning** — Detect open ports with optional screenshots
 - **Vulnerability Scanning** — Nuclei integration for CVE detection
+- **JS Secret Scanning** — Detect API keys, tokens in JavaScript files
 - **Subdomain Takeover Detection** — CNAME pointing to dead services
 - **Endpoint Discovery** — Historical URLs via waybackurls, gau, katana
 - **Scheduled Scans** — Automated daily/weekly reconnaissance
@@ -18,7 +19,7 @@ Automated attack surface discovery and monitoring platform. Track changes in you
 
 ```bash
 # 1. Install security tools
-./setup_tools.sh
+./scripts/setup_tools.sh
 source ~/.bashrc
 
 # 2. Install Python dependencies
@@ -29,10 +30,27 @@ cp .env.example .env
 nano .env
 
 # 4. Start the application
-./start_web.sh
+./start.sh
 ```
 
 Access at `http://localhost:8000`
+
+## Project Structure
+
+```
+assetmon/
+├── start.sh              # Start application (web + worker)
+├── cli.py                # CLI tools
+├── manage_users.py       # User management
+├── app/                  # Application code
+├── web/                  # Frontend templates
+├── scripts/              # Utility scripts
+│   ├── setup_tools.sh    # Install security tools
+│   ├── check_setup.sh    # Verify installation
+│   ├── configure_apis.sh # Configure API keys
+│   └── migrate_db.py     # Database migration
+└── Documentation/        # Guides
+```
 
 ## Scan Modes
 
@@ -51,6 +69,7 @@ Access at `http://localhost:8000`
 | Ports | naabu, Shodan |
 | Endpoints | waybackurls, gau, katana |
 | Vuln Scan | nuclei |
+| JS Analysis | jsbeautifier, entropy-based detection |
 
 ## Configuration
 
@@ -69,13 +88,14 @@ See the [Documentation](Documentation/) folder for detailed guides:
 - [Installation Guide](Documentation/INSTALLATION.md)
 - [Configuration](Documentation/CONFIGURATION.md)
 - [Usage Guide](Documentation/USAGE.md)
+- [Celery Setup](Documentation/CELERY_SETUP.md)
 
 ## Database Migration
 
 For existing installations after updates:
 
 ```bash
-python migrate_db.py
+python scripts/migrate_db.py
 ```
 
 ## License

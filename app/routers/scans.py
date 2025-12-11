@@ -42,7 +42,7 @@ def create_notification_manager(db: Session, project_id: int) -> NotificationMan
 
 
 def run_scan_background(project_id: int, mode: str, modules: list = None):
-    """Run scan in background thread"""
+    """Run scan in background thread (fallback when Celery unavailable)"""
     from app.db import SessionLocal
 
     db = SessionLocal()
@@ -54,6 +54,18 @@ def run_scan_background(project_id: int, mode: str, modules: list = None):
         db.close()
 
 
+# Check if Celery is available
+CELERY_AVAILABLE = False
+try:
+    from app.tasks import run_scan_task
+    # Test Redis connection
+    from app.celery_app import celery_app
+    celery_app.control.ping(timeout=1)
+    CELERY_AVAILABLE = True
+except Exception:
+    pass
+
+
 @router.post("/trigger", response_model=ScanResponse)
 def trigger_scan(
     scan_request: ScanRequest,
@@ -62,7 +74,7 @@ def trigger_scan(
 ):
     """
     Trigger a scan for a project
-    The scan runs in the background
+    Uses Celery worker if available, falls back to BackgroundTasks
     """
     # Validate project exists
     project = db.query(Project).filter(Project.id == scan_request.project_id).first()
@@ -88,13 +100,32 @@ def trigger_scan(
     db.commit()
     db.refresh(scan_log)
 
-    # Run scan in background
-    background_tasks.add_task(
-        run_scan_background,
-        scan_request.project_id,
-        scan_request.mode,
-        scan_request.modules
-    )
+    # Run scan using Celery if available, otherwise fallback to BackgroundTasks
+    if CELERY_AVAILABLE:
+        try:
+            from app.tasks import run_scan_task
+            task = run_scan_task.delay(
+                scan_request.project_id,
+                scan_request.mode,
+                scan_request.modules
+            )
+            logger.info(f"Scan queued via Celery: task_id={task.id}")
+        except Exception as e:
+            logger.warning(f"Celery failed, using BackgroundTasks: {e}")
+            background_tasks.add_task(
+                run_scan_background,
+                scan_request.project_id,
+                scan_request.mode,
+                scan_request.modules
+            )
+    else:
+        logger.info("Celery not available, using BackgroundTasks")
+        background_tasks.add_task(
+            run_scan_background,
+            scan_request.project_id,
+            scan_request.mode,
+            scan_request.modules
+        )
 
     return ScanResponse(
         scan_id=scan_log.id,

@@ -9,12 +9,13 @@ Welcome to Asset Monitor, an automated asset discovery and monitoring platform.
 | [INSTALLATION.md](INSTALLATION.md) | Installation guide and prerequisites |
 | [CONFIGURATION.md](CONFIGURATION.md) | Scanner and system configuration |
 | [USAGE.md](USAGE.md) | User guide and features |
+| [CELERY_SETUP.md](CELERY_SETUP.md) | Background task queue setup |
 
 ## 🚀 Quick Start
 
 ```bash
 # Install tools
-./setup_tools.sh
+./scripts/setup_tools.sh
 source ~/.bashrc
 
 # Install dependencies
@@ -25,16 +26,16 @@ cp .env.example .env
 nano .env
 
 # Start
-./start_web.sh
+./start.sh
 ```
 
 ## 🔧 Key Files
 
 | File | Purpose |
 |------|---------|
-| `setup_tools.sh` | Install security tools |
-| `start_web.sh` | Start web application |
-| `migrate_db.py` | Database migrations |
+| `start.sh` | Start web + worker |
+| `scripts/setup_tools.sh` | Install security tools |
+| `scripts/migrate_db.py` | Database migrations |
 | `manage_users.py` | User management CLI |
 | `.env` | Environment configuration |
 

@@ -60,6 +60,19 @@ class EndpointCategorizer:
             'description': 'API endpoints',
             'icon': 'fa-code',
             'color': '#28a745'  # green
+        },
+        'crypto': {
+            'keywords': [
+                'wallet', 'airdrop', 'claim', 'withdraw', 'transfer', 'web3',
+                'contract', 'transaction', 'referral', 'mint', 'stake', 'swap',
+                'bridge', 'approve', 'allowance', 'balance', 'connect-wallet',
+                'metamask', 'ethereum', 'polygon', 'bsc', 'arbitrum', 'solana'
+            ],
+            'extensions': [],
+            'severity': 'high',
+            'description': 'Crypto/Web3 endpoints',
+            'icon': 'fa-coins',
+            'color': '#f7931a'  # bitcoin orange
         }
     }
 

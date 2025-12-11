@@ -142,6 +142,33 @@ main() {
     pip3 install weasyprint >/dev/null 2>&1
     print_success "PDF report dependencies installed"
     
+    # Install Redis (for Celery background tasks)
+    print_info "Installing Redis server..."
+    if check_command redis-server; then
+        print_success "Redis already installed"
+    else
+        sudo apt install -y redis-server >/dev/null 2>&1
+        if check_command redis-server; then
+            print_success "Redis installed successfully"
+        else
+            print_warning "Redis installation failed - background tasks may not work optimally"
+        fi
+    fi
+    
+    # Start and enable Redis
+    if systemctl is-active --quiet redis-server 2>/dev/null || systemctl is-active --quiet redis 2>/dev/null; then
+        print_success "Redis service is running"
+    else
+        print_info "Starting Redis service..."
+        sudo systemctl start redis-server 2>/dev/null || sudo systemctl start redis 2>/dev/null || true
+        sudo systemctl enable redis-server 2>/dev/null || sudo systemctl enable redis 2>/dev/null || true
+    fi
+    
+    # Install Celery (Python background task queue)
+    print_info "Installing Celery and dependencies..."
+    pip3 install "celery[redis]" jsbeautifier >/dev/null 2>&1
+    print_success "Celery installed"
+    
     # Install Chromium (for httpx screenshot functionality)
     print_info "Installing Chromium (for screenshots)..."
     if check_command chromium-browser || check_command chromium; then

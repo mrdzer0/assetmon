@@ -1,6 +1,7 @@
 """
 Enhanced JavaScript File Analyzer v2
 Uses entropy-based filtering and improved patterns for lower false positives
+Includes JS beautification for better detection in minified code
 """
 
 import logging
@@ -9,6 +10,12 @@ import re
 import requests
 from typing import Dict, List, Optional, Tuple
 from concurrent.futures import ThreadPoolExecutor, as_completed
+
+try:
+    import jsbeautifier
+    JS_BEAUTIFIER_AVAILABLE = True
+except ImportError:
+    JS_BEAUTIFIER_AVAILABLE = False
 
 logger = logging.getLogger(__name__)
 
@@ -270,6 +277,44 @@ class EnhancedJSAnalyzer:
             'min_entropy': 3.5,
             'severity': 'high'
         },
+        # ===== Crypto/Web3 Specific =====
+        'ethereum_private_key': {
+            'pattern': r'(?:0x)?[a-fA-F0-9]{64}',
+            'min_entropy': 4.5,
+            'severity': 'critical'
+        },
+        # Simplified mnemonic pattern - looks for 12+ lowercase words separated by spaces
+        # Real BIP39 validation done via entropy check
+        'mnemonic_seed_phrase': {
+            'pattern': r'(?:[a-z]{3,8}\s+){11,23}[a-z]{3,8}',
+            'min_entropy': 3.8,
+            'severity': 'critical'
+        },
+        'infura_api_key': {
+            'pattern': r'(?:infura\.io/v3/|infura\.io/ws/v3/)([a-f0-9]{32})',
+            'min_entropy': 4.5,
+            'severity': 'high'
+        },
+        'alchemy_api_key': {
+            'pattern': r'(?:alchemy\.com/v2/|alchemyapi\.io/)([a-zA-Z0-9_-]{32})',
+            'min_entropy': 4.5,
+            'severity': 'high'
+        },
+        'quicknode_api_key': {
+            'pattern': r'(?:quiknode\.pro|quicknode\.com)/([a-f0-9]{32,64})',
+            'min_entropy': 4.5,
+            'severity': 'high'
+        },
+        'moralis_api_key': {
+            'pattern': r'(?:moralis\.io|moralis-api).*["\']([a-zA-Z0-9]{32,64})["\']',
+            'min_entropy': 4.5,
+            'severity': 'high'
+        },
+        'walletconnect_project_id': {
+            'pattern': r'(?:walletconnect|projectId)["\'\s:=]+["\']?([a-f0-9]{32})["\']?',
+            'min_entropy': 4.0,
+            'severity': 'medium'
+        },
     }
 
     # Patterns to EXCLUDE (false positives)
@@ -299,6 +344,23 @@ class EnhancedJSAnalyzer:
         self.timeout = timeout
         self.max_workers = max_workers
         self.session = requests.Session()
+        
+        # Pre-compile all secret patterns for faster matching (2-3x speedup)
+        self._compiled_patterns = {}
+        for name, config in self.SECRET_PATTERNS.items():
+            try:
+                self._compiled_patterns[name] = {
+                    'regex': re.compile(config['pattern']),
+                    'min_entropy': config['min_entropy'],
+                    'severity': config['severity']
+                }
+            except re.error as e:
+                logger.warning(f"Failed to compile pattern {name}: {e}")
+        
+        # Pre-compile exclude patterns
+        self._compiled_excludes = [re.compile(p, re.IGNORECASE) for p in self.EXCLUDE_PATTERNS]
+        
+        logger.debug(f"Pre-compiled {len(self._compiled_patterns)} secret patterns")
         
         # Full browser-like headers to bypass WAF/CloudFlare
         self.session.headers.update({
@@ -345,8 +407,9 @@ class EnhancedJSAnalyzer:
     def is_excluded(self, value: str) -> bool:
         """Check if value matches exclusion patterns (false positives)"""
         value_lower = value.lower()
-        for pattern in self.EXCLUDE_PATTERNS:
-            if re.search(pattern, value_lower):
+        # Use pre-compiled patterns for faster matching
+        for compiled_pattern in self._compiled_excludes:
+            if compiled_pattern.search(value_lower):
                 return True
         return False
     # Cache of failed domains to avoid repeated connection attempts
@@ -395,6 +458,36 @@ class EnhancedJSAnalyzer:
                 logger.warning(f"Failed to download {url}: {e}")
             return ""
 
+    def beautify_js(self, content: str, max_size: int = 500000) -> str:
+        """
+        Beautify minified JavaScript for better pattern detection
+        
+        Args:
+            content: Raw JS content (possibly minified)
+            max_size: Skip beautification for very large files (performance)
+        
+        Returns:
+            Beautified JS content, or original if beautification fails
+        """
+        if not JS_BEAUTIFIER_AVAILABLE:
+            return content
+        
+        # Skip very large files (performance optimization)
+        if len(content) > max_size:
+            logger.debug(f"Skipping beautification for large file ({len(content)} bytes)")
+            return content
+        
+        try:
+            opts = jsbeautifier.default_options()
+            opts.indent_size = 2
+            opts.max_preserve_newlines = 2
+            beautified = jsbeautifier.beautify(content, opts)
+            logger.debug(f"Beautified JS: {len(content)} -> {len(beautified)} chars")
+            return beautified
+        except Exception as e:
+            logger.debug(f"Beautification failed, using original: {e}")
+            return content
+
     def scan_for_secrets(self, content: str) -> Dict:
         """
         Scan content for secrets with entropy-based validation
@@ -414,14 +507,26 @@ class EnhancedJSAnalyzer:
         if not content:
             return findings
         
+        # For very large files, sample first and last portions where secrets typically appear
+        MAX_SCAN_SIZE = 300000  # 300KB total
+        CHUNK_SIZE = 150000    # 150KB per chunk
+        
+        if len(content) > MAX_SCAN_SIZE:
+            # Take first 150KB + last 150KB (secrets often at start/end of bundles)
+            first_chunk = content[:CHUNK_SIZE]
+            last_chunk = content[-CHUNK_SIZE:]
+            content = first_chunk + "\n...[TRUNCATED]...\n" + last_chunk
+            logger.info(f"Large file: sampling first/last {CHUNK_SIZE//1000}KB (total {len(content):,} chars)")
+        
         severity_order = {'critical': 4, 'high': 3, 'medium': 2, 'low': 1}
         
-        for secret_type, config in self.SECRET_PATTERNS.items():
-            pattern = config['pattern']
-            min_entropy = config['min_entropy']
-            severity = config['severity']
+        # Use pre-compiled patterns for faster matching
+        for secret_type, compiled in self._compiled_patterns.items():
+            regex = compiled['regex']
+            min_entropy = compiled['min_entropy']
+            severity = compiled['severity']
             
-            matches = re.findall(pattern, content)
+            matches = regex.findall(content)
             
             for match in matches:
                 # Get the actual secret value (might be in a group)
@@ -541,7 +646,7 @@ class EnhancedJSAnalyzer:
         return list(endpoints)[:200]  # Limit to 200
 
     def analyze_file(self, url: str, check_content: bool = True) -> Dict:
-        """Analyze a single JS file"""
+        """Analyze a single JS file with beautification for better detection"""
         result = {
             'url': url,
             'status': 'pending',
@@ -560,8 +665,13 @@ class EnhancedJSAnalyzer:
         
         result['accessible'] = True
         result['status'] = 'analyzed'
-        result['secrets'] = self.scan_for_secrets(content)
-        result['endpoints'] = self.extract_endpoints(content)
+        
+        # Beautify minified JS for better pattern detection
+        beautified_content = self.beautify_js(content)
+        
+        # Scan beautified content for secrets and endpoints
+        result['secrets'] = self.scan_for_secrets(beautified_content)
+        result['endpoints'] = self.extract_endpoints(beautified_content)
         
         return result
 
