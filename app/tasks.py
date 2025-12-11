@@ -37,20 +37,20 @@ def create_notification_manager(db, project_id):
         notif_config = {}
     
     # Add Discord notifier if configured
-    discord_config = notif_config.get("discord", {}) if isinstance(notif_config, dict) else {}
-    if discord_config.get("enabled", False):
+    discord_config = notif_config.get("discord")
+    if isinstance(discord_config, dict) and discord_config.get("enabled", False):
         webhook_url = discord_config.get("webhook_url")
         if webhook_url:
             manager.add_notifier(DiscordNotifier(webhook_url))
     
     # Add Slack notifier if configured  
-    slack_config = notif_config.get("slack", {}) if isinstance(notif_config, dict) else {}
-    if slack_config.get("enabled", False):
+    slack_config = notif_config.get("slack")
+    if isinstance(slack_config, dict) and slack_config.get("enabled", False):
         manager.add_notifier(SlackNotifier(slack_config))
     
     # Add Telegram notifier if configured
-    telegram_config = notif_config.get("telegram", {}) if isinstance(notif_config, dict) else {}
-    if telegram_config.get("enabled", False):
+    telegram_config = notif_config.get("telegram")
+    if isinstance(telegram_config, dict) and telegram_config.get("enabled", False):
         manager.add_notifier(TelegramNotifier(telegram_config))
     
     return manager
