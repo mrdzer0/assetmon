@@ -50,11 +50,14 @@ def fix_event_summaries(dry_run: bool = True, project_id: int = None):
             
             # Extract the category part from existing summary
             # Format: "Sensitive endpoint accessible: filename [categories]"
-            match = re.search(r'\[([^\]]+)\]$', event.summary)
+            match = re.search(r'\[([^\]]+)\]', event.summary)
             categories_str = match.group(1) if match else 'unknown'
             
-            # Build new summary with full URL
-            new_summary = f"Sensitive endpoint accessible: {url} [{categories_str}]"
+            # Get status code from details
+            status_code = details.get('status_code', '?')
+            
+            # Build new summary with full URL and status code
+            new_summary = f"Sensitive endpoint accessible: {url} [{categories_str}] [{status_code}]"
             
             updates.append({
                 'id': event.id,

@@ -665,7 +665,7 @@ class ScanOrchestrator:
                     sensitive_accessible_events.append({
                         "type": EventType.ENDPOINT_NEW,
                         "severity": severity_map.get(categorization['highest_severity'], SeverityLevel.MEDIUM),
-                        "summary": f"Sensitive endpoint accessible: {url} [{categories_str}]",
+                        "summary": f"Sensitive endpoint accessible: {url} [{categories_str}] [{http_info.get('status_code', '?')}]",
                         "details": {
                             "url": url,
                             "status_code": http_info.get("status_code"),
