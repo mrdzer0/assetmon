@@ -25,6 +25,7 @@ def dashboard_home(
     page: int = 1,
     per_page: int = 12,
     search: str = "",
+    status: str = "all",
     db: Session = Depends(get_db),
     current_user: User = Depends(get_current_user)
 ):
@@ -49,8 +50,14 @@ def dashboard_home(
     # Get last scan time across all projects
     last_scan = db.query(ScanLog).order_by(ScanLog.started_at.desc()).first()
 
-    # Filtered Projects Query
-    query = db.query(Project).filter(Project.is_active == True)
+    # Filtered Projects Query based on status filter
+    query = db.query(Project)
+    
+    if status == "active":
+        query = query.filter(Project.is_active == True)
+    elif status == "inactive":
+        query = query.filter(Project.is_active == False)
+    # "all" shows both active and inactive
     
     if search:
         search_term = f"%{search}%"
@@ -85,6 +92,7 @@ def dashboard_home(
         "current_page": page,
         "total_pages": total_pages,
         "search": search,
+        "status_filter": status,
         "filtered_total": filtered_total
     })
 

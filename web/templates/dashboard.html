@@ -457,15 +457,37 @@
         <div class="section-title">
             <i class="fas fa-folder-open" style="color: var(--text-secondary);"></i> Projects
         </div>
-        <div style="display: flex; gap: 1rem; flex: 1; justify-content: flex-end;">
-            <form method="GET" action="/" style="position: relative; max-width: 300px; width: 100%;">
+        <div style="display: flex; gap: 1rem; flex: 1; justify-content: flex-end; align-items: center;">
+            <!-- Status Toggle -->
+            <div class="status-toggle" style="display: flex; background: #f1f5f9; border-radius: 8px; padding: 3px;">
+                <a href="/?status=all{% if search %}&search={{ search }}{% endif %}"
+                    class="toggle-btn {% if status_filter == 'all' or not status_filter %}active{% endif %}"
+                    style="padding: 0.4rem 0.8rem; border-radius: 6px; font-size: 0.8rem; font-weight: 500; text-decoration: none; transition: all 0.2s;
+                          {% if status_filter == 'all' or not status_filter %}background: white; color: #1e293b; box-shadow: 0 1px 3px rgba(0,0,0,0.1);{% else %}background: transparent; color: #64748b;{% endif %}">
+                    All
+                </a>
+                <a href="/?status=active{% if search %}&search={{ search }}{% endif %}"
+                    class="toggle-btn {% if status_filter == 'active' %}active{% endif %}"
+                    style="padding: 0.4rem 0.8rem; border-radius: 6px; font-size: 0.8rem; font-weight: 500; text-decoration: none; transition: all 0.2s;
+                          {% if status_filter == 'active' %}background: white; color: #10b981; box-shadow: 0 1px 3px rgba(0,0,0,0.1);{% else %}background: transparent; color: #64748b;{% endif %}">
+                    <i class="fas fa-check-circle" style="margin-right: 0.25rem;"></i> Active
+                </a>
+                <a href="/?status=inactive{% if search %}&search={{ search }}{% endif %}"
+                    class="toggle-btn {% if status_filter == 'inactive' %}active{% endif %}"
+                    style="padding: 0.4rem 0.8rem; border-radius: 6px; font-size: 0.8rem; font-weight: 500; text-decoration: none; transition: all 0.2s;
+                          {% if status_filter == 'inactive' %}background: white; color: #ef4444; box-shadow: 0 1px 3px rgba(0,0,0,0.1);{% else %}background: transparent; color: #64748b;{% endif %}">
+                    <i class="fas fa-pause-circle" style="margin-right: 0.25rem;"></i> Inactive
+                </a>
+            </div>
+            <form method="GET" action="/" style="position: relative; max-width: 250px; width: 100%;">
+                <input type="hidden" name="status" value="{{ status_filter or 'all' }}">
                 <i class="fas fa-search"
                     style="position: absolute; left: 1rem; top: 50%; transform: translateY(-50%); color: var(--text-secondary);"></i>
                 <input type="text" name="search" value="{{ search or '' }}" placeholder="Search projects..."
                     style="width: 100%; padding: 0.625rem 1rem 0.625rem 2.5rem; border: 1px solid #e2e8f0; border-radius: 8px; font-size: 0.875rem; transition: all 0.2s;"
                     onfocus="this.style.borderColor='var(--text-primary)'" onblur="this.style.borderColor='#e2e8f0'">
                 {% if search %}
-                <a href="/"
+                <a href="/?status={{ status_filter or 'all' }}"
                     style="position: absolute; right: 0.75rem; top: 50%; transform: translateY(-50%); color: #94a3b8; text-decoration: none; padding: 0.25rem;"
                     title="Clear search">
                     <i class="fas fa-times"></i>
@@ -480,12 +502,20 @@
 
     <div class="projects-grid-premium">
         {% for project in projects %}
-        <div class="project-card-premium" onclick="window.location.href='/projects/{{ project.id }}'">
-            <div class="status-strip active"></div>
+        <div class="project-card-premium" onclick="window.location.href='/projects/{{ project.id }}'"
+            style="{% if not project.is_active %}opacity: 0.75;{% endif %}">
+            <div class="status-strip {% if project.is_active %}active{% else %}inactive{% endif %}"
+                style="{% if not project.is_active %}background: linear-gradient(135deg, #94a3b8 0%, #64748b 100%);{% endif %}">
+            </div>
             <div class="card-body">
                 <div class="project-header-row">
                     <div class="project-name">{{ project.name }}</div>
+                    {% if project.is_active %}
                     <span class="badge-pill badge-soft-success">Active</span>
+                    {% else %}
+                    <span class="badge-pill"
+                        style="background: rgba(148, 163, 184, 0.15); color: #64748b;">Inactive</span>
+                    {% endif %}
                 </div>
 
                 <p class="project-desc-text">{{ project.description or 'No description provided.' }}</p>
