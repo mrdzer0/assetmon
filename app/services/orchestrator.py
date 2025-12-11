@@ -113,7 +113,7 @@ class ScanOrchestrator:
             run_ports = False
 
             # Get scan modes config from database
-            scan_modes_config = get_scanner_config("scan_modes") or {}
+            scan_modes_config = get_scanner_config(self.db, "scan_modes") or {}
             normal_modes = scan_modes_config.get("normal", {})
             weekly_modes = scan_modes_config.get("weekly", {})
 

@@ -298,6 +298,23 @@ class ScannerConfig(Base):
                 "enabled": True
             },
             "description": "Shodan integration configuration"
+        },
+        "scan_modes": {
+            "value": {
+                "normal": {
+                    "ports": False,
+                    "endpoints": False,
+                    "shodan": False,
+                    "nuclei": False
+                },
+                "weekly": {
+                    "ports": True,
+                    "endpoints": True,
+                    "shodan": True,
+                    "nuclei": True
+                }
+            },
+            "description": "Configure which modules run in Normal and Weekly scans"
         }
     }
 
