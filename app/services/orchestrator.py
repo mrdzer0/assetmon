@@ -112,12 +112,23 @@ class ScanOrchestrator:
             run_nuclei = False
             run_ports = False
 
+            # Get scan modes config from database
+            scan_modes_config = get_scanner_config("scan_modes") or {}
+            normal_modes = scan_modes_config.get("normal", {})
+            weekly_modes = scan_modes_config.get("weekly", {})
+
             if mode == "weekly":
-                # Weekly runs everything
-                run_endpoints = True
-                run_shodan = True
-                run_nuclei = True
-                run_ports = True
+                # Weekly mode - run modules based on config (defaults to all enabled)
+                run_endpoints = weekly_modes.get("endpoints", True)
+                run_shodan = weekly_modes.get("shodan", True)
+                run_nuclei = weekly_modes.get("nuclei", True)
+                run_ports = weekly_modes.get("ports", True)
+            elif mode == "normal":
+                # Normal mode - run modules based on config (defaults to none of optional modules)
+                run_endpoints = normal_modes.get("endpoints", False)
+                run_shodan = normal_modes.get("shodan", False)
+                run_nuclei = normal_modes.get("nuclei", False)
+                run_ports = normal_modes.get("ports", False)
             elif mode == "custom" and modules:
                 # Custom mode - run selected modules
                 run_base = "normal" in modules

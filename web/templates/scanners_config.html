@@ -9,6 +9,101 @@
         <p class="text-muted">Configure scanning tools and their parameters</p>
     </div>
 
+    <!-- Scan Mode Configuration -->
+    <div class="section"
+        style="background: linear-gradient(135deg, #667eea15 0%, #764ba215 100%); border: 1px solid #667eea40;">
+        <div class="section-header" onclick="toggleSection('scan-modes')">
+            <h3><i class="fas fa-tasks"></i> Scan Mode Configuration</h3>
+            <i class="fas fa-chevron-down toggle-icon" id="scan-modes-icon"></i>
+        </div>
+        <div class="section-body" id="scan-modes-body">
+            <p class="text-muted" style="margin-bottom: 1rem;">Configure which modules run in Normal (Daily) and Weekly
+                scheduled scans</p>
+
+            <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(280px, 1fr)); gap: 1.5rem;">
+                <!-- Normal Scan -->
+                <div style="background: white; border-radius: 10px; padding: 1rem; border: 1px solid #e2e8f0;">
+                    <h4 style="margin: 0 0 1rem 0; color: #3b82f6; font-size: 1rem;">
+                        <i class="fas fa-clock"></i> Normal Scan (Daily)
+                    </h4>
+                    <div class="toggle-group" style="gap: 0.5rem;">
+                        <label class="toggle-item" style="padding: 0.4rem 0;">
+                            <input type="checkbox" id="normal-subdomains" checked disabled style="opacity: 0.6;">
+                            <span class="toggle-label"><strong>Subdomain Discovery</strong></span>
+                            <span style="color: #64748b; font-size: 0.75rem; margin-left: 0.5rem;">(Always)</span>
+                        </label>
+                        <label class="toggle-item" style="padding: 0.4rem 0;">
+                            <input type="checkbox" id="normal-dns" checked disabled style="opacity: 0.6;">
+                            <span class="toggle-label"><strong>DNS Resolution</strong></span>
+                            <span style="color: #64748b; font-size: 0.75rem; margin-left: 0.5rem;">(Always)</span>
+                        </label>
+                        <label class="toggle-item" style="padding: 0.4rem 0;">
+                            <input type="checkbox" id="normal-http" checked disabled style="opacity: 0.6;">
+                            <span class="toggle-label"><strong>HTTP Probing</strong></span>
+                            <span style="color: #64748b; font-size: 0.75rem; margin-left: 0.5rem;">(Always)</span>
+                        </label>
+                        <label class="toggle-item" style="padding: 0.4rem 0;">
+                            <input type="checkbox" id="normal-ports" onchange="configChanged()">
+                            <span class="toggle-label"><strong>Port Scanning</strong></span>
+                        </label>
+                        <label class="toggle-item" style="padding: 0.4rem 0;">
+                            <input type="checkbox" id="normal-endpoints" onchange="configChanged()">
+                            <span class="toggle-label"><strong>Endpoint Discovery</strong></span>
+                        </label>
+                        <label class="toggle-item" style="padding: 0.4rem 0;">
+                            <input type="checkbox" id="normal-shodan" onchange="configChanged()">
+                            <span class="toggle-label"><strong>Shodan Lookup</strong></span>
+                        </label>
+                        <label class="toggle-item" style="padding: 0.4rem 0;">
+                            <input type="checkbox" id="normal-nuclei" onchange="configChanged()">
+                            <span class="toggle-label"><strong>Nuclei Scan</strong></span>
+                        </label>
+                    </div>
+                </div>
+
+                <!-- Weekly Scan -->
+                <div style="background: white; border-radius: 10px; padding: 1rem; border: 1px solid #e2e8f0;">
+                    <h4 style="margin: 0 0 1rem 0; color: #8b5cf6; font-size: 1rem;">
+                        <i class="fas fa-calendar-week"></i> Weekly Scan
+                    </h4>
+                    <div class="toggle-group" style="gap: 0.5rem;">
+                        <label class="toggle-item" style="padding: 0.4rem 0;">
+                            <input type="checkbox" id="weekly-subdomains" checked disabled style="opacity: 0.6;">
+                            <span class="toggle-label"><strong>Subdomain Discovery</strong></span>
+                            <span style="color: #64748b; font-size: 0.75rem; margin-left: 0.5rem;">(Always)</span>
+                        </label>
+                        <label class="toggle-item" style="padding: 0.4rem 0;">
+                            <input type="checkbox" id="weekly-dns" checked disabled style="opacity: 0.6;">
+                            <span class="toggle-label"><strong>DNS Resolution</strong></span>
+                            <span style="color: #64748b; font-size: 0.75rem; margin-left: 0.5rem;">(Always)</span>
+                        </label>
+                        <label class="toggle-item" style="padding: 0.4rem 0;">
+                            <input type="checkbox" id="weekly-http" checked disabled style="opacity: 0.6;">
+                            <span class="toggle-label"><strong>HTTP Probing</strong></span>
+                            <span style="color: #64748b; font-size: 0.75rem; margin-left: 0.5rem;">(Always)</span>
+                        </label>
+                        <label class="toggle-item" style="padding: 0.4rem 0;">
+                            <input type="checkbox" id="weekly-ports" checked onchange="configChanged()">
+                            <span class="toggle-label"><strong>Port Scanning</strong></span>
+                        </label>
+                        <label class="toggle-item" style="padding: 0.4rem 0;">
+                            <input type="checkbox" id="weekly-endpoints" checked onchange="configChanged()">
+                            <span class="toggle-label"><strong>Endpoint Discovery</strong></span>
+                        </label>
+                        <label class="toggle-item" style="padding: 0.4rem 0;">
+                            <input type="checkbox" id="weekly-shodan" checked onchange="configChanged()">
+                            <span class="toggle-label"><strong>Shodan Lookup</strong></span>
+                        </label>
+                        <label class="toggle-item" style="padding: 0.4rem 0;">
+                            <input type="checkbox" id="weekly-nuclei" checked onchange="configChanged()">
+                            <span class="toggle-label"><strong>Nuclei Scan</strong></span>
+                        </label>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
     <!-- Tool Status Section -->
     <div class="section">
         <div class="section-header" onclick="toggleSection('tools-status')">
@@ -523,9 +618,22 @@
         document.getElementById('gau-enabled').checked = endpoints.gau?.enabled ?? true;
         document.getElementById('katana-enabled').checked = endpoints.katana?.enabled ?? true;
 
-        // Shodan
+        // Shodan config
         const shodan = data.shodan_config?.value || {};
         document.getElementById('shodan-enabled').checked = shodan.enabled ?? true;
+
+        // Scan modes config
+        const scanModes = data.scan_modes?.value || {};
+        // Normal mode (optional modules)
+        document.getElementById('normal-ports').checked = scanModes.normal?.ports ?? false;
+        document.getElementById('normal-endpoints').checked = scanModes.normal?.endpoints ?? false;
+        document.getElementById('normal-shodan').checked = scanModes.normal?.shodan ?? false;
+        document.getElementById('normal-nuclei').checked = scanModes.normal?.nuclei ?? false;
+        // Weekly mode (all enabled by default)
+        document.getElementById('weekly-ports').checked = scanModes.weekly?.ports ?? true;
+        document.getElementById('weekly-endpoints').checked = scanModes.weekly?.endpoints ?? true;
+        document.getElementById('weekly-shodan').checked = scanModes.weekly?.shodan ?? true;
+        document.getElementById('weekly-nuclei').checked = scanModes.weekly?.nuclei ?? true;
     }
 
     function configChanged() {
@@ -582,6 +690,20 @@
             },
             shodan_config: {
                 enabled: document.getElementById('shodan-enabled').checked
+            },
+            scan_modes: {
+                normal: {
+                    ports: document.getElementById('normal-ports').checked,
+                    endpoints: document.getElementById('normal-endpoints').checked,
+                    shodan: document.getElementById('normal-shodan').checked,
+                    nuclei: document.getElementById('normal-nuclei').checked
+                },
+                weekly: {
+                    ports: document.getElementById('weekly-ports').checked,
+                    endpoints: document.getElementById('weekly-endpoints').checked,
+                    shodan: document.getElementById('weekly-shodan').checked,
+                    nuclei: document.getElementById('weekly-nuclei').checked
+                }
             }
         };
     }
