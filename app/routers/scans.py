@@ -2,12 +2,13 @@
 Scans API endpoints
 """
 
+import logging
 from fastapi import APIRouter, Depends, HTTPException, BackgroundTasks, status
 from sqlalchemy.orm import Session
 from typing import List
 
 from app.db import get_db
-from app.models import Project, ScanLog, Snapshot, SnapshotType, Event, EventType, SeverityLevel
+from app.models import Project, ScanLog, Snapshot, SnapshotType, Event, EventType, SeverityLevel, User
 from app.schemas import ScanRequest, ScanResponse
 from app.services.orchestrator import ScanOrchestrator
 from app.services.notifiers.base import NotificationManager
@@ -15,6 +16,9 @@ from app.services.notifiers.slack import SlackNotifier
 from app.services.notifiers.discord import DiscordNotifier
 from app.services.notifiers.telegram import TelegramNotifier
 from app.jobs import get_job_manager
+from app.auth import get_current_user
+
+logger = logging.getLogger(__name__)
 
 router = APIRouter(prefix="/api/scans", tags=["scans"])
 
@@ -70,7 +74,8 @@ except Exception:
 def trigger_scan(
     scan_request: ScanRequest,
     background_tasks: BackgroundTasks,
-    db: Session = Depends(get_db)
+    db: Session = Depends(get_db),
+    current_user: User = Depends(get_current_user)
 ):
     """
     Trigger a scan for a project
@@ -141,7 +146,8 @@ def trigger_scan(
 def get_scan_logs(
     project_id: int = None,
     limit: int = 50,
-    db: Session = Depends(get_db)
+    db: Session = Depends(get_db),
+    current_user: User = Depends(get_current_user)
 ):
     """Get scan logs"""
     query = db.query(ScanLog)
@@ -168,7 +174,11 @@ def get_scan_logs(
 
 
 @router.get("/logs/{scan_id}", response_model=dict)
-def get_scan_log(scan_id: int, db: Session = Depends(get_db)):
+def get_scan_log(
+    scan_id: int,
+    db: Session = Depends(get_db),
+    current_user: User = Depends(get_current_user)
+):
     """Get specific scan log"""
     log = db.query(ScanLog).filter(ScanLog.id == scan_id).first()
 
@@ -192,7 +202,7 @@ def get_scan_log(scan_id: int, db: Session = Depends(get_db)):
 
 
 @router.get("/scheduled")
-def get_scheduled_scans():
+def get_scheduled_scans(current_user: User = Depends(get_current_user)):
     """Get all scheduled scan jobs"""
     job_manager = get_job_manager()
     return job_manager.get_scheduled_jobs()
@@ -203,7 +213,8 @@ def schedule_scan(
     project_id: int,
     cron_expression: str,
     scan_mode: str = "normal",
-    db: Session = Depends(get_db)
+    db: Session = Depends(get_db),
+    current_user: User = Depends(get_current_user)
 ):
     """
     Schedule a recurring scan
@@ -251,7 +262,8 @@ def schedule_scan(
 def update_schedule(
     job_id: str,
     cron_expression: str,
-    db: Session = Depends(get_db)
+    db: Session = Depends(get_db),
+    current_user: User = Depends(get_current_user)
 ):
     """
     Update an existing scheduled scan job
@@ -330,7 +342,7 @@ def update_schedule(
 
 
 @router.delete("/schedule/{job_id}")
-def unschedule_scan(job_id: str):
+def unschedule_scan(job_id: str, current_user: User = Depends(get_current_user)):
     """Remove a scheduled scan job"""
     job_manager = get_job_manager()
 
@@ -506,7 +518,8 @@ def run_nuclei_scan_background(project_id: int):
 def trigger_nuclei_scan(
     project_id: int,
     background_tasks: BackgroundTasks,
-    db: Session = Depends(get_db)
+    db: Session = Depends(get_db),
+    current_user: User = Depends(get_current_user)
 ):
     """
     Trigger an on-demand Nuclei vulnerability scan

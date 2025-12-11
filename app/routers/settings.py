@@ -11,8 +11,9 @@ import shutil
 import logging
 
 from app.db import get_db
-from app.models import ScannerConfig
+from app.models import ScannerConfig, User
 from app.config import settings
+from app.auth import get_current_user
 
 router = APIRouter(prefix="/api/settings", tags=["settings"])
 logger = logging.getLogger(__name__)
@@ -61,7 +62,10 @@ def init_default_configs(db: Session):
 
 
 @router.get("/scanners")
-def get_all_scanner_configs(db: Session = Depends(get_db)):
+def get_all_scanner_configs(
+    db: Session = Depends(get_db),
+    current_user: User = Depends(get_current_user)
+):
     """Get all scanner configurations"""
     # Ensure defaults exist
     init_default_configs(db)
@@ -81,7 +85,8 @@ def get_all_scanner_configs(db: Session = Depends(get_db)):
 def update_scanner_config(
     key: str,
     data: Dict[str, Any],
-    db: Session = Depends(get_db)
+    db: Session = Depends(get_db),
+    current_user: User = Depends(get_current_user)
 ):
     """Update a specific scanner configuration"""
     if key not in ScannerConfig.DEFAULTS:
@@ -103,7 +108,8 @@ def update_scanner_config(
 @router.put("/scanners")
 def update_all_scanner_configs(
     data: Dict[str, Any],
-    db: Session = Depends(get_db)
+    db: Session = Depends(get_db),
+    current_user: User = Depends(get_current_user)
 ):
     """Update multiple scanner configurations at once"""
     updated = []
@@ -119,7 +125,7 @@ def update_all_scanner_configs(
 
 
 @router.get("/tools-status")
-def get_tools_status():
+def get_tools_status(current_user: User = Depends(get_current_user)):
     """Check which tools are installed and available"""
     tools = {
         "subfinder": settings.subfinder_path,
@@ -147,7 +153,10 @@ def get_tools_status():
 
 
 @router.post("/scanners/reset")
-def reset_scanner_configs(db: Session = Depends(get_db)):
+def reset_scanner_configs(
+    db: Session = Depends(get_db),
+    current_user: User = Depends(get_current_user)
+):
     """Reset all scanner configs to defaults"""
     # Delete all existing configs
     db.query(ScannerConfig).delete()

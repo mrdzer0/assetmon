@@ -14,6 +14,8 @@ pydantic-settings==2.1.0
 # HTTP Client
 httpx==0.26.0
 requests==2.31.0
+python_multipart
+aiofiles
 
 # Security & APIs
 shodan==1.31.0

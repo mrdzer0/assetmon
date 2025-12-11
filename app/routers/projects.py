@@ -7,13 +7,14 @@ from sqlalchemy.orm import Session
 from typing import List
 
 from app.db import get_db
-from app.models import Project, Domain, Snapshot, SnapshotType
+from app.models import Project, Domain, Snapshot, SnapshotType, User
 from app.schemas import (
     Project as ProjectSchema,
     ProjectCreate,
     ProjectUpdate,
     Domain as DomainSchema
 )
+from app.auth import get_current_user
 
 router = APIRouter(prefix="/api/projects", tags=["projects"])
 
@@ -23,7 +24,8 @@ def list_projects(
     skip: int = 0,
     limit: int = 100,
     active_only: bool = True,
-    db: Session = Depends(get_db)
+    db: Session = Depends(get_db),
+    current_user: User = Depends(get_current_user)
 ):
     """List all projects"""
     query = db.query(Project)
@@ -36,7 +38,11 @@ def list_projects(
 
 
 @router.get("/{project_id}", response_model=ProjectSchema)
-def get_project(project_id: int, db: Session = Depends(get_db)):
+def get_project(
+    project_id: int,
+    db: Session = Depends(get_db),
+    current_user: User = Depends(get_current_user)
+):
     """Get project by ID"""
     project = db.query(Project).filter(Project.id == project_id).first()
 
@@ -50,7 +56,11 @@ def get_project(project_id: int, db: Session = Depends(get_db)):
 
 
 @router.post("/", response_model=ProjectSchema, status_code=status.HTTP_201_CREATED)
-def create_project(project_data: ProjectCreate, db: Session = Depends(get_db)):
+def create_project(
+    project_data: ProjectCreate,
+    db: Session = Depends(get_db),
+    current_user: User = Depends(get_current_user)
+):
     """Create a new project"""
     # Check if project name already exists
     existing = db.query(Project).filter(Project.name == project_data.name).first()
@@ -86,7 +96,8 @@ def create_project(project_data: ProjectCreate, db: Session = Depends(get_db)):
 def update_project(
     project_id: int,
     project_data: ProjectUpdate,
-    db: Session = Depends(get_db)
+    db: Session = Depends(get_db),
+    current_user: User = Depends(get_current_user)
 ):
     """Update a project"""
     project = db.query(Project).filter(Project.id == project_id).first()
@@ -140,7 +151,11 @@ def update_project(
 
 
 @router.delete("/{project_id}", status_code=status.HTTP_204_NO_CONTENT)
-def delete_project(project_id: int, db: Session = Depends(get_db)):
+def delete_project(
+    project_id: int,
+    db: Session = Depends(get_db),
+    current_user: User = Depends(get_current_user)
+):
     """Delete a project"""
     project = db.query(Project).filter(Project.id == project_id).first()
 
@@ -160,7 +175,8 @@ def delete_project(project_id: int, db: Session = Depends(get_db)):
 def add_domain(
     project_id: int,
     domain_name: str,
-    db: Session = Depends(get_db)
+    db: Session = Depends(get_db),
+    current_user: User = Depends(get_current_user)
 ):
     """Add a domain to a project"""
     project = db.query(Project).filter(Project.id == project_id).first()
@@ -195,7 +211,8 @@ def add_domain(
 def remove_domain(
     project_id: int,
     domain_id: int,
-    db: Session = Depends(get_db)
+    db: Session = Depends(get_db),
+    current_user: User = Depends(get_current_user)
 ):
     """Remove a domain from a project"""
     domain = db.query(Domain).filter(
@@ -216,7 +233,11 @@ def remove_domain(
 
 
 @router.get("/{project_id}/graph")
-def get_project_graph(project_id: int, db: Session = Depends(get_db)):
+def get_project_graph(
+    project_id: int,
+    db: Session = Depends(get_db),
+    current_user: User = Depends(get_current_user)
+):
     """Get graph data for the project (nodes and edges) with rich metadata"""
     project = db.query(Project).filter(Project.id == project_id).first()
     if not project:

@@ -19,8 +19,9 @@ import threading
 import time
 
 from app.db import get_db, SessionLocal
-from app.models import Project, ScanLog, Snapshot, SnapshotType, Event
+from app.models import Project, ScanLog, Snapshot, SnapshotType, Event, User
 from app.services.report_generator import ReportGenerator
+from app.auth import get_current_user
 
 router = APIRouter(prefix="/api/reports", tags=["reports"])
 logger = logging.getLogger(__name__)
@@ -141,7 +142,8 @@ def generate_report_task(
 def generate_report(
     request: ReportRequest,
     background_tasks: BackgroundTasks,
-    db: Session = Depends(get_db)
+    db: Session = Depends(get_db),
+    current_user: User = Depends(get_current_user)
 ):
     """
     Start async report generation
@@ -197,7 +199,10 @@ def generate_report(
 
 
 @router.get("/status/{job_id}")
-def get_report_status(job_id: str):
+def get_report_status(
+    job_id: str,
+    current_user: User = Depends(get_current_user)
+):
     """
     Check the status of a report generation job
     """
@@ -221,7 +226,10 @@ def get_report_status(job_id: str):
 
 
 @router.get("/download/{job_id}")
-def download_report(job_id: str):
+def download_report(
+    job_id: str,
+    current_user: User = Depends(get_current_user)
+):
     """
     Download a completed report
     """
@@ -265,7 +273,10 @@ def download_report(job_id: str):
 
 
 @router.get("/available-projects")
-def get_available_projects(db: Session = Depends(get_db)):
+def get_available_projects(
+    db: Session = Depends(get_db),
+    current_user: User = Depends(get_current_user)
+):
     """
     Get list of projects available for report generation
     """

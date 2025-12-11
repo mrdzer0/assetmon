@@ -8,8 +8,9 @@ from typing import List, Optional
 from datetime import datetime, timedelta
 
 from app.db import get_db
-from app.models import Event, Snapshot, SeverityLevel, EventType, SnapshotType
+from app.models import Event, Snapshot, SeverityLevel, EventType, SnapshotType, User
 from app.schemas import Event as EventSchema, EventUpdate, Snapshot as SnapshotSchema
+from app.auth import get_current_user
 
 router = APIRouter(prefix="/api", tags=["events"])
 
@@ -25,7 +26,8 @@ def list_events(
     exclude: Optional[str] = Query(None, description="Comma-separated patterns to exclude"),
     skip: int = 0,
     limit: int = 100,
-    db: Session = Depends(get_db)
+    db: Session = Depends(get_db),
+    current_user: User = Depends(get_current_user)
 ):
     """
     List events with filtering options
@@ -92,7 +94,11 @@ def list_events(
 
 
 @router.get("/events/{event_id}", response_model=EventSchema)
-def get_event(event_id: int, db: Session = Depends(get_db)):
+def get_event(
+    event_id: int,
+    db: Session = Depends(get_db),
+    current_user: User = Depends(get_current_user)
+):
     """Get specific event by ID"""
     event = db.query(Event).filter(Event.id == event_id).first()
 
@@ -109,7 +115,8 @@ def get_event(event_id: int, db: Session = Depends(get_db)):
 def update_event(
     event_id: int,
     event_update: EventUpdate,
-    db: Session = Depends(get_db)
+    db: Session = Depends(get_db),
+    current_user: User = Depends(get_current_user)
 ):
     """Update event (mark as seen/acknowledged)"""
     event = db.query(Event).filter(Event.id == event_id).first()
@@ -141,7 +148,8 @@ def bulk_update_events(
     event_ids: List[int],
     seen: Optional[bool] = None,
     acknowledged: Optional[bool] = None,
-    db: Session = Depends(get_db)
+    db: Session = Depends(get_db),
+    current_user: User = Depends(get_current_user)
 ):
     """Bulk update multiple events"""
     events = db.query(Event).filter(Event.id.in_(event_ids)).all()
@@ -173,7 +181,8 @@ def bulk_update_events(
 @router.post("/events/bulk-delete")
 def bulk_delete_events(
     event_ids: List[int],
-    db: Session = Depends(get_db)
+    db: Session = Depends(get_db),
+    current_user: User = Depends(get_current_user)
 ):
     """Bulk delete multiple events"""
     events = db.query(Event).filter(Event.id.in_(event_ids)).all()
@@ -201,7 +210,8 @@ def bulk_delete_events(
 def get_events_stats(
     project_id: Optional[int] = None,
     days: int = 7,
-    db: Session = Depends(get_db)
+    db: Session = Depends(get_db),
+    current_user: User = Depends(get_current_user)
 ):
     """Get events statistics"""
     query = db.query(Event)
@@ -243,7 +253,8 @@ def list_snapshots(
     project_id: Optional[int] = None,
     snapshot_type: Optional[str] = None,
     limit: int = 50,
-    db: Session = Depends(get_db)
+    db: Session = Depends(get_db),
+    current_user: User = Depends(get_current_user)
 ):
     """List snapshots"""
     query = db.query(Snapshot)
@@ -267,7 +278,11 @@ def list_snapshots(
 
 
 @router.get("/snapshots/{snapshot_id}", response_model=SnapshotSchema)
-def get_snapshot(snapshot_id: int, db: Session = Depends(get_db)):
+def get_snapshot(
+    snapshot_id: int,
+    db: Session = Depends(get_db),
+    current_user: User = Depends(get_current_user)
+):
     """Get specific snapshot"""
     snapshot = db.query(Snapshot).filter(Snapshot.id == snapshot_id).first()
 
@@ -281,7 +296,11 @@ def get_snapshot(snapshot_id: int, db: Session = Depends(get_db)):
 
 
 @router.get("/snapshots/latest/{project_id}")
-def get_latest_snapshots(project_id: int, db: Session = Depends(get_db)):
+def get_latest_snapshots(
+    project_id: int,
+    db: Session = Depends(get_db),
+    current_user: User = Depends(get_current_user)
+):
     """Get latest snapshot of each type for a project"""
     latest_snapshots = {}
 
