@@ -288,13 +288,45 @@ class EnhancedJSAnalyzer:
         r'fake',
     ]
 
-    def __init__(self, timeout: int = 10, max_workers: int = 10):
+    def __init__(self, timeout: int = 15, max_workers: int = 5):
+        """
+        Initialize analyzer with browser-like settings to avoid WAF blocking
+        
+        Args:
+            timeout: HTTP request timeout (increased for slow servers)
+            max_workers: Concurrent download threads
+        """
         self.timeout = timeout
         self.max_workers = max_workers
         self.session = requests.Session()
+        
+        # Full browser-like headers to bypass WAF/CloudFlare
         self.session.headers.update({
-            'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36'
+            'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36',
+            'Accept': 'text/html,application/xhtml+xml,application/xml;q=0.9,image/avif,image/webp,image/apng,*/*;q=0.8',
+            'Accept-Language': 'en-US,en;q=0.9',
+            'Accept-Encoding': 'gzip, deflate, br',
+            'Connection': 'keep-alive',
+            'Upgrade-Insecure-Requests': '1',
+            'Sec-Fetch-Dest': 'document',
+            'Sec-Fetch-Mode': 'navigate',
+            'Sec-Fetch-Site': 'none',
+            'Sec-Fetch-User': '?1',
+            'Cache-Control': 'max-age=0',
         })
+        
+        # Configure retries for reliability
+        from requests.adapters import HTTPAdapter
+        from urllib3.util.retry import Retry
+        
+        retry_strategy = Retry(
+            total=2,  # 2 retries
+            backoff_factor=1,  # 1 second between retries
+            status_forcelist=[429, 500, 502, 503, 504],
+        )
+        adapter = HTTPAdapter(max_retries=retry_strategy)
+        self.session.mount("https://", adapter)
+        self.session.mount("http://", adapter)
 
     @staticmethod
     def calculate_entropy(data: str) -> float:
@@ -550,24 +582,34 @@ class EnhancedJSAnalyzer:
         
         results = {}
         
-        with ThreadPoolExecutor(max_workers=self.max_workers) as executor:
-            future_to_url = {
-                executor.submit(self.analyze_file, url, check_content): url
-                for url in urls
-            }
-            
-            for future in as_completed(future_to_url):
-                url = future_to_url[future]
-                try:
-                    result = future.result()
-                    results[url] = result
-                    
-                    if result.get('secrets', {}).get('has_secrets'):
-                        logger.warning(f"SECRETS FOUND in {url}")
+        # Process in smaller batches to avoid blocking web server
+        batch_size = 10
+        url_batches = [urls[i:i + batch_size] for i in range(0, len(urls), batch_size)]
+        
+        for batch_idx, batch in enumerate(url_batches):
+            with ThreadPoolExecutor(max_workers=self.max_workers) as executor:
+                future_to_url = {
+                    executor.submit(self.analyze_file, url, check_content): url
+                    for url in batch
+                }
                 
-                except Exception as e:
-                    logger.error(f"Error analyzing {url}: {e}")
-                    results[url] = {'url': url, 'status': 'error', 'error': str(e)}
+                for future in as_completed(future_to_url):
+                    url = future_to_url[future]
+                    try:
+                        result = future.result()
+                        results[url] = result
+                        
+                        if result.get('secrets', {}).get('has_secrets'):
+                            logger.warning(f"SECRETS FOUND in {url}")
+                    
+                    except Exception as e:
+                        logger.error(f"Error analyzing {url}: {e}")
+                        results[url] = {'url': url, 'status': 'error', 'error': str(e)}
+            
+            # Small delay between batches to allow other tasks to run
+            if batch_idx < len(url_batches) - 1:
+                import time
+                time.sleep(0.1)  # 100ms pause between batches
         
         # Summary
         secrets_count = sum(1 for r in results.values() if r.get('secrets', {}).get('has_secrets'))
