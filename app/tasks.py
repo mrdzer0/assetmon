@@ -41,7 +41,7 @@ def create_notification_manager(db, project_id):
     if isinstance(discord_config, dict) and discord_config.get("enabled", False):
         webhook_url = discord_config.get("webhook_url")
         if webhook_url:
-            manager.add_notifier(DiscordNotifier(webhook_url))
+            manager.add_notifier(DiscordNotifier(discord_config))
     
     # Add Slack notifier if configured  
     slack_config = notif_config.get("slack")
