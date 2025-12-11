@@ -131,17 +131,6 @@ class EnhancedJSAnalyzer:
             'min_entropy': 4.0,
             'severity': 'critical'
         },
-        # ===== Twilio =====
-        'twilio_api_key': {
-            'pattern': r'SK[0-9a-fA-F]{32}',
-            'min_entropy': 4.0,
-            'severity': 'high'
-        },
-        'twilio_account_sid': {
-            'pattern': r'AC[a-zA-Z0-9_\-]{32}',
-            'min_entropy': 3.5,
-            'severity': 'medium'
-        },
         # ===== SendGrid =====
         'sendgrid_api_key': {
             'pattern': r'SG\.[a-zA-Z0-9_-]{22}\.[a-zA-Z0-9_-]{43}',
@@ -180,28 +169,6 @@ class EnhancedJSAnalyzer:
         # ===== Telegram =====
         'telegram_bot_token': {
             'pattern': r'[0-9]+:AA[0-9A-Za-z_-]{33}',
-            'min_entropy': 4.0,
-            'severity': 'high'
-        },
-        # ===== Facebook =====
-        'facebook_access_token': {
-            'pattern': r'EAACEdEose0cBA[0-9A-Za-z]+',
-            'min_entropy': 4.0,
-            'severity': 'high'
-        },
-        'facebook_oauth': {
-            'pattern': r'[fF][aA][cC][eE][bB][oO][oO][kK].*[\'"][0-9a-f]{32}[\'"]',
-            'min_entropy': 4.0,
-            'severity': 'high'
-        },
-        # ===== Twitter =====
-        'twitter_oauth': {
-            'pattern': r'[tT][wW][iI][tT][tT][eE][rR].*[\'"][0-9a-zA-Z]{35,44}[\'"]',
-            'min_entropy': 4.0,
-            'severity': 'high'
-        },
-        'twitter_bearer': {
-            'pattern': r'AAAAAAAAAAAAAAAAAAAAAA[a-zA-Z0-9%-]+',
             'min_entropy': 4.0,
             'severity': 'high'
         },

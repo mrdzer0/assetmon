@@ -310,20 +310,42 @@ def run_httpx(
         # httpx can return exit code 1 even on partial success, so don't check exit code
         result = run_command(cmd, timeout=settings.scan_timeout, check=False)
 
-        # Log stdout and stderr for debugging
-        if result.stdout:
-            logger.debug(f"httpx stdout length: {len(result.stdout)}")
-        if result.stderr:
-            logger.warning(f"httpx stderr: {result.stderr[:500]}")
+        # Helper to process results
+        def process_httpx_output(proc_result):
+            records = []
+            if proc_result.stdout:
+                pass
+            for line in proc_result.stdout.splitlines():
+                if line.strip():
+                    try:
+                        record = json.loads(line)
+                        records.append(record)
+                    except json.JSONDecodeError:
+                        logger.warning(f"Failed to parse httpx JSON: {line}")
+            return records
 
-        # Parse JSON output
-        for line in result.stdout.splitlines():
-            if line.strip():
-                try:
-                    record = json.loads(line)
-                    records.append(record)
-                except json.JSONDecodeError:
-                    logger.warning(f"Failed to parse httpx JSON: {line}")
+        records = process_httpx_output(result)
+
+        # Check for panic or failure
+        panic_in_stderr = result.stderr and "panic:" in result.stderr
+        if (result.returncode != 0 and panic_in_stderr) or (not records and panic_in_stderr):
+            logger.warning("httpx panicked with tech detection enabled. Retrying without tech-detect...")
+            
+            # Remove -tech-detect from command if present
+            retry_cmd = [arg for arg in cmd if arg != "-tech-detect"]
+            
+            result = run_command(retry_cmd, timeout=settings.scan_timeout, check=False)
+            records = process_httpx_output(result)
+            
+            # Log stdout and stderr for debugging the retry
+            if result.stdout:
+                logger.debug(f"httpx retry stdout length: {len(result.stdout)}")
+            if result.stderr:
+                logger.warning(f"httpx retry stderr: {result.stderr[:500]}")
+
+        # Log original stderr if we didn't retry or if retry also had stderr
+        elif result.stderr:
+             logger.warning(f"httpx stderr: {result.stderr[:500]}")
 
         logger.info(f"httpx probed {len(records)} URLs")
 
@@ -338,8 +360,9 @@ def run_httpx(
         logger.error(f"httpx execution failed: {e}")
         return []
     finally:
-        # Cleanup temp file only if we got results
-        if len(records) > 0 and urls_file:
+        # Cleanup temp file only if we got results (or if we failed but want to clean up)
+        # Modified: Only keep if explicitly debugging empty results
+        if urls_file and os.path.exists(urls_file) and len(records) > 0:
             try:
                 os.unlink(urls_file)
             except:
