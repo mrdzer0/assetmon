@@ -16,16 +16,29 @@ logger = logging.getLogger(__name__)
 def create_notification_manager(db, project_id):
     """Create notification manager for the project"""
     from app.models import Project
+    from app.services.notifiers.slack import SlackNotifier
+    from app.services.notifiers.telegram import TelegramNotifier
     
     project = db.query(Project).filter(Project.id == project_id).first()
     if not project:
         return NotificationManager()
     
     manager = NotificationManager()
+    notif_config = project.notification_config or {}
     
-    # Add Discord notifier if webhook configured
-    if project.discord_webhook:
-        manager.add_notifier(DiscordNotifier(project.discord_webhook))
+    # Add Discord notifier if configured
+    if notif_config.get("discord", {}).get("enabled", False):
+        webhook_url = notif_config.get("discord", {}).get("webhook_url")
+        if webhook_url:
+            manager.add_notifier(DiscordNotifier(webhook_url))
+    
+    # Add Slack notifier if configured
+    if notif_config.get("slack", {}).get("enabled", False):
+        manager.add_notifier(SlackNotifier(notif_config.get("slack", {})))
+    
+    # Add Telegram notifier if configured
+    if notif_config.get("telegram", {}).get("enabled", False):
+        manager.add_notifier(TelegramNotifier(notif_config.get("telegram", {})))
     
     return manager
 
