@@ -455,10 +455,27 @@ class ScanOrchestrator:
 
     def _run_shodan_scan(self, project: Project, ips: List[str], ip_to_subdomains: Dict[str, List[str]] = None) -> tuple:
         """Run Shodan scanning and diff"""
-        logger.info(f"Running Shodan scan for {len(ips)} IPs...")
         start_time = datetime.utcnow()
 
         try:
+            # Get previous rate-limited IPs and prioritize them
+            prev_snapshot = self.db.query(Snapshot).filter(
+                Snapshot.project_id == project.id,
+                Snapshot.type == SnapshotType.SHODAN
+            ).order_by(Snapshot.created_at.desc()).first()
+            
+            priority_ips = []
+            if prev_snapshot and prev_snapshot.scan_metadata:
+                priority_ips = prev_snapshot.scan_metadata.get("rate_limited_ips", [])
+            
+            # Prioritize rate-limited IPs from last scan
+            if priority_ips:
+                logger.info(f"Prioritizing {len(priority_ips)} previously rate-limited IPs")
+                # Put priority IPs first, then remaining IPs
+                remaining_ips = [ip for ip in ips if ip not in priority_ips]
+                ips = priority_ips + remaining_ips
+            
+            logger.info(f"Running Shodan scan for {len(ips)} IPs...")
             result = scan_with_shodan(ips, query_mode="ip")
 
             duration = (datetime.utcnow() - start_time).total_seconds()
@@ -468,13 +485,7 @@ class ScanOrchestrator:
             }
             self.db.commit()
 
-            # Get previous snapshot
-            prev_snapshot = self.db.query(Snapshot).filter(
-                Snapshot.project_id == project.id,
-                Snapshot.type == SnapshotType.SHODAN
-            ).order_by(Snapshot.created_at.desc()).first()
-
-            # Diff
+            # Diff (reuse prev_snapshot from earlier)
             events = []
             if ip_to_subdomains is None:
                 ip_to_subdomains = {}
@@ -534,7 +545,11 @@ class ScanOrchestrator:
                 project_id=project.id,
                 type=SnapshotType.SHODAN,
                 data={"shodan_results": result["shodan_results"]},
-                scan_metadata={"stats": result["stats"], "vulnerabilities": result.get("vulnerabilities", [])}
+                scan_metadata={
+                    "stats": result["stats"],
+                    "vulnerabilities": result.get("vulnerabilities", []),
+                    "rate_limited_ips": result.get("rate_limited_ips", [])
+                }
             )
             self.db.add(snapshot)
             self.db.commit()

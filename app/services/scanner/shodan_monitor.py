@@ -30,27 +30,33 @@ class ShodanMonitor:
     def scan(self) -> Dict[str, any]:
         """
         Scan targets using Shodan
-
+        
         Returns:
             Dict with Shodan results and vulnerabilities
         """
+        import time
+        
         if not settings.shodan_api_key:
             logger.warning("Shodan API key not configured, skipping Shodan scan")
             return {
                 "shodan_results": {},
                 "vulnerabilities": [],
                 "stats": {"total": 0, "found": 0, "vulns": 0},
+                "rate_limited_ips": [],
                 "error": "Shodan API key not configured"
             }
 
-        logger.info(f"Scanning {len(self.targets)} targets with Shodan")
+        # Deduplicate targets
+        unique_targets = list(set(self.targets))
+        logger.info(f"Scanning {len(unique_targets)} unique targets with Shodan (from {len(self.targets)} total)")
 
         shodan_results = {}
         found_count = 0
+        rate_limited_ips = []
 
         if self.query_mode == "ip":
-            # Direct IP lookup (more accurate, but rate limited)
-            for ip in self.targets:
+            # Direct IP lookup with throttling
+            for idx, ip in enumerate(unique_targets):
                 try:
                     host_info = shodan_host_info(ip)
                     if host_info:
@@ -58,11 +64,20 @@ class ShodanMonitor:
                         shodan_results[ip] = processed
                         found_count += 1
                 except Exception as e:
-                    logger.error(f"Shodan lookup failed for {ip}: {e}")
+                    error_msg = str(e)
+                    if "Rate limit" in error_msg:
+                        rate_limited_ips.append(ip)
+                        logger.warning(f"Shodan rate limited for {ip}, will retry in next scan")
+                    else:
+                        logger.error(f"Shodan lookup failed for {ip}: {e}")
+                
+                # Throttle: delay between requests (skip delay on last item)
+                if idx < len(unique_targets) - 1:
+                    time.sleep(0.5)  # 500ms delay = ~2 req/sec max
 
         elif self.query_mode == "domain":
             # Search query (can search multiple at once)
-            for target in self.targets:
+            for target in unique_targets:
                 try:
                     query = f"hostname:{target}"
                     results = query_shodan(query, limit=100)
@@ -70,26 +85,36 @@ class ShodanMonitor:
                     if results:
                         for result in results:
                             ip = result.get("ip_str", "")
-                            if ip:
+                            if ip and ip not in shodan_results:  # Avoid duplicates
                                 processed = self._process_search_result(result)
                                 shodan_results[ip] = processed
                                 found_count += 1
                 except Exception as e:
-                    logger.error(f"Shodan search failed for {target}: {e}")
+                    error_msg = str(e)
+                    if "Rate limit" in error_msg:
+                        logger.warning(f"Shodan rate limited for {target}")
+                    else:
+                        logger.error(f"Shodan search failed for {target}: {e}")
+                
+                # Throttle between domain searches
+                time.sleep(0.5)
 
         result = {
             "shodan_results": shodan_results,
             "vulnerabilities": self.vulnerabilities,
             "stats": {
-                "total": len(self.targets),
+                "total": len(unique_targets),
                 "found": found_count,
-                "vulns": len(self.vulnerabilities)
-            }
+                "vulns": len(self.vulnerabilities),
+                "rate_limited": len(rate_limited_ips)
+            },
+            "rate_limited_ips": rate_limited_ips
         }
 
         logger.info(
             f"Shodan scan complete: {found_count} hosts found, "
-            f"{len(self.vulnerabilities)} vulnerabilities"
+            f"{len(self.vulnerabilities)} vulnerabilities, "
+            f"{len(rate_limited_ips)} rate-limited"
         )
 
         return result
