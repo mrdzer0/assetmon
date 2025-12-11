@@ -589,15 +589,51 @@ class ScanOrchestrator:
             if http_snapshot and http_snapshot.data:
                 http_data = http_snapshot.data.get("http_records", {})
 
-            # Probe new endpoints with httpx (sample to avoid overload)
-            logger.info(f"Probing endpoints with httpx...")
-            new_urls = [url for url in result["urls"] if url not in http_data]
+            # ===== STEP 1: Probe JS files FIRST (before endpoints to avoid WAF blocking) =====
+            js_files = result.get("js_files", [])
+            js_http_data = {}
+            validated_js_files = []
+            
+            if js_files:
+                # Filter JS files not already in http_data
+                new_js_files = [url for url in js_files if url not in http_data]
+                
+                if new_js_files:
+                    logger.info(f"Probing {len(new_js_files)} JS files with httpx (before endpoints)...")
+                    try:
+                        http_config = config.get("http", {})
+                        threads = http_config.get("threads", 50)
+                        timeout = http_config.get("timeout", 10)
+                        
+                        js_probe_results = monitor_http(new_js_files, threads=threads, timeout=timeout)
+                        
+                        if js_probe_results and "http_records" in js_probe_results:
+                            js_http_data = js_probe_results["http_records"]
+                            # Merge into main http_data
+                            http_data.update(js_http_data)
+                            logger.info(f"JS files probed: {len(js_http_data)} accessible")
+                    except Exception as e:
+                        logger.error(f"Failed to probe JS files: {e}")
+                
+                # Filter only validated JS files (status 200)
+                for url in js_files:
+                    status = http_data.get(url, {}).get("status_code", 0)
+                    if status == 200:
+                        validated_js_files.append(url)
+                
+                logger.info(f"Validated JS files: {len(validated_js_files)} out of {len(js_files)}")
 
+            # ===== STEP 2: Probe other endpoints (excluding JS files) =====
+            # Remove JS files from endpoint list to avoid double scanning
+            non_js_urls = [url for url in result["urls"] if url not in js_files]
+            new_urls = [url for url in non_js_urls if url not in http_data]
+
+            logger.info(f"Probing non-JS endpoints with httpx...")
             if new_urls:
-                # Limit to 2000 URLs (increased from 500) to avoid long scan times but capture more data
+                # Limit to 2000 URLs to avoid long scan times
                 limit = 2000
                 sample_urls = new_urls[:limit] if len(new_urls) > limit else new_urls
-                logger.info(f"Probing {len(sample_urls)} new endpoints (out of {len(new_urls)} total new)")
+                logger.info(f"Probing {len(sample_urls)} new endpoints (out of {len(new_urls)} total new, excluding {len(js_files)} JS files)")
 
                 try:
                     http_config = config.get("http", {})
@@ -685,11 +721,11 @@ class ScanOrchestrator:
             if sensitive_accessible_events:
                 logger.warning(f"Found {len(sensitive_accessible_events)} sensitive accessible endpoints!")
 
-            # Analyze JS files (sample 50 for performance)
+            # ===== STEP 3: Analyze ONLY validated JS files for secrets =====
             js_file_analysis = {}
             secret_events = []
-            if result.get("js_files"):
-                logger.info(f"Analyzing {len(result['js_files'])} JS files...")
+            if validated_js_files:
+                logger.info(f"Analyzing {len(validated_js_files)} validated JS files for secrets...")
                 
                 # Use enhanced v2 analyzer with entropy-based filtering
                 try:
@@ -701,12 +737,11 @@ class ScanOrchestrator:
                     analyze_func = analyze_js_files
                     logger.info("Fallback to original JS analyzer")
 
-                # Analyze sample or all files (max 100)
-                sample_size = min(100, len(result["js_files"]))
+                # Analyze all validated files (they're already known to be accessible)
                 js_file_analysis = analyze_func(
-                    result["js_files"],
+                    validated_js_files,
                     check_content=True,
-                    sample_size=sample_size if len(result["js_files"]) > 100 else None
+                    sample_size=min(200, len(validated_js_files)) if len(validated_js_files) > 200 else None
                 )
                 logger.info(f"JS file analysis complete: {len(js_file_analysis)} files analyzed")
 

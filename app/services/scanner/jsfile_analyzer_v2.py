@@ -317,9 +317,19 @@ class EnhancedJSAnalyzer:
             if re.search(pattern, value_lower):
                 return True
         return False
+    # Cache of failed domains to avoid repeated connection attempts
+    _failed_domains: set = set()
 
     def download_content(self, url: str, max_size: int = 5 * 1024 * 1024) -> str:
         """Download JS file content"""
+        from urllib.parse import urlparse
+        
+        # Check if domain already failed
+        parsed = urlparse(url)
+        domain = parsed.netloc
+        if domain in self._failed_domains:
+            return ""  # Skip silently, domain already known to be unreachable
+        
         try:
             response = self.session.get(url, timeout=self.timeout, stream=True)
             
@@ -340,7 +350,17 @@ class EnhancedJSAnalyzer:
             return content.decode('utf-8', errors='ignore')
         
         except Exception as e:
-            logger.error(f"Failed to download {url}: {e}")
+            error_str = str(e)
+            # Check for DNS/connection errors - cache the domain and use DEBUG level
+            if 'Name or service not known' in error_str or 'Failed to establish' in error_str:
+                self._failed_domains.add(domain)
+                logger.debug(f"Domain unreachable, skipping: {domain}")
+            elif 'Max retries exceeded' in error_str:
+                self._failed_domains.add(domain)
+                logger.debug(f"Domain timeout, skipping: {domain}")
+            else:
+                # Other errors - log as warning
+                logger.warning(f"Failed to download {url}: {e}")
             return ""
 
     def scan_for_secrets(self, content: str) -> Dict:
