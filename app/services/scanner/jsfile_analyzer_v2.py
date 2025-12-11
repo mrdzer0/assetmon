@@ -613,33 +613,91 @@ class EnhancedJSAnalyzer:
         return list(endpoints)[:200]  # Limit to 200
 
     def analyze_file(self, url: str, check_content: bool = True) -> Dict:
-        """Analyze a single JS file with beautification for better detection"""
+        """
+        Analyze a single JS file using a single optimized request
+        """
         result = {
             'url': url,
-            'status': 'pending',
+            'status': 'pending', 
             'accessible': False,
             'secrets': {'has_secrets': False, 'risk_level': 'low'},
             'endpoints': []
         }
         
-        if not check_content:
-            return result
-        
-        content = self.download_content(url)
-        if not content:
-            result['status'] = 'inaccessible'
-            return result
-        
-        result['accessible'] = True
-        result['status'] = 'analyzed'
-        
-        # Beautify minified JS for better pattern detection
-        beautified_content = self.beautify_js(content)
-        
-        # Scan beautified content for secrets and endpoints
-        result['secrets'] = self.scan_for_secrets(beautified_content)
-        result['endpoints'] = self.extract_endpoints(beautified_content)
-        
+        try:
+            # Single GET request with streaming
+            # We use stream=True to check headers first before downloading body
+            response = self.session.get(
+                url, 
+                timeout=self.timeout, 
+                stream=True,
+                allow_redirects=True
+            )
+            
+            # 1. Determine Accessibility (Active/Inactive)
+            # 200-299 is accessible/active
+            if 200 <= response.status_code < 300:
+                result['accessible'] = True
+                result['status'] = 'active'
+            else:
+                response.close()
+                result['accessible'] = False
+                result['status'] = 'inactive'
+                return result
+                
+            # If we only need status check, close and return
+            if not check_content:
+                response.close()
+                return result
+
+            # 2. Download Content (if active)
+            content = ""
+            max_size = 5 * 1024 * 1024  # 5MB
+            
+            try:
+                content_length = int(response.headers.get('Content-Length', 0))
+                
+                # Check known size from headers
+                if content_length > max_size:
+                    logger.debug(f"File too large to scan ({content_length} bytes): {url}")
+                    response.close()
+                    # Still active, just not analyzed
+                    return result
+                
+                # Download chunks
+                content_bytes = b""
+                for chunk in response.iter_content(chunk_size=8192):
+                    content_bytes += chunk
+                    if len(content_bytes) > max_size:
+                        logger.debug(f"File exceeded max size during download: {url}")
+                        break
+                
+                content = content_bytes.decode('utf-8', errors='ignore')
+                
+            finally:
+                response.close()
+
+            if not content:
+                # Active but empty content
+                return result
+
+            # 3. Analyze Content
+            result['status'] = 'analyzed'
+            
+            # Beautify minified JS
+            beautified_content = self.beautify_js(content)
+            
+            # Scan
+            result['secrets'] = self.scan_for_secrets(beautified_content)
+            result['endpoints'] = self.extract_endpoints(beautified_content)
+            
+        except Exception as e:
+            # Network errors usually mean inaccessible/inactive for our purposes
+            # unless it's a timeout on a valid host
+            logger.debug(f"Analysis failed for {url}: {e}")
+            result['status'] = 'error'
+            result['error'] = str(e)
+            
         return result
 
     def analyze_multiple(

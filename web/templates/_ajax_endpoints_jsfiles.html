@@ -337,6 +337,9 @@
             const response = await fetch(`/api/projects/{{ project.id }}/jsfiles?${params}`);
             const data = await response.json();
 
+            // Cache data for details view
+            jsfilesState.cachedData = data;
+
             if (!data.has_data) {
                 document.getElementById('jsfiles-loading').style.display = 'none';
                 document.getElementById('jsfiles-empty').style.display = 'block';
@@ -441,14 +444,22 @@
                 </a>
             </td>
             <td style="padding: 1rem;">${secretsBadge}</td>
-            <td style="padding: 1rem;">
+            <td style="padding: 1rem; white-space: nowrap;">
                 <button onclick="copyToClipboard('${file.url.replace(/'/g, "\\'")}') "
-                        style="padding: 0.375rem 0.75rem; background: white; border: 2px solid #e2e8f0; border-radius: 6px; cursor: pointer; font-size: 0.75rem; font-weight: 600; color: #475569; transition: all 0.2s;"
+                        style="padding: 0.375rem 0.75rem; background: white; border: 2px solid #e2e8f0; border-radius: 6px; cursor: pointer; font-size: 0.75rem; font-weight: 600; color: #475569; transition: all 0.2s; margin-right: 0.5rem;"
                         onmouseover="this.style.borderColor='#f59e0b'; this.style.color='#f59e0b'"
                         onmouseout="this.style.borderColor='#e2e8f0'; this.style.color='#475569'"
                         title="Copy URL">
                     <i class="fas fa-copy"></i>
                 </button>
+                ${file.has_secrets ? `
+                <button onclick="showJSFileDetail(${index})"
+                        style="padding: 0.375rem 0.75rem; background: linear-gradient(135deg, #f59e0b 0%, #d97706 100%); color: white; border: none; border-radius: 6px; cursor: pointer; font-size: 0.75rem; font-weight: 600; transition: transform 0.2s;"
+                        onmouseover="this.style.transform='scale(1.05)'"
+                        onmouseout="this.style.transform='scale(1)'"
+                        title="View Analysis Details">
+                    <i class="fas fa-info-circle"></i> Details
+                </button>` : '<span style="color: #cbd5e1; font-size: 0.875rem;">-</span>'}
             </td>
         `;
 
@@ -571,4 +582,135 @@
             showToast('Failed to copy URL', 'error');
         });
     }
+
+    // Show JS File Details
+    function showJSFileDetail(index) {
+        // Find the file data from the rendered table or fetch from current state if implementing properly
+        // Here we need to grab the data from the event/click, but since we re-render, 
+        // we assume we can get it from a global or passed data.
+        // Actually, we should store current data in state
+
+        // Wait, renderJSFilesTable receives 'data' but doesn't store in global cache by default for specific items unless cached
+        // Let's use the 'cachedData' if available or just the rendered rows?
+        // Better: renderJSFilesTable should maybe store the current list in jsfilesState.currentList?
+        // Or we just access jsfilesState.cachedData if we stored it there?
+
+        // Let's modify loadJSFilesData to store in cachedData
+        // (Assuming loadJSFilesData doesn't store it yet? It does: jsfilesState.loaded = true but data?)
+        // Wait, loadJSFilesData only sets loaded=true. Let's fix that first below if needed.
+        // But for now let's assume we can access via a dirty hack or fix the flow.
+
+        // UPDATE: I will fix this properly by assuming we add data caching in loadJSFilesData in next edit if needed,
+        // but for now let's assume we can pass the data object to renderJSFilesTable and use it.
+        // Actually, renderJSFilesTable is called with 'data'. 
+        // We can't access 'data' here in this function scope unless it's global.
+
+        // Let's look at how events does it: eventsState.cachedData.
+        // Does jsfilesState have cachedData? Yes defined at top.
+        // Does loadJSFilesData set it? NO! loadJSFilesData lines 336-378... 
+        // It does NOT set jsfilesState.cachedData = data; 
+
+        // I will add the setter in a separate edit or assume I can fix it here?
+        // I can't fix loadJSFilesData in this 'MultiReplace' easily if I don't target it.
+        // I will target the end of file for this function, and rely on a followup to fix the caching if needed.
+        // WAIT, I can fix the caching in THIS replace if I include the loadJSFilesData function? 
+        // No, that function is 200 lines up.
+
+        // I'll implement showJSFileDetail assuming jsfilesState.cachedData is populated.
+        // AND I'll provide a separate edit to ensure it IS populated.
+
+        const data = jsfilesState.cachedData;
+        if (!data || !data.js_files || !data.js_files[index]) return;
+
+        const file = data.js_files[index];
+        const modal = document.getElementById('jsfile-detail-modal');
+        const content = document.getElementById('jsfile-detail-content');
+
+        // URLs Section (Endpoints found)
+        let endpointsHtml = '';
+        if (file.endpoints && file.endpoints.length > 0) {
+            endpointsHtml = `
+                <div style="background: #f8fafc; padding: 1rem; border-radius: 8px; border: 1px solid #e2e8f0; max-height: 200px; overflow-y: auto;">
+                    <ul style="margin: 0; padding-left: 1.2rem; font-family: monospace; font-size: 0.8rem;">
+                        ${file.endpoints.map(ep => `<li style="margin-bottom: 0.25rem; color: #475569;">${ep}</li>`).join('')}
+                    </ul>
+                </div>
+            `;
+        } else {
+            endpointsHtml = '<p style="color: #94a3b8; font-style: italic;">No endpoints discovered in this file.</p>';
+        }
+
+        // Secrets Section
+        let secretsHtml = '';
+        if (file.secrets && file.secrets.has_secrets && file.secrets.secrets_found && file.secrets.secrets_found.length > 0) {
+            secretsHtml = file.secrets.secrets_found.map(secret => `
+                <div style="background: #fff1f2; border-left: 4px solid #f43f5e; padding: 0.75rem; border-radius: 4px; margin-bottom: 0.5rem;">
+                    <div style="display: flex; justify-content: space-between; margin-bottom: 0.25rem;">
+                        <span style="font-weight: 700; color: #9f1239; font-size: 0.8rem;">${secret.type}</span>
+                        <span style="background: #f43f5e; color: white; padding: 0.1rem 0.4rem; border-radius: 4px; font-size: 0.7rem; font-weight: 600;">${secret.severity}</span>
+                    </div>
+                    <code style="display: block; background: rgba(255,255,255,0.5); padding: 0.25rem; font-size: 0.75rem; color: #881337; word-break: break-all;">
+                        ${secret.value}
+                    </code>
+                </div>
+            `).join('');
+        } else {
+            secretsHtml = '<div style="background: #f0fdf4; border-left: 4px solid #22c55e; padding: 1rem; color: #15803d; border-radius: 6px;">No secrets detected. safe!</div>';
+        }
+
+        content.innerHTML = `
+            <div style="margin-bottom: 1.5rem;">
+                <label style="display: block; font-size: 0.75rem; font-weight: 700; color: #94a3b8; text-transform: uppercase; margin-bottom: 0.5rem;">File URL</label>
+                <div style="display: flex; gap: 0.5rem;">
+                    <input type="text" value="${file.url}" readonly 
+                        style="flex: 1; padding: 0.5rem; background: #f8fafc; border: 1px solid #e2e8f0; border-radius: 6px; font-family: monospace; color: #334155;">
+                    <button onclick="copyToClipboard('${file.url.replace(/'/g, "\\'")}')" 
+                        style="padding: 0.5rem 0.75rem; background: white; border: 1px solid #cbd5e1; border-radius: 6px; cursor: pointer;">
+                        <i class="fas fa-copy"></i>
+                    </button>
+                </div>
+            </div>
+
+            <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 1.5rem; margin-bottom: 1.5rem;">
+                <!-- Endpoints Column -->
+                <div>
+                    <h4 style="color: #334155; margin: 0 0 1rem 0; font-size: 1rem; display: flex; align-items: center; gap: 0.5rem;">
+                        <i class="fas fa-link" style="color: #3b82f6;"></i> Discovered Endpoints
+                        <span style="background: #eff6ff; color: #1d4ed8; padding: 0.1rem 0.5rem; border-radius: 10px; font-size: 0.75rem;">${file.endpoints ? file.endpoints.length : 0}</span>
+                    </h4>
+                    ${endpointsHtml}
+                </div>
+
+                <!-- Secrets Column -->
+                <div>
+                    <h4 style="color: #334155; margin: 0 0 1rem 0; font-size: 1rem; display: flex; align-items: center; gap: 0.5rem;">
+                        <i class="fas fa-key" style="color: #f59e0b;"></i> Potential Secrets
+                    </h4>
+                    <div style="max-height: 200px; overflow-y: auto;">
+                        ${secretsHtml}
+                    </div>
+                </div>
+            </div>
+            
+            <div style="background: #f8fafc; padding: 1rem; border-radius: 8px;">
+                 <label style="display: block; font-size: 0.75rem; font-weight: 700; color: #94a3b8; text-transform: uppercase; margin-bottom: 0.5rem;">Raw Analysis Data</label>
+                 <pre style="margin: 0; font-size: 0.75rem; color: #475569; max-height: 150px; overflow-y: auto; white-space: pre-wrap;">${JSON.stringify(file, null, 2)}</pre>
+            </div>
+        `;
+
+        modal.style.display = 'flex';
+    }
+
+    function closeJSFileDetail() {
+        document.getElementById('jsfile-detail-modal').style.display = 'none';
+    }
+
+    // Close modal when clicking outside
+    document.addEventListener('click', (e) => {
+        const modal = document.getElementById('jsfile-detail-modal');
+        if (e.target === modal) {
+            closeJSFileDetail();
+        }
+    });
+
 </script>
