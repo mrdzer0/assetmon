@@ -63,6 +63,15 @@ class EndpointCategorizer:
         }
     }
 
+    # File extensions to EXCLUDE from sensitive detection (common assets)
+    EXCLUDED_EXTENSIONS = {
+        '.woff', '.woff2', '.ttf', '.eot', '.otf',  # Fonts
+        '.png', '.jpg', '.jpeg', '.gif', '.svg', '.ico', '.webp',  # Images
+        '.mp4', '.webm', '.mp3', '.wav',  # Media
+        '.css', '.less', '.scss', '.sass',  # Stylesheets
+        '.map',  # Source maps (not sensitive by themselves)
+    }
+
     @classmethod
     def categorize_url(cls, url: str) -> Dict:
         """
@@ -87,17 +96,31 @@ class EndpointCategorizer:
             'matched_extensions': []
         }
 
+        # Skip common asset files - these are never sensitive
+        for ext in cls.EXCLUDED_EXTENSIONS:
+            if url_lower.endswith(ext):
+                return result
+
         # Check each category
         for category_name, category_info in cls.CATEGORIES.items():
             matched_keywords = []
             matched_extensions = []
 
-            # Check keywords
+            # Check keywords using word boundaries (not substring match)
             for keyword in category_info['keywords']:
-                if keyword in url_lower:
-                    matched_keywords.append(keyword)
+                # Use regex word boundary for accurate matching
+                # This prevents "bold" matching "old" or "star" matching "tar"
+                if keyword.startswith('/'):
+                    # Path patterns like /api/ should match as-is
+                    if keyword in url_lower:
+                        matched_keywords.append(keyword)
+                else:
+                    # Use word boundary regex for other keywords
+                    pattern = r'(?:^|[/_\-\.])' + re.escape(keyword) + r'(?:$|[/_\-\.])'
+                    if re.search(pattern, url_lower):
+                        matched_keywords.append(keyword)
 
-            # Check extensions
+            # Check extensions - must be at the very end of URL
             for ext in category_info['extensions']:
                 if url_lower.endswith(ext):
                     matched_extensions.append(ext)
