@@ -170,6 +170,33 @@ def bulk_update_events(
     }
 
 
+@router.post("/events/bulk-delete")
+def bulk_delete_events(
+    event_ids: List[int],
+    db: Session = Depends(get_db)
+):
+    """Bulk delete multiple events"""
+    events = db.query(Event).filter(Event.id.in_(event_ids)).all()
+
+    if not events:
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail="No events found with provided IDs"
+        )
+
+    count = len(events)
+    for event in events:
+        db.delete(event)
+
+    db.commit()
+
+    return {
+        "success": True,
+        "deleted_count": count,
+        "message": f"Deleted {count} events"
+    }
+
+
 @router.get("/events/stats")
 def get_events_stats(
     project_id: Optional[int] = None,
