@@ -36,5 +36,5 @@ def init_db():
     """
     Initialize database (create tables)
     """
-    from app.models import Project, Domain, Snapshot, Event
+    from app.models import Project, Domain, Snapshot, Event, ScannerConfig, ScanLog
     Base.metadata.create_all(bind=engine)

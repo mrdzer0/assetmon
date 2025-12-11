@@ -177,6 +177,7 @@ main() {
     install_go_tool "gau" "github.com/lc/gau/v2/cmd/gau@latest"
     install_go_tool "katana" "github.com/projectdiscovery/katana/cmd/katana@latest"
     install_go_tool "naabu" "github.com/projectdiscovery/naabu/v2/cmd/naabu@latest"
+    install_go_tool "nuclei" "github.com/projectdiscovery/nuclei/v3/cmd/nuclei@latest"
 
     # Optional: Amass (commented out by default as it's heavy)
     # print_info "Install Amass? (heavy tool, takes time) (y/n)"
@@ -205,6 +206,8 @@ main() {
         "waybackurls:-h"
         "gau:-version"
         "katana:-version"
+        "naabu:-version"
+        "nuclei:-version"
         "shodan:info"
     )
 
