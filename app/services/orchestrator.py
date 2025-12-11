@@ -690,11 +690,20 @@ class ScanOrchestrator:
             secret_events = []
             if result.get("js_files"):
                 logger.info(f"Analyzing {len(result['js_files'])} JS files...")
-                from app.services.scanner.jsfile_analyzer import analyze_js_files
+                
+                # Use enhanced v2 analyzer with entropy-based filtering
+                try:
+                    from app.services.scanner.jsfile_analyzer_v2 import analyze_js_files_v2
+                    analyze_func = analyze_js_files_v2
+                    logger.info("Using enhanced JS analyzer v2 with entropy filtering")
+                except ImportError:
+                    from app.services.scanner.jsfile_analyzer import analyze_js_files
+                    analyze_func = analyze_js_files
+                    logger.info("Fallback to original JS analyzer")
 
                 # Analyze sample or all files (max 100)
                 sample_size = min(100, len(result["js_files"]))
-                js_file_analysis = analyze_js_files(
+                js_file_analysis = analyze_func(
                     result["js_files"],
                     check_content=True,
                     sample_size=sample_size if len(result["js_files"]) > 100 else None
@@ -707,31 +716,41 @@ class ScanOrchestrator:
                     if secrets_info.get('has_secrets'):
                         risk_level = secrets_info.get('risk_level', 'low')
 
-                        # Determine severity based on risk level
-                        severity = SeverityLevel.HIGH if risk_level == 'high' else (
-                            SeverityLevel.MEDIUM if risk_level == 'medium' else SeverityLevel.LOW
-                        )
+                        # Determine severity based on risk level or highest severity from secrets
+                        highest_sev = secrets_info.get('highest_severity', risk_level)
+                        if highest_sev == 'critical':
+                            severity = SeverityLevel.CRITICAL
+                        elif highest_sev == 'high' or risk_level == 'high':
+                            severity = SeverityLevel.HIGH
+                        elif highest_sev == 'medium' or risk_level == 'medium':
+                            severity = SeverityLevel.MEDIUM
+                        else:
+                            severity = SeverityLevel.LOW
 
-                        # Build secret summary
+                        # Build secret summary with types
                         secret_types = [s['type'] for s in secrets_info.get('secrets_found', [])]
-                        secret_summary = ', '.join(secret_types[:3])
-                        if len(secret_types) > 3:
-                            secret_summary += f' +{len(secret_types) - 3} more'
+                        unique_types = list(set(secret_types))
+                        types_str = ', '.join(unique_types[:3])
+                        if len(unique_types) > 3:
+                            types_str += f' +{len(unique_types) - 3} more'
 
+                        # New summary format: full URL + types
                         secret_events.append({
-                            "type": EventType.JS_FILE_NEW,  # Using existing enum
+                            "type": EventType.JS_FILE_NEW,
                             "severity": severity,
-                            "summary": f"Secrets detected in JS file: {url.split('/')[-1]} ({risk_level} risk)",
+                            "summary": f"Secrets detected in JS file: {url} [{types_str}]",
                             "details": {
                                 "url": url,
                                 "risk_level": risk_level,
+                                "highest_severity": highest_sev,
                                 "secrets_found": secrets_info.get('secrets_found', []),
-                                "suspicious_keywords": secrets_info.get('suspicious_keywords', []),
-                                "secret_types": secret_types
+                                "secret_types": unique_types,
+                                "endpoints_found": analysis.get('endpoints', [])
                             },
                             "related_entities": {
                                 "url": url,
-                                "risk_level": risk_level
+                                "risk_level": risk_level,
+                                "secret_types": unique_types
                             }
                         })
 
