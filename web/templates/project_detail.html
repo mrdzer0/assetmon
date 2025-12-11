@@ -2117,6 +2117,7 @@
             subdomains: document.getElementById('section-subdomains').checked,
             dns_records: document.getElementById('section-dns').checked,
             http_endpoints: document.getElementById('section-http').checked,
+            open_ports: document.getElementById('section-ports').checked,
             vulnerabilities: document.getElementById('section-vulns').checked,
             scan_history: document.getElementById('section-scans').checked
         };
@@ -2283,6 +2284,10 @@
                     <label style="display: flex; align-items: center; gap: 0.5rem; cursor: pointer;">
                         <input type="checkbox" id="section-http" checked>
                         <span>HTTP Endpoints</span>
+                    </label>
+                    <label style="display: flex; align-items: center; gap: 0.5rem; cursor: pointer;">
+                        <input type="checkbox" id="section-ports" checked>
+                        <span>Open Ports</span>
                     </label>
                     <label style="display: flex; align-items: center; gap: 0.5rem; cursor: pointer;">
                         <input type="checkbox" id="section-vulns" checked>

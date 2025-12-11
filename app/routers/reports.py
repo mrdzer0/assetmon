@@ -38,6 +38,7 @@ class ReportSections(BaseModel):
     subdomains: bool = True
     dns_records: bool = True
     http_endpoints: bool = True
+    open_ports: bool = True  # Open Ports (Non-Standard) table
     vulnerabilities: bool = True
     scan_history: bool = True
 

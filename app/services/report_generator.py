@@ -103,6 +103,33 @@ class ReportGenerator:
             "4xx_5xx": status_4xx_5xx
         }
         
+        # Open Ports (Non-Standard) - from SnapshotType.PORTS
+        ports_snapshot = self.db.query(Snapshot).filter(
+            Snapshot.project_id == project.id,
+            Snapshot.type == SnapshotType.PORTS
+        ).order_by(Snapshot.created_at.desc()).first()
+        
+        open_ports = []
+        if ports_snapshot and ports_snapshot.data:
+            port_findings = ports_snapshot.data.get("port_findings", {})
+            for host, findings_list in port_findings.items():
+                for finding in findings_list:
+                    status = finding.get("status_code", 0)
+                    # Filter: status 200-499 only (exclude 5xx errors)
+                    if isinstance(status, int) and 200 <= status < 500:
+                        open_ports.append({
+                            "url": finding.get("url", ""),
+                            "port": finding.get("port", 0),
+                            "status_code": status,
+                            "title": finding.get("title", "-"),
+                            "technologies": finding.get("technologies", []),
+                            "screenshot": finding.get("screenshot", "")
+                        })
+        
+        # Sort by port number, limit for PDF
+        open_ports.sort(key=lambda x: x["port"])
+        data["open_ports"] = open_ports[:30]  # Show top 30 in PDF
+        
         # Subdomains with HTTP probe info and DNS records
         if sections.get("subdomains", True):
             sub_snapshot = self.db.query(Snapshot).filter(

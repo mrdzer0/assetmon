@@ -821,6 +821,43 @@
             </table>
         </div>
 
+        <!-- Open Ports (Non-Standard) Table -->
+        {% if sections.open_ports and project.open_ports and project.open_ports|length > 0 %}
+        <div class="ip-section" style="margin-top: 15px;">
+            <h3>🔓 Open Ports (Non-Standard) - {{ project.open_ports|length }} Found</h3>
+            <table>
+                <thead>
+                    <tr>
+                        <th style="width: 8%;">Port</th>
+                        <th style="width: 40%;">URL</th>
+                        <th style="width: 8%;">Status</th>
+                        <th style="width: 22%;">Title</th>
+                        <th style="width: 22%;">Technologies</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    {% for ep in project.open_ports %}
+                    <tr>
+                        <td><span
+                                style="background: #f59e0b; color: white; padding: 2px 6px; border-radius: 3px; font-weight: 600;">{{
+                                ep.port }}</span></td>
+                        <td class="mono" style="font-size: 8px; word-break: break-all;">{{ ep.url|truncate(50) }}</td>
+                        <td>
+                            {% set status = ep.status_code|default(0)|int %}
+                            {% if status >= 200 and status < 300 %}<span class="status status-2xx">{{ status }}</span>
+                                {% elif status >= 300 and status < 400 %}<span class="status status-3xx">{{ status
+                                    }}</span>
+                                    {% else %}<span class="status">{{ status }}</span>{% endif %}
+                        </td>
+                        <td style="font-size: 8px;">{{ ep.title|default('-')|truncate(30) }}</td>
+                        <td style="font-size: 8px;">{{ ep.technologies|default([])|join(', ')|truncate(30) or '-' }}
+                        </td>
+                    </tr>
+                    {% endfor %}
+                </tbody>
+            </table>
+        </div>
+        {% endif %}
 
 
         {% if sections.vulnerabilities %}
