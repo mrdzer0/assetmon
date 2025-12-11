@@ -44,17 +44,21 @@ def fix_event_summaries(dry_run: bool = True, project_id: int = None):
             if not url:
                 continue
             
-            # Check if summary already contains full URL
-            if url in event.summary:
+            # Get status code from details
+            status_code = details.get('status_code', '?')
+            
+            # Check if summary already has the new format with status code
+            # New format: "Sensitive endpoint accessible: {url} [{categories}] [{status}]"
+            # Check for status code pattern at end: [200], [301], etc.
+            has_status_code = re.search(r'\[\d+\]$', event.summary) or re.search(r'\[\?\]$', event.summary)
+            
+            if has_status_code:
                 continue
             
             # Extract the category part from existing summary
             # Format: "Sensitive endpoint accessible: filename [categories]"
             match = re.search(r'\[([^\]]+)\]', event.summary)
             categories_str = match.group(1) if match else 'unknown'
-            
-            # Get status code from details
-            status_code = details.get('status_code', '?')
             
             # Build new summary with full URL and status code
             new_summary = f"Sensitive endpoint accessible: {url} [{categories_str}] [{status_code}]"
