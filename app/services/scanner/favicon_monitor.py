@@ -173,24 +173,45 @@ class FaviconMonitor:
                         continue
                     
                     # FILTER 2: Validate ownership by checking for project keywords
-                    if not self._validate_ownership(match):
+                    is_valid, matched_keyword = self._validate_ownership(match)
+                    if not is_valid:
                         logger.debug(f"Skipping {ip} - no ownership keywords found in hostnames/org/banner")
                         continue
+                    
+                    # Extract additional useful fields from Shodan
+                    http_info = match.get("http", {})
+                    ssl_info = match.get("ssl", {})
+                    ssl_cert = ssl_info.get("cert", {}) if ssl_info else {}
+                    location = match.get("location", {})
                         
                     # Found a shadow asset!
                     findings.append({
                         "ip": ip,
                         "port": match.get("port"),
                         "hostnames": hostnames,
+                        "domains": match.get("domains", []),
                         "org": match.get("org", ""),
-                        "country": match.get("location", {}).get("country_name", ""),
+                        "isp": match.get("isp", ""),
+                        "asn": match.get("asn", ""),
+                        "country": location.get("country_name", ""),
+                        "city": location.get("city", ""),
                         "favicon_hash": hash_val,
                         "original_favicon_url": favicon_url,
-                        "shodan_data": {
-                            "data": match.get("data", "")[:100], # Preview
-                            "os": match.get("os"),
-                            "isp": match.get("isp")
-                        }
+                        "matched_keyword": matched_keyword,
+                        # HTTP info
+                        "http_title": http_info.get("title", ""),
+                        "http_status": http_info.get("status"),
+                        "server": http_info.get("server", "") or match.get("product", ""),
+                        "product": match.get("product", ""),
+                        "version": match.get("version", ""),
+                        # SSL info
+                        "ssl_subject": ssl_cert.get("subject", {}).get("CN", ""),
+                        "ssl_issuer": ssl_cert.get("issuer", {}).get("O", ""),
+                        "ssl_expires": ssl_cert.get("expires", ""),
+                        # Vulnerabilities
+                        "vulns": match.get("vulns", []),
+                        # Banner preview
+                        "banner_preview": match.get("data", "")[:200]
                     })
                     
         except Exception as e:
@@ -211,16 +232,16 @@ class FaviconMonitor:
                     
         return False
 
-    def _validate_ownership(self, match: Dict) -> bool:
+    def _validate_ownership(self, match: Dict) -> tuple:
         """
         Validate if Shodan result likely belongs to the project by checking
         for keyword presence in hostnames, banner, or org.
         
-        Returns True if ownership is validated (should be reported).
+        Returns (True, matched_keyword) if ownership is validated, (False, None) otherwise.
         """
         if not self.ownership_keywords:
             # No keywords to validate against, accept all
-            return True
+            return True, "no_filter"
             
         # Data to check
         hostnames = match.get("hostnames", [])
@@ -234,24 +255,24 @@ class FaviconMonitor:
             for keyword in self.ownership_keywords:
                 if keyword in hostname_lower:
                     logger.debug(f"Ownership validated: keyword '{keyword}' found in hostname '{hostname}'")
-                    return True
+                    return True, keyword
         
         # Check org
         for keyword in self.ownership_keywords:
             if keyword in org:
                 logger.debug(f"Ownership validated: keyword '{keyword}' found in org '{org}'")
-                return True
+                return True, keyword
                 
         # Check banner (HTTP response body preview)
         for keyword in self.ownership_keywords:
             if keyword in banner:
                 logger.debug(f"Ownership validated: keyword '{keyword}' found in banner")
-                return True
+                return True, keyword
                 
         # Check ISP
         for keyword in self.ownership_keywords:
             if keyword in isp:
                 logger.debug(f"Ownership validated: keyword '{keyword}' found in ISP '{isp}'")
-                return True
+                return True, keyword
         
-        return False
+        return False, None
