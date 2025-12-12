@@ -55,7 +55,7 @@ class FaviconMonitor:
                 for part in parts:
                     # Skip common TLDs and short parts
                     if part not in ('com', 'co', 'id', 'io', 'net', 'org', 'dev', 'app', 'www', 'api', 'staging', 'dev', 'prod'):
-                        if len(part) >= 4:  # Only consider meaningful keywords
+                        if len(part) >= 3:  # Allow 3-char keywords like 'bri'
                             keywords.add(part)
         return keywords
 
