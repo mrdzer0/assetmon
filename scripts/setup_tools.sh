@@ -166,8 +166,8 @@ main() {
     
     # Install Celery (Python background task queue)
     print_info "Installing Celery and dependencies..."
-    pip3 install "celery[redis]" jsbeautifier >/dev/null 2>&1
-    print_success "Celery installed"
+    pip3 install "celery[redis]" jsbeautifier mmh3 >/dev/null 2>&1
+    print_success "Celery and mmh3 (Favicon hashing) installed"
     
     # Install Chromium (for httpx screenshot functionality)
     print_info "Installing Chromium (for screenshots)..."

@@ -243,11 +243,11 @@ class FaviconMonitor:
             # No keywords to validate against, accept all
             return True, "no_filter"
             
-        # Data to check
-        hostnames = match.get("hostnames", [])
-        org = match.get("org", "").lower()
-        banner = match.get("data", "").lower()[:500]  # First 500 chars
-        isp = match.get("isp", "").lower()
+        # Data to check (with null safety)
+        hostnames = match.get("hostnames") or []
+        org = (match.get("org") or "").lower()
+        banner = (match.get("data") or "").lower()[:500]  # First 500 chars
+        isp = (match.get("isp") or "").lower()
         
         # Check hostnames
         for hostname in hostnames:
