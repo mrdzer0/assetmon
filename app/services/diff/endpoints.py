@@ -74,6 +74,10 @@ def diff_endpoints(old_endpoints: Dict, new_endpoints: Dict, old_analysis: Dict 
         status = analysis.get('status', 'unknown')
         is_active = status == 'active'
 
+        # Filter out unknown/inactive files per user request
+        if status != 'active':
+            continue
+
         events.append({
             "type": EventType.JS_FILE_NEW,
             "severity": SeverityLevel.MEDIUM,
