@@ -28,13 +28,13 @@ celery_app.conf.update(
     
     # Task settings
     task_track_started=True,
-    task_time_limit=3600,  # 1 hour max per task
-    task_soft_time_limit=3000,  # soft limit 50 min
+    task_time_limit=14400,  # 4 hours max per task
+    task_soft_time_limit=13800,  # soft limit 3h 50min
     
     # Worker settings
     worker_prefetch_multiplier=1,  # Process one task at a time
     worker_concurrency=2,  # 2 concurrent workers
     
     # Result settings
-    result_expires=86400,  # Results expire after 24 hours
+    result_expires=172800,  # Results expire after 48 hours
 )
