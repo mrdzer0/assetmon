@@ -32,6 +32,7 @@ class EventType(str, enum.Enum):
     JS_FILE_NEW = "js_file_new"
     TAKEOVER_SUSPECTED = "takeover_suspected"
     VULNERABILITY_FOUND = "vulnerability_found"
+    SHADOW_ASSET_FOUND = "shadow_asset_found"
 
 
 class SnapshotType(str, enum.Enum):

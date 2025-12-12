@@ -26,7 +26,8 @@ apscheduler==3.10.4
 celery[redis]==5.3.6
 
 # JS Analysis
-jsbeautifier>=1.14.0
+jsbeautifier
+mmh3>=1.14.0
 
 # CLI & Utilities
 click==8.1.7

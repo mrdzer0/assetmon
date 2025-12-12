@@ -163,6 +163,35 @@ class ScanOrchestrator:
                     if snapshot:
                         snapshots_created["http"] = snapshot
 
+            # 3.5 Favicon Cross-Referencing (New Phase)
+            # Relies on HTTP results to know which URLs are alive
+            favicon_config = enabled_tools.get("favicon", {})
+            # Check if enabled in tools or specifically requested in custom mode (as 'favicon' module)
+            run_favicon = favicon_config.get("enabled", False)
+            if mode == "custom" and modules and "favicon" in modules:
+                run_favicon = True
+
+            if run_favicon:
+                # Get HTTP data (from current scan or previous snapshot)
+                http_snapshot = snapshots_created.get("http")
+                if not http_snapshot:
+                    http_snapshot = self.db.query(Snapshot).filter(
+                        Snapshot.project_id == project.id,
+                        Snapshot.type == SnapshotType.HTTP
+                    ).order_by(Snapshot.created_at.desc()).first()
+
+                if http_snapshot:
+                    # Extract alive URLs from HTTP snapshot
+                    alive_urls = [
+                        url for url, data in http_snapshot.data.get("http_records", {}).items() 
+                        if data.get("status_code", 0) == 200
+                    ]
+                    if alive_urls:
+                        events = self._run_favicon_scan(project, alive_urls)
+                        all_events.extend(events)
+                else:
+                    logger.warning(f"Favicon scan skipped: no HTTP snapshot found for project {project_id}")
+
             # 4. Port Scanning (for non-standard web ports)
             # Get port config from database (ScannerConfig table) where UI saves it
             # This picks up screenshot_enabled and other settings saved via /settings/scanners
@@ -1095,3 +1124,55 @@ class ScanOrchestrator:
             logger.error(f"Nuclei scan failed: {e}", exc_info=True)
             self.errors.append(f"Nuclei scan failed: {str(e)}")
             return [], None
+
+    def _run_favicon_scan(self, project: Project, alive_urls: List[str]) -> List[Dict]:
+        """Run Favicon cross-referencing scan"""
+        logger.info(f"Running Favicon scan for {len(alive_urls)} alive URLs...")
+        
+        try:
+            from app.services.scanner.favicon_monitor import FaviconMonitor
+            from app.models import EventType, SeverityLevel, Snapshot, SnapshotType
+            
+            # Get known assets to exclude
+            known_domains = [d.name for d in project.domains]
+            root_domains = list(known_domains)  # Save root domains for keyword extraction
+            
+            # Add discovered subdomains to exclusion list only
+            snapshot = self.db.query(Snapshot).filter(
+                Snapshot.project_id == project.id,
+                Snapshot.type == SnapshotType.SUBDOMAINS
+            ).order_by(Snapshot.created_at.desc()).first()
+            if snapshot:
+                known_domains.extend(snapshot.data.get("subdomains", []))
+                
+            # Get known IPs
+            known_ips = self._get_current_ips(project.id, {})
+            
+            # Pass root_domains separately for keyword extraction
+            monitor = FaviconMonitor(known_domains, known_ips, root_domains=root_domains)
+            result = monitor.scan(alive_urls)
+            
+            findings = result.get("findings", [])
+            events = []
+            
+            for finding in findings:
+                events.append({
+                    "type": EventType.SHADOW_ASSET_FOUND,
+                    "severity": SeverityLevel.LOW,
+                    "summary": f"Shadow asset found: {finding['ip']} ({', '.join(finding['hostnames']) if finding['hostnames'] else 'no hostname'}) matches favicon hash",
+                    "details": finding,
+                    "related_entities": {
+                        "ip": finding["ip"],
+                        "favicon_hash": finding["favicon_hash"]
+                    }
+                })
+                
+            if events:
+                logger.warning(f"Favicon scan discovered {len(events)} shadow assets!")
+                
+            return events
+            
+        except Exception as e:
+            logger.error(f"Favicon scan failed: {e}")
+            self.errors.append(f"Favicon scan: {str(e)}")
+            return []
